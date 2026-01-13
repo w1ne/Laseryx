@@ -1,0 +1,13 @@
+{
+  "name": "laser-pwa",
+  "private": true,
+  "workspaces": [
+    "apps/pwa"
+  ],
+  "scripts": {
+    "dev": "npm --prefix apps/pwa run dev",
+    "build": "npm --prefix apps/pwa run build",
+    "preview": "npm --prefix apps/pwa run preview",
+    "test": "npm --prefix apps/pwa run test"
+  }
+}
