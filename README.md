@@ -15,3 +15,22 @@ Key subfolders in apps/pwa/src:
 Tests:
 - apps/pwa/src/**/*.test.ts: unit tests
 - apps/pwa/tests/golden: golden G-code fixtures
+
+## getting started
+
+**Prerequisites:** Node.js >=18 (v12 is too old for current dependencies).
+
+### installation
+```bash
+npm install
+```
+
+### run locally
+```bash
+npm run dev
+```
+
+### run tests
+```bash
+npm run test
+```
