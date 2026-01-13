@@ -1,7 +1,7 @@
 {
-  "name": "Laser PWA",
-  "short_name": "Laser",
-  "description": "Linux-first laser CAM PWA",
+  "name": "LaserFather",
+  "short_name": "LaserFather",
+  "description": "LaserFather: Linux-first laser CAM PWA",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f172a",
