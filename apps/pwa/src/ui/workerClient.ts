@@ -1,3 +1,12 @@
+import type {
+  CamPlan,
+  CamSettings,
+  Document,
+  GcodeDialect,
+  JobStats,
+  MachineProfile,
+  PreviewGeom
+} from "../core/model";
 import { createRequestId } from "../shared/ids";
 import type { WorkerRequest, WorkerResponse } from "../shared/workerProtocol";
 
@@ -44,6 +53,46 @@ export function createWorkerClient(worker: Worker) {
         throw new Error("Unexpected ping response");
       }
       return payload.value;
+    },
+    camPlan: async (
+      document: Document,
+      cam: CamSettings
+    ): Promise<{ plan: CamPlan; preview: PreviewGeom; warnings: string[] }> => {
+      const response = await request("core.camPlan", { document, cam });
+      return response.payload as { plan: CamPlan; preview: PreviewGeom; warnings: string[] };
+    },
+    emitGcode: async (
+      plan: CamPlan,
+      cam: CamSettings,
+      machine: MachineProfile,
+      dialect: GcodeDialect
+    ): Promise<{ gcode: string; stats: JobStats }> => {
+      const response = await request("core.emitGcode", {
+        plan,
+        cam,
+        machine,
+        dialect
+      });
+      return response.payload as { gcode: string; stats: JobStats };
+    },
+    generateGcode: async (
+      document: Document,
+      cam: CamSettings,
+      machine: MachineProfile,
+      dialect: GcodeDialect
+    ): Promise<{ gcode: string; preview: PreviewGeom; stats: JobStats; warnings: string[] }> => {
+      const response = await request("core.generateGcode", {
+        document,
+        cam,
+        machine,
+        dialect
+      });
+      return response.payload as {
+        gcode: string;
+        preview: PreviewGeom;
+        stats: JobStats;
+        warnings: string[];
+      };
     },
     dispose: () => {
       worker.removeEventListener("message", onMessage);

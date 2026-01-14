@@ -23,7 +23,7 @@ B) core.camPlan
 - res payload: { plan: CamPlan, preview: PreviewGeom, warnings: string[] }
 
 C) core.emitGcode
-- req payload: { plan: CamPlan, machine: MachineProfile, dialect: GcodeDialect }
+- req payload: { plan: CamPlan, cam: CamSettings, machine: MachineProfile, dialect: GcodeDialect }
 - res payload: { gcode: string, stats: JobStats }
 
 Optional convenience for MVP (reduce messages)
@@ -33,6 +33,9 @@ D) core.generateGcode
 
 Source of truth for the worker envelope in code:
 - apps/pwa/src/shared/workerProtocol.ts
+
+Core data types live in:
+- apps/pwa/src/core/model.ts
 
 2) Core data types (MVP)
 

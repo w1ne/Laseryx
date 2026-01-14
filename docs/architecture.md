@@ -13,14 +13,14 @@ Runtime components
 - Renders vectors and previews (Canvas/WebGL/SVG—implementation choice).
 - Performs persistence (IndexedDB) and import/export (File API).
 - Owns Web Serial device control.
-- Current Milestone 0 wiring: `apps/pwa/src/ui/App.tsx` calls `createWorkerClient` and displays "pong".
+- Current Milestone 1 wiring: `apps/pwa/src/ui/App.tsx` builds a document, sends it to the worker, and exports G-code.
 
 2) Core worker (TypeScript)
 - Document normalization (flatten transforms, path conversion).
 - Geometry utilities (polyline ops, bbox, ordering).
 - CAM planner (vector toolpaths + raster scanlines later).
 - G-code emitter (GRBL-oriented, configurable).
-- Milestone 0 uses a minimal core (`apps/pwa/src/core/ping.ts`) to prove the worker boundary.
+- Milestone 1 core adds CAM planning + G-code emission alongside the minimal ping.
 
 Hard boundaries
 - apps/pwa/src/core must not import from:
@@ -30,9 +30,13 @@ Hard boundaries
   - navigator.serial
 - apps/pwa/src/io contains all browser integrations.
 
-Current module layout (Milestone 0)
+Current module layout (Milestone 1)
 - apps/pwa/src/core
-  - ping.ts (pure core entry used by the worker)
+  - model.ts (document + CAM + machine types)
+  - geom.ts (transforms + polyline utilities)
+  - cam.ts (rect -> polyline + plan ordering)
+  - gcode.ts (G-code emission + stats)
+  - ping.ts (minimal core entry used by the worker)
 - apps/pwa/src/shared
   - workerProtocol.ts (shared request/response types)
   - ids.ts (request id helper)
@@ -40,7 +44,7 @@ Current module layout (Milestone 0)
   - handler.ts (pure request router)
   - worker.ts (postMessage adapter)
 - apps/pwa/src/ui
-  - App.tsx (renders "pong" from worker)
+  - App.tsx (rectangle editor + export)
   - workerClient.ts (UI-side RPC helper)
 - apps/pwa/src/io
   - registerServiceWorker.ts
@@ -48,6 +52,8 @@ Current module layout (Milestone 0)
   - manifest.webmanifest
   - sw.js
   - icon.svg
+- apps/pwa/tests/golden
+  - fixtures + expected G-code outputs
 
 Planned core layout (within `apps/pwa`)
 - apps/pwa/src/core/model

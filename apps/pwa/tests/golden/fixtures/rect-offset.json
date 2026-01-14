@@ -1,0 +1,50 @@
+{
+  "document": {
+    "version": 1,
+    "units": "mm",
+    "layers": [
+      {
+        "id": "layer-1",
+        "name": "Layer 1",
+        "visible": true,
+        "locked": false,
+        "operationId": "op-1"
+      }
+    ],
+    "objects": [
+      {
+        "kind": "shape",
+        "id": "rect-1",
+        "layerId": "layer-1",
+        "transform": { "a": 1, "b": 0, "c": 0, "d": 1, "e": 10, "f": 5 },
+        "shape": { "type": "rect", "width": 30, "height": 30 }
+      }
+    ]
+  },
+  "cam": {
+    "operations": [
+      {
+        "id": "op-1",
+        "type": "vectorCut",
+        "speedMmMin": 800,
+        "powerPct": 25,
+        "passes": 1,
+        "order": "shortestTravel"
+      }
+    ]
+  },
+  "machine": {
+    "bedMm": { "w": 300, "h": 200 },
+    "origin": "frontLeft",
+    "sRange": { "min": 0, "max": 1000 },
+    "laserMode": "M4",
+    "preamble": ["G21", "G90"]
+  },
+  "dialect": {
+    "newline": "\n",
+    "useG0ForTravel": true,
+    "powerCommand": "S",
+    "enableLaser": "M4",
+    "disableLaser": "M5"
+  }
+}
