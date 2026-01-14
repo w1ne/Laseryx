@@ -34,3 +34,19 @@ npm run dev
 ```bash
 npm run test
 ```
+
+### Linux setup
+
+If you cannot connect to the device (Status: "Failed to open serial port"):
+
+1.  **Permissions**: Ensure your user is in the `dialout` group:
+    ```bash
+    sudo usermod -a -G dialout $USER
+    # You MUST log out and log back in for this to take effect!
+    ```
+
+2.  **Interference**: If it still fails, stop ModemManager (it grabs serial ports):
+    ```bash
+    sudo systemctl stop ModemManager
+    sudo systemctl disable ModemManager
+    ```
