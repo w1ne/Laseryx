@@ -47,7 +47,18 @@ export type ShapeObj = {
   shape: Shape;
 };
 
-export type Obj = PathObj | ShapeObj;
+export type ImageObj = {
+  kind: "image";
+  id: string;
+  layerId: string;
+  transform: Transform;
+  width: number;
+  height: number;
+  // Data URI or blob URL
+  src: string;
+};
+
+export type Obj = PathObj | ShapeObj | ImageObj;
 
 export type Document = {
   version: number;
@@ -56,11 +67,11 @@ export type Document = {
   objects: Obj[];
 };
 
-export type OperationOrder = "insideOut" | "shortestTravel";
+export type OperationOrder = "insideOut" | "shortestTravel" | "topDown";
 
 export type Operation = {
   id: string;
-  type: "vectorCut" | "vectorEngrave";
+  type: "vectorCut" | "vectorEngrave" | "rasterEngrave";
   speedMmMin: number;
   powerPct: number;
   passes: number;

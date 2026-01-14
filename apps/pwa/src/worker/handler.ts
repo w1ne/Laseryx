@@ -21,7 +21,7 @@ export function handleWorkerRequest(request: WorkerRequest): WorkerResponse {
     }
 
     if (isCamPlanRequest(request)) {
-      const result = planCam(request.payload.document, request.payload.cam);
+      const result = planCam(request.payload.document, request.payload.cam, request.payload.images);
       return {
         id: request.id,
         type: request.type,
@@ -48,7 +48,8 @@ export function handleWorkerRequest(request: WorkerRequest): WorkerResponse {
         request.payload.document,
         request.payload.cam,
         request.payload.machine,
-        request.payload.dialect
+        request.payload.dialect,
+        request.payload.images
       );
       return {
         id: request.id,
