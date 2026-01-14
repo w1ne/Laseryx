@@ -67,7 +67,11 @@ export function planCam(document: Document, cam: CamSettings, images?: Map<strin
               w: obj.width,
               h: obj.height // These are physical dimensions
             };
-            paths.push(...generateRasterToolpath(imageData, cam, operation, bbox));
+            // Avoid spread operator for large arrays (stack overflow)
+            const rasterPaths = generateRasterToolpath(imageData, cam, operation, bbox);
+            for (const path of rasterPaths) {
+              paths.push(path);
+            }
           } else {
             warnings.push(`Missing image data for object ${obj.id}`);
           }
