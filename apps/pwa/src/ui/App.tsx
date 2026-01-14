@@ -298,90 +298,54 @@ export function App() {
           const width = maxX - minX;
           const height = maxY - minY;
 
-          // Fit to bed (80%)
-          const bedW = machineProfile.bedMm.w;
-          const bedH = machineProfile.bedMm.h;
-          const targetW = bedW * 0.8;
-          const targetH = bedH * 0.8;
+          // Manual Scale: 100% (1:1)
+          // "mm should be mm" - we assume the points from parseSvg are in mm 
+          // (or user units which we treat as mm for NOW).
 
-          let scale = 1.0;
-          if (width > targetW || height > targetH) {
-            scale = Math.min(targetW / width, targetH / height);
-          }
+          const scale = 1.0;
 
-          // Center on bed
-          // Current center
-          const cx = minX + width / 2;
-          const cy = minY + height / 2;
+          // Place at default 0,0 or preserve original coordinates?
+          // User said "position it on the table".
+          // If we preserve coordinates, they might be far off.
+          // But "mm should be mm" implies absolute coordinates might matter.
+          // However, for usability, if minX is very large, it might be off screen.
+          // Let's just NOT shift it, effectively respecting the file's absolute coordinates unless user moves it.
+          // BUT: generic SVGs often have arbitrary origins.
+          // Let's place the TOP-LEFT of the bbox at (0,0) or (10,10) to ensure it's visible?
+          // User said "scale should be 100% by default".
+          // They didn't explicitly forbid centering, but "position it on the table" implies manual control?
+          // "Only user can change the scale"
 
-          // Target center
-          const tcx = bedW / 2;
-          const tcy = bedH / 2;
+          // Let's respecting the FILE's coordinates exactly (KISS).
+          // If the file says x=500, we put it at 500.
+          // Wait, users workspace is 300x200.
+          // If I import something at 0,0 but its minX is -50, it is cut off.
 
-          // Translation needed: (tcx - cx*scale), (tcy - cy*scale) ?
-          // We are applying a NEW transform T_new = Translate(tcx, tcy) * Scale(s) * Translate(-cx, -cy).
-          // And composing it with existing?
-          // Or just Translate(-minX, -minY) to zero it, then Scale, then Translate(margin).
+          // Safer default for "Import": Shift so top-left is at (10,10).
+          // This preserves relative scale (100%) but ensures visibility.
+          // It modifies the position (e,f).
 
-          // Let's construct a "Fit" transform.
-          // T_fit = Translate(tcx - cx*scale, tcy - cy*scale) * Scale(scale) ???
-          // No. simpler:
-          // We want the new center to be tcx, tcy.
-          // The old center is cx, cy.
-          // Offset = tcx - cx * scale ...
+          // Actually, let's strictly follow: "scale should be 100%".
+          // I will REMOVE the scaling logic.
+          // I will also remove the "Centering" logic which modified e/f.
+          // Instead, I will simply shift the top-left corner to 0,0 (or a small margin) 
+          // so it appears on the bed.
 
-          // But 'transform' on PathObj might include rotation.
-          // We just want to wrap the whole group in a transform?
-          // Flattening is better.
-          // Update each object's transform: T_final = T_fit * T_current
-
-          const scaleTransform: Transform = { a: scale, b: 0, c: 0, d: scale, e: 0, f: 0 };
-
-          // We need to shift everything so 'minX, minY' goes to '0,0' relative to the group, then scale, then move to center.
-          // Actually, let's just use the `e` and `f` to center the bounding box.
-
-          const shiftX = tcx - (minX + width / 2) * scale;
-          const shiftY = tcy - (minY + height / 2) * scale;
-
-          // We can't simple modify e/f because existing rotation affects axes.
-          // We MUST use matrix composition.
-          // Operation: Scale(s) -> Translate(shiftX, shiftY)??
-          // No, usually Scale is around 0,0.
-          // If we scale existing points, they move towards 0,0.
-
-          // Let's effectively apply: 
-          // 1. Scale
-          // 2. Translate(shiftX_corrected, shiftY_corrected)
-
-          // Actually, for KISS:
-          // Just add them. If they are huge/far, user can move them?
-          // No, off-bed is bad.
-          // Let's apply the calculated scale and offset to the `transform` property.
-          // T_new = Compose( {a:s, d:s, e:shiftX, f:shiftY... wait, shift depends on s}, T_old ) makes no sense.
-
-          // We want to map Point P to P' where P' is centered and scaled.
-          // P_world = T_old * P_local
-          // P_final = Scale(s) * (P_world - Center_old) + Center_new
-          // P_final = Scale(s) * P_world  - Scale(s)*Center_old + Center_new
-          // P_final = (Scale(s) * T_old) * P_local + (Center_new - s*Center_old)
-          // So new transform matrix T_new:
-          //   Matrix part: Scale(s) * T_old.matrix
-          //   Translation part: Scale(s) * T_old.translation + (Center_new - s*Center_old)
-
-          const centerOffsetX = tcx - scale * cx;
-          const centerOffsetY = tcy - scale * cy;
+          const shiftX = -minX;
+          const shiftY = -minY;
 
           const newObjects = paths.map(obj => {
             const t = obj.transform;
             return {
               ...obj,
               transform: {
-                a: t.a * scale,
-                b: t.b * scale,
-                c: t.c * scale,
-                d: t.d * scale,
-                e: t.e * scale + centerOffsetX,
-                f: t.f * scale + centerOffsetY
+                a: t.a, // 1:1
+                b: t.b,
+                c: t.c,
+                d: t.d,
+                // Shift so the group starts at 0,0 relative to document origin?
+                e: t.e + shiftX,
+                f: t.f + shiftY
               }
             };
           });
@@ -424,27 +388,16 @@ export function App() {
             const bedH = machineProfile.bedMm.h;
 
             // Initial assumption: 96 DPI (1px = 0.264mm)
-            let mmW = img.width * 0.264583;
-            let mmH = img.height * 0.264583;
+            const mmW = img.width * 0.264583;
+            const mmH = img.height * 0.264583;
 
-            // If image is larger than 80% of bed in either dimension, scale it down to fit 80%
-            const targetW = bedW * 0.8;
-            const targetH = bedH * 0.8;
-
-            if (mmW > targetW || mmH > targetH) {
-              const scaleW = targetW / mmW;
-              const scaleH = targetH / mmH;
-              const scale = Math.min(scaleW, scaleH);
-              mmW *= scale;
-              mmH *= scale;
-            }
+            // No auto-scale. 
+            // No centering, just default placement (e.g. 10,10)
 
             imageObj.width = mmW;
             imageObj.height = mmH;
-
-            // Center it
-            imageObj.transform.e = (bedW - mmW) / 2;
-            imageObj.transform.f = (bedH - mmH) / 2;
+            imageObj.transform.e = 10;
+            imageObj.transform.f = 10;
 
             setDocument(prev => ({ ...prev, objects: [...prev.objects, imageObj] }));
             setSelectedObjectId(id);
