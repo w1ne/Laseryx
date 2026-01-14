@@ -16,6 +16,16 @@ Tests:
 - apps/pwa/src/**/*.test.ts: unit tests
 - apps/pwa/tests/golden: golden G-code fixtures
 
+## Features
+- **Design Workspace**: Create rectangles, or import external files.
+- **Import File**: Unified import for:
+  - **Vector**: `.svg` (automatically converted to paths for cutting/engraving).
+  - **Raster**: `.png`, `.jpg` (automatically rasterized with scanline generation).
+- **Scale**: All imports default to 100% scale (1:1 mm) and generic positioning.
+- **CAM Engine**: Assign operations (Vector Cut, Vector Engrave, Raster Engrave) with configurable speed/power/passes.
+- **Machine Control**: Connect via Web Serial (Linux/Chrome) to stream G-code directly to GRBL.
+
+
 ## getting started
 
 **Prerequisites:** Node.js >=18 (v12 is too old for current dependencies).
