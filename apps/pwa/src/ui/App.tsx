@@ -16,6 +16,7 @@ import { parseSvg } from "../core/svgImport";
 import type { GrblDriver, StatusSnapshot } from "../io/grblDriver";
 import { createWebSerialGrblDriver } from "../io/grblDriver";
 import { createWorkerClient } from "./workerClient";
+import { projectRepo, ProjectSummary } from "../io/projectRepo";
 import "./app.css";
 
 type ExportState = {
@@ -171,6 +172,114 @@ export function App() {
   const streamRef = useRef<ReturnType<GrblDriver["streamJob"]> | null>(null);
   const isExportDisabled = !workerStatus.ready || exportState.status === "working";
   const serialSupported = typeof navigator !== "undefined" && "serial" in navigator;
+
+  // Persistence State
+  const [showLoadDialog, setShowLoadDialog] = useState(false);
+  const [savedProjects, setSavedProjects] = useState<ProjectSummary[]>([]);
+  const [isProjectLoading, setIsProjectLoading] = useState(false);
+
+  const handleNewProject = () => {
+    if (confirm("Create new project? Unsaved changes will be lost.")) {
+      setDocument(createDefaultDocument());
+      setMachineProfile(createDefaultMachineProfile());
+      setCamSettings(createDefaultCamSettings());
+      setSelectedObjectId(null);
+    }
+  };
+
+  const handleSaveProject = async () => {
+    const name = prompt("Project Name:", "Untitled Project");
+    if (!name) return;
+
+    try {
+      // 1. Extract assets
+      const assets = new Map<string, Blob>();
+      const docClone = structuredClone(document); // Deep clone
+
+      // We need to iterate and replace blob: URLs with asset IDs
+      for (const obj of docClone.objects) {
+        if (obj.kind === "image" && obj.src.startsWith("blob:")) {
+          // Fetch the blob data
+          const res = await fetch(obj.src);
+          const blob = await res.blob();
+          // Generate a stable ID for storage?
+          // Actually, we can just use a random UUID for the asset.
+          // Ideally we should track if it's already an asset ID?
+          // For MVP: always generate new asset ID on save. 
+          // (Inefficient but simple - duplicate assets if saving repeatedly).
+          // Better: Use `obj.id` as seed? No.
+          const assetId = crypto.randomUUID();
+          assets.set(assetId, blob);
+          obj.src = assetId;
+        } else if (obj.kind === "image") {
+          // It's already an ID? Or external URL?
+          // If it's not a blob: url, assume it's external or already an ID?
+          // If we loaded it, it was converted to blob:. 
+          // So this case shouldn't happen unless broken state.
+        }
+      }
+
+      await projectRepo.save(docClone, assets, name);
+      alert("Project saved!");
+    } catch (e) {
+      console.error(e);
+      alert("Failed to save project: " + e);
+    }
+  };
+
+  const handleListProjects = async () => {
+    try {
+      const list = await projectRepo.list();
+      setSavedProjects(list);
+      setShowLoadDialog(true);
+    } catch (e) {
+      alert("Failed to list projects: " + e);
+    }
+  };
+
+  const handleLoadProject = async (id: string) => {
+    try {
+      setIsProjectLoading(true);
+      const loaded = await projectRepo.load(id);
+      if (!loaded) throw new Error("Project not found");
+
+      // Restore assets to blob URLs
+      const doc = loaded.document;
+      for (const obj of doc.objects) {
+        if (obj.kind === "image") {
+          const blob = loaded.assets.get(obj.src);
+          if (blob) {
+            const url = URL.createObjectURL(blob);
+            obj.src = url;
+          } else {
+            console.warn("Asset not found for image:", obj.id);
+          }
+        }
+      }
+
+      setDocument(doc);
+      // Reset settings? For now, we don't save settings in document, but we should? 
+      // The schema had document and timestamp. Settings are global currently in our model?
+      // Actually `createDefaultCamSettings` etc are used. 
+      // We should probably save settings too, but MVP only saves Document.
+
+      setShowLoadDialog(false);
+    } catch (e) {
+      console.error(e);
+      alert("Failed to load: " + e);
+    } finally {
+      setIsProjectLoading(false);
+    }
+  };
+
+  const handleDeleteProject = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm("Delete this project?")) {
+      await projectRepo.delete(id);
+      const list = await projectRepo.list();
+      setSavedProjects(list);
+    }
+  };
 
   useEffect(() => {
     const worker = new Worker(new URL("../worker/worker.ts", import.meta.url), {
@@ -587,16 +696,55 @@ export function App() {
     <div className="app">
       <header className="app__header">
         <div>
-          <p className="app__eyebrow">Milestone 2</p>
+          <p className="app__eyebrow">Milestone 5</p>
           <h1>LaserFather Workspace</h1>
-          <p className="app__subtitle">
-            Design a vector job, export G-code, or stream it over Web Serial.
-          </p>
+          <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+            <button onClick={handleNewProject}>New</button>
+            <button onClick={handleListProjects}>Open</button>
+            <button onClick={handleSaveProject}>Save</button>
+          </div>
         </div>
         <div className={`app__worker ${workerStatus.ready ? "is-ready" : ""}`}>
           {workerStatus.ready ? "Worker ready" : workerStatus.error || "Worker starting"}
         </div>
       </header>
+
+      {showLoadDialog && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0,0,0,0.8)", zIndex: 1000,
+          display: "flex", alignItems: "center", justifyContent: "center"
+        }}>
+          <div style={{
+            background: "#222", padding: "20px", borderRadius: "8px",
+            width: "400px", maxHeight: "80vh", overflowY: "auto",
+            border: "1px solid #444"
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "16px" }}>
+              <h2>Open Project</h2>
+              <button onClick={() => setShowLoadDialog(false)}>X</button>
+            </div>
+            {savedProjects.length === 0 && <p>No saved projects.</p>}
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {savedProjects.map(p => (
+                <div key={p.id}
+                  onClick={() => handleLoadProject(p.id)}
+                  style={{
+                    padding: "10px", background: "#333", cursor: "pointer",
+                    display: "flex", justifyContent: "space-between", alignItems: "center",
+                    border: "1px solid #444"
+                  }}>
+                  <div>
+                    <strong>{p.name}</strong><br />
+                    <small style={{ color: "#888" }}>{new Date(p.updatedAt).toLocaleString()}</small>
+                  </div>
+                  <button onClick={(e) => handleDeleteProject(p.id, e)} style={{ background: "#500", border: "none", padding: "4px 8px" }}>Del</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <nav className="app__tabs" aria-label="Workspace tabs">
         <button

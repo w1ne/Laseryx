@@ -70,3 +70,13 @@ Milestone 4 — SVG Import (Vector Support)
 - Import external vector designs (SVG)
 - Convert basic SVG shapes to toolpaths
 - Unified import workflow for Raster (Image) and Vector (SVG)
+
+Milestone 5 — Project Persistence (Save/Load)
+Goal: Users can save their work and come back later.
+Deliverables:
+- IndexedDB storage layer.
+- Save/Load/New Project UI actions.
+- Persistence of Document (Vectors), Images (Blobs), and Settings.
+Acceptance:
+- Create design with Image + Vector -> Save -> Refresh Page -> Open -> Design restored exactly.
+
