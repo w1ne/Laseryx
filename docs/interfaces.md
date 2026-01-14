@@ -113,6 +113,7 @@ JobStats
 Interface (TypeScript)
 - connect(): Promise<void>             // uses navigator.serial.requestPort
 - disconnect(): Promise<void>
+- isConnected(): boolean
 - getStatus(): Promise<StatusSnapshot>
 - sendLine(line: string): Promise<Ack>
 - streamJob(gcode: string, mode: "ack" | "buffered"): StreamHandle
@@ -123,6 +124,15 @@ Interface (TypeScript)
 StatusSnapshot (minimal)
 - { state:"IDLE"|"RUN"|"HOLD"|"ALARM"|"UNKNOWN", wpos?:{x,y,z}, mpos?:{x,y,z} }
 
+Ack
+- { ok:boolean, error?:string, lines?:string[] } // lines are any responses before ok/error
+
+StreamHandle
+- { done: Promise<void>, abort(): Promise<void> }
+
 Streaming modes
 - ack: strict line-by-line wait for ok/error.
 - buffered: reserved for later; keep the enum now so UI doesn’t change later.
+
+Implementation reference:
+- apps/pwa/src/io/grblDriver.ts

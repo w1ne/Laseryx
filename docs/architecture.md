@@ -48,6 +48,7 @@ Current module layout (Milestone 1)
   - workerClient.ts (UI-side RPC helper)
 - apps/pwa/src/io
   - registerServiceWorker.ts
+  - grblDriver.ts (Web Serial + simulated driver)
 - apps/pwa/public
   - manifest.webmanifest
   - sw.js
@@ -82,7 +83,7 @@ Project persistence (local-first)
 - Export: generate .gcode file for download (MVP).
 - Project file packaging (zip) is optional later; do not block MVP on it.
 
-Machine control (GRBL-only, later milestone)
+Machine control (GRBL-only, Milestone 2)
 - A "Machine" tab that is disabled if Web Serial is unavailable.
 - Streaming starts with ack-mode (line -> wait ok/error -> next).
 - Buffered streaming can be added later without changing the core.
