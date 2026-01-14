@@ -7,9 +7,12 @@ import type {
   MachineProfile,
   Operation,
   ShapeObj,
-  ImageObj
+  ImageObj,
+  PathObj,
+  Transform
 } from "../core/model";
-import { IDENTITY_TRANSFORM } from "../core/geom";
+import { IDENTITY_TRANSFORM, computeBounds, composeTransforms } from "../core/geom";
+import { parseSvg } from "../core/svgImport";
 import type { GrblDriver, StatusSnapshot } from "../io/grblDriver";
 import { createWebSerialGrblDriver } from "../io/grblDriver";
 import { createWorkerClient } from "./workerClient";
@@ -243,64 +246,213 @@ export function App() {
     setSelectedObjectId(id);
   };
 
-  const handleImportImage = () => {
+  const handleImportFile = () => {
     const input = window.document.createElement("input");
     input.type = "file";
-    input.accept = "image/png, image/jpeg";
-    input.onchange = () => {
+    input.accept = "image/png, image/jpeg, image/svg+xml, .svg";
+    input.onchange = async () => {
       const file = input.files?.[0];
       if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        const src = reader.result as string;
-        const img = new Image();
-        img.onload = () => {
-          const id = `img-${nextRectId}`;
-          setNextRectId(i => i + 1);
-          // Simple auto-scale if too big? MVP: No.
-          const imageObj: ImageObj = {
-            kind: "image",
-            id,
-            layerId: DEFAULT_LAYER_ID,
-            transform: { ...IDENTITY_TRANSFORM, e: 10, f: 10 },
-            width: img.width,
-            height: img.height,
-            src
-          };
 
-          // Auto-scale to fit bed if too large or just generally scale to reasonable size
+      if (file.name.toLowerCase().endsWith(".svg")) {
+        try {
+          const text = await file.text();
+          const importedObjects = parseSvg(text);
+          if (importedObjects.length === 0) {
+            alert("No supported shapes found in SVG.");
+            return;
+          }
+
+          // Convert to PathObjs (parseSvg already returns generic Objs, but we expect Paths mostly)
+          const paths = importedObjects.filter(o => o.kind === "path") as PathObj[];
+
+          if (paths.length === 0) return;
+
+          // Auto-scale logic
+          // 1. Compute bounds of all paths in their LOCAL transformed space?
+          // computedBounds expects PolylinePath (points only). 
+          // But our paths have 'transform'. We must apply transform to points to get physical bounds.
+          // Or we can rely on proper placement?
+          // Let's transform points to physical space to measure SIZE.
+
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+          // Helper to transform a point
+          const apply = (p: { x: number, y: number }, t: Transform) => ({
+            x: p.x * t.a + p.y * t.c + t.e,
+            y: p.x * t.b + p.y * t.d + t.f
+          });
+
+          for (const p of paths) {
+            for (const pt of p.points) {
+              const t = apply(pt, p.transform);
+              if (t.x < minX) minX = t.x;
+              if (t.y < minY) minY = t.y;
+              if (t.x > maxX) maxX = t.x;
+              if (t.y > maxY) maxY = t.y;
+            }
+          }
+
+          if (minX === Infinity) return; // No points
+
+          const width = maxX - minX;
+          const height = maxY - minY;
+
+          // Fit to bed (80%)
           const bedW = machineProfile.bedMm.w;
           const bedH = machineProfile.bedMm.h;
-
-          // Initial assumption: 96 DPI (1px = 0.264mm)
-          let mmW = img.width * 0.264583;
-          let mmH = img.height * 0.264583;
-
-          // If image is larger than 80% of bed in either dimension, scale it down to fit 80%
           const targetW = bedW * 0.8;
           const targetH = bedH * 0.8;
 
-          if (mmW > targetW || mmH > targetH) {
-            const scaleW = targetW / mmW;
-            const scaleH = targetH / mmH;
-            const scale = Math.min(scaleW, scaleH);
-            mmW *= scale;
-            mmH *= scale;
+          let scale = 1.0;
+          if (width > targetW || height > targetH) {
+            scale = Math.min(targetW / width, targetH / height);
           }
 
-          imageObj.width = mmW;
-          imageObj.height = mmH;
+          // Center on bed
+          // Current center
+          const cx = minX + width / 2;
+          const cy = minY + height / 2;
 
-          // Center it
-          imageObj.transform.e = (bedW - mmW) / 2;
-          imageObj.transform.f = (bedH - mmH) / 2;
+          // Target center
+          const tcx = bedW / 2;
+          const tcy = bedH / 2;
 
-          setDocument(prev => ({ ...prev, objects: [...prev.objects, imageObj] }));
-          setSelectedObjectId(id);
+          // Translation needed: (tcx - cx*scale), (tcy - cy*scale) ?
+          // We are applying a NEW transform T_new = Translate(tcx, tcy) * Scale(s) * Translate(-cx, -cy).
+          // And composing it with existing?
+          // Or just Translate(-minX, -minY) to zero it, then Scale, then Translate(margin).
+
+          // Let's construct a "Fit" transform.
+          // T_fit = Translate(tcx - cx*scale, tcy - cy*scale) * Scale(scale) ???
+          // No. simpler:
+          // We want the new center to be tcx, tcy.
+          // The old center is cx, cy.
+          // Offset = tcx - cx * scale ...
+
+          // But 'transform' on PathObj might include rotation.
+          // We just want to wrap the whole group in a transform?
+          // Flattening is better.
+          // Update each object's transform: T_final = T_fit * T_current
+
+          const scaleTransform: Transform = { a: scale, b: 0, c: 0, d: scale, e: 0, f: 0 };
+
+          // We need to shift everything so 'minX, minY' goes to '0,0' relative to the group, then scale, then move to center.
+          // Actually, let's just use the `e` and `f` to center the bounding box.
+
+          const shiftX = tcx - (minX + width / 2) * scale;
+          const shiftY = tcy - (minY + height / 2) * scale;
+
+          // We can't simple modify e/f because existing rotation affects axes.
+          // We MUST use matrix composition.
+          // Operation: Scale(s) -> Translate(shiftX, shiftY)??
+          // No, usually Scale is around 0,0.
+          // If we scale existing points, they move towards 0,0.
+
+          // Let's effectively apply: 
+          // 1. Scale
+          // 2. Translate(shiftX_corrected, shiftY_corrected)
+
+          // Actually, for KISS:
+          // Just add them. If they are huge/far, user can move them?
+          // No, off-bed is bad.
+          // Let's apply the calculated scale and offset to the `transform` property.
+          // T_new = Compose( {a:s, d:s, e:shiftX, f:shiftY... wait, shift depends on s}, T_old ) makes no sense.
+
+          // We want to map Point P to P' where P' is centered and scaled.
+          // P_world = T_old * P_local
+          // P_final = Scale(s) * (P_world - Center_old) + Center_new
+          // P_final = Scale(s) * P_world  - Scale(s)*Center_old + Center_new
+          // P_final = (Scale(s) * T_old) * P_local + (Center_new - s*Center_old)
+          // So new transform matrix T_new:
+          //   Matrix part: Scale(s) * T_old.matrix
+          //   Translation part: Scale(s) * T_old.translation + (Center_new - s*Center_old)
+
+          const centerOffsetX = tcx - scale * cx;
+          const centerOffsetY = tcy - scale * cy;
+
+          const newObjects = paths.map(obj => {
+            const t = obj.transform;
+            return {
+              ...obj,
+              transform: {
+                a: t.a * scale,
+                b: t.b * scale,
+                c: t.c * scale,
+                d: t.d * scale,
+                e: t.e * scale + centerOffsetX,
+                f: t.f * scale + centerOffsetY
+              }
+            };
+          });
+
+          setDocument(prev => ({
+            ...prev,
+            objects: [...prev.objects, ...newObjects]
+          }));
+
+          if (newObjects.length > 0) {
+            setSelectedObjectId(newObjects[0].id);
+          }
+
+        } catch (error) {
+          console.error(error);
+          alert("Failed to parse SVG");
+        }
+      } else {
+        // Image import logic
+        const reader = new FileReader();
+        reader.onload = () => {
+          const src = reader.result as string;
+          const img = new Image();
+          img.onload = () => {
+            const id = `img-${nextRectId}`;
+            setNextRectId(i => i + 1);
+            // Simple auto-scale if too big? MVP: No.
+            const imageObj: ImageObj = {
+              kind: "image",
+              id,
+              layerId: DEFAULT_LAYER_ID,
+              transform: { ...IDENTITY_TRANSFORM, e: 10, f: 10 },
+              width: img.width,
+              height: img.height,
+              src
+            };
+
+            // Auto-scale to fit bed if too large or just generally scale to reasonable size
+            const bedW = machineProfile.bedMm.w;
+            const bedH = machineProfile.bedMm.h;
+
+            // Initial assumption: 96 DPI (1px = 0.264mm)
+            let mmW = img.width * 0.264583;
+            let mmH = img.height * 0.264583;
+
+            // If image is larger than 80% of bed in either dimension, scale it down to fit 80%
+            const targetW = bedW * 0.8;
+            const targetH = bedH * 0.8;
+
+            if (mmW > targetW || mmH > targetH) {
+              const scaleW = targetW / mmW;
+              const scaleH = targetH / mmH;
+              const scale = Math.min(scaleW, scaleH);
+              mmW *= scale;
+              mmH *= scale;
+            }
+
+            imageObj.width = mmW;
+            imageObj.height = mmH;
+
+            // Center it
+            imageObj.transform.e = (bedW - mmW) / 2;
+            imageObj.transform.f = (bedH - mmH) / 2;
+
+            setDocument(prev => ({ ...prev, objects: [...prev.objects, imageObj] }));
+            setSelectedObjectId(id);
+          };
+          img.src = src;
         };
-        img.src = src;
-      };
-      reader.readAsDataURL(file);
+        reader.readAsDataURL(file);
+      }
     };
     input.click();
   };
@@ -516,8 +668,8 @@ export function App() {
               <button className="button" onClick={handleAddRectangle}>
                 Add rectangle
               </button>
-              <button className="button" onClick={handleImportImage} style={{ marginLeft: 8 }}>
-                Add image
+              <button className="button" onClick={handleImportFile} style={{ marginLeft: 8 }}>
+                Import file
               </button>
             </div>
 
@@ -530,6 +682,8 @@ export function App() {
                     label = `Rect ${formatNumber(obj.shape.width)} x ${formatNumber(obj.shape.height)}`;
                   } else if (obj.kind === "image") {
                     label = `Image ${formatNumber(obj.width)} x ${formatNumber(obj.height)}`;
+                  } else if (obj.kind === "path") {
+                    label = "Path";
                   }
                   return (
                     <button
@@ -705,6 +859,25 @@ export function App() {
                       className={obj.id === selectedObjectId ? "preview__image is-active" : "preview__image"}
                       style={{ outline: obj.id === selectedObjectId ? "2px solid #00E5FF" : "none" }}
                     />
+                  );
+                })}
+                {document.objects.map((obj) => {
+                  if (obj.kind !== "path") return null;
+                  // e,f in convertToPathData? No, we used generic Transform.
+                  // We should apply the full matrix transform to the group.
+                  const t = obj.transform;
+                  const matrix = `matrix(${t.a},${t.b},${t.c},${t.d},${t.e},${t.f})`;
+                  // SVG polyline needs points string
+                  const pointsStr = obj.points.map(p => `${p.x},${p.y}`).join(" ");
+                  return (
+                    <g key={obj.id} transform={matrix}
+                      className={obj.id === selectedObjectId ? "preview__path is-active" : "preview__path"}
+                      style={{ outline: obj.id === selectedObjectId ? "1px dashed #00E5FF" : "none" }}>
+                      {obj.closed ?
+                        <polygon points={pointsStr} fill="none" stroke="black" vectorEffect="non-scaling-stroke" /> :
+                        <polyline points={pointsStr} fill="none" stroke="black" vectorEffect="non-scaling-stroke" />
+                      }
+                    </g>
                   );
                 })}
               </svg>

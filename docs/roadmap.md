@@ -66,7 +66,7 @@ Deliverables
 Acceptance
 - Bitmap -> raster preview -> export works, deterministic outputs
 
-Milestone 4 — Performance and UX polish
-- Buffered streaming mode
-- Larger documents remain responsive
-- Basic node editing and path import robustness
+Milestone 4 — SVG Import (Vector Support)
+- Import external vector designs (SVG)
+- Convert basic SVG shapes to toolpaths
+- Unified import workflow for Raster (Image) and Vector (SVG)

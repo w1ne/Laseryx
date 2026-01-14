@@ -16,6 +16,17 @@ export function applyTransform(point: Point, transform: Transform): Point {
   };
 }
 
+export function composeTransforms(t1: Transform, t2: Transform): Transform {
+  return {
+    a: t1.a * t2.a + t1.c * t2.b,
+    b: t1.b * t2.a + t1.d * t2.b,
+    c: t1.a * t2.c + t1.c * t2.d,
+    d: t1.b * t2.c + t1.d * t2.d,
+    e: t1.a * t2.e + t1.c * t2.f + t1.e,
+    f: t1.b * t2.e + t1.d * t2.f + t1.f
+  };
+}
+
 export function transformPoints(points: Point[], transform: Transform): Point[] {
   return points.map((point) => applyTransform(point, transform));
 }

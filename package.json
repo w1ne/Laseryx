@@ -11,6 +11,7 @@
     "test": "npm --prefix apps/pwa run test"
   },
   "devDependencies": {
-    "@types/w3c-web-serial": "^1.0.8"
+    "@types/w3c-web-serial": "^1.0.8",
+    "jsdom": "^27.4.0"
   }
 }
