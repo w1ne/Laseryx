@@ -19,16 +19,16 @@ A) worker.ping (implemented now)
 
 Worker message types (Milestone 1+)
 B) core.camPlan
-- req payload: { document: Document, cam: CamSettings }
+- req payload: { document: Document, cam: CamSettings, images?: Map<string, ImageData> }
 - res payload: { plan: CamPlan, preview: PreviewGeom, warnings: string[] }
 
 C) core.emitGcode
-- req payload: { plan: CamPlan, cam: CamSettings, machine: MachineProfile, dialect: GcodeDialect }
+- req payload: { plan: CamPlan, cam: CamSettings, machine: MachineProfile, dialect: GcodeDialect, images?: Map<string, ImageData> }
 - res payload: { gcode: string, stats: JobStats }
 
 Optional convenience for MVP (reduce messages)
 D) core.generateGcode
-- req payload: { document: Document, cam: CamSettings, machine: MachineProfile, dialect: GcodeDialect }
+- req payload: { document: Document, cam: CamSettings, machine: MachineProfile, dialect: GcodeDialect, images?: Map<string, ImageData> }
 - res payload: { gcode: string, preview: PreviewGeom, stats: JobStats, warnings: string[] }
 
 Source of truth for the worker envelope in code:
@@ -53,10 +53,10 @@ Layer
 Obj (union)
 - PathObj:
   - { kind:"path", id, layerId, closed:boolean, transform: Transform, points: Point[] }
-- ShapeObj (optional; can be converted to Path immediately):
-  - { kind:"shape", id, layerId, transform: Transform, shape: { type:"rect"|"ellipse"|"line", ... } }
-- RasterObj (post-MVP):
-  - { kind:"raster", id, layerId, transform: Transform, bitmapId: string, widthPx:number, heightPx:number }
+- ShapeObj (optional):
+  - { kind:"shape", id, layerId, transform: Transform, shape: { type:"rect", ... } }
+- ImageObj:
+  - { kind:"image", id, layerId, transform: Transform, width: number, height: number, src: string }
 
 Point
 - { x:number, y:number }
@@ -71,7 +71,7 @@ CamSettings
 }
 
 Operation (MVP only vector)
-- { id:string, type:"vectorCut"|"vectorEngrave", speedMmMin:number, powerPct:number, passes:number,
+- { id:string, type:"vectorCut"|"vectorEngrave"|"rasterEngrave", speedMmMin:number, powerPct:number, passes:number,
     order:"insideOut"|"shortestTravel" }
 
 MachineProfile (GRBL-oriented)

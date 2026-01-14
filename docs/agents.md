@@ -6,7 +6,8 @@ Scope (current)
 - Platform: Linux desktop.
 - Runtime: Chromium-based browser (Chrome/Chromium/Edge).
 - Form factor: PWA (offline-capable design/CAM/export).
-- Optional machine control: GRBL over USB-serial via Web Serial.
+- Machine control: GRBL over USB-serial via Web Serial.
+- Features: Vector Import (SVG), Raster Engraving (Images), G-code Export.
 - No WASM. Core runs as TypeScript in a Web Worker.
 
 Non-goals (for now)

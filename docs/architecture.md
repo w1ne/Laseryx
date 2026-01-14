@@ -10,33 +10,34 @@ High-level
 Runtime components
 1) UI thread (React)
 - Editor state, selection, transforms, layer management.
-- Renders vectors and previews (Canvas/WebGL/SVG—implementation choice).
+- Renders vectors, images, and previews (SVG).
 - Performs persistence (IndexedDB) and import/export (File API).
 - Owns Web Serial device control.
-- Current Milestone 1 wiring: `apps/pwa/src/ui/App.tsx` builds a document, sends it to the worker, and exports G-code.
+- Current wiring: `apps/pwa/src/ui/App.tsx` builds a document, parses SVGs/Images, sends it to the worker, and exports G-code.
 
 2) Core worker (TypeScript)
-- Document normalization (flatten transforms, path conversion).
-- Geometry utilities (polyline ops, bbox, ordering).
-- CAM planner (vector toolpaths + raster scanlines later).
+- Document normalization.
+- Geometry utilities (polyline ops, bbox, ordering, matrix transforms).
+- CAM planner (vector toolpaths + raster scanlines).
 - G-code emitter (GRBL-oriented, configurable).
-- Milestone 1 core adds CAM planning + G-code emission alongside the minimal ping.
 
 Hard boundaries
 - apps/pwa/src/core must not import from:
-  - window/document
+  - window/document (except standard DOM types if polyfilled/available like ImageData)
   - canvas/webgl
   - indexeddb
   - navigator.serial
 - apps/pwa/src/io contains all browser integrations.
 
-Current module layout (Milestone 1)
+Current module layout
 - apps/pwa/src/core
   - model.ts (document + CAM + machine types)
   - geom.ts (transforms + polyline utilities)
-  - cam.ts (rect -> polyline + plan ordering)
+  - cam.ts (rect -> polyline + raster generation dispatch + plan ordering)
+  - raster.ts (image -> scanline toolpaths)
+  - svgImport.ts (SVG string -> PathObj using DOMParser)
   - gcode.ts (G-code emission + stats)
-  - ping.ts (minimal core entry used by the worker)
+  - ping.ts (minimal core entry)
 - apps/pwa/src/shared
   - workerProtocol.ts (shared request/response types)
   - ids.ts (request id helper)
@@ -44,7 +45,7 @@ Current module layout (Milestone 1)
   - handler.ts (pure request router)
   - worker.ts (postMessage adapter)
 - apps/pwa/src/ui
-  - App.tsx (rectangle editor + export)
+  - App.tsx (editor + import + export + machine control)
   - workerClient.ts (UI-side RPC helper)
 - apps/pwa/src/io
   - registerServiceWorker.ts
