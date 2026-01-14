@@ -16,12 +16,14 @@ export type CamPlanResult = {
   warnings: string[];
 };
 
+import { generateRasterToolpath } from "./raster";
+
 type IndexedPath = {
   path: PolylinePath;
   index: number;
 };
 
-export function planCam(document: Document, cam: CamSettings): CamPlanResult {
+export function planCam(document: Document, cam: CamSettings, images?: Map<string, ImageData>): CamPlanResult {
   const warnings: string[] = [];
   const layerMap = new Map(document.layers.map((layer) => [layer.id, layer]));
   const ops: PlannedOp[] = [];
@@ -33,9 +35,9 @@ export function planCam(document: Document, cam: CamSettings): CamPlanResult {
   const layersWithObjects = new Set(document.objects.map((obj) => obj.layerId));
   for (const layer of document.layers) {
     if (layersWithObjects.has(layer.id) && !layer.operationId) {
-      warnings.push(`Layer \"${layer.name}\" has no operation assigned.`);
+      warnings.push(`Layer "${layer.name}" has no operation assigned.`);
     } else if (layer.operationId && !cam.operations.some((op) => op.id === layer.operationId)) {
-      warnings.push(`Layer \"${layer.name}\" references a missing operation.`);
+      warnings.push(`Layer "${layer.name}" references a missing operation.`);
     }
   }
 
@@ -53,7 +55,31 @@ export function planCam(document: Document, cam: CamSettings): CamPlanResult {
       if (!layer || !layer.visible) {
         continue;
       }
-      paths.push(...objToPolylines(obj));
+
+      if (operation.type === "rasterEngrave") {
+        if (obj.kind === "image") {
+          const imageData = images?.get(obj.id);
+          if (imageData) {
+            // BBox for image: transform.e/f + width/height (ignoring rotation for MVP)
+            const bbox = {
+              x: obj.transform.e,
+              y: obj.transform.f,
+              w: obj.width,
+              h: obj.height // These are physical dimensions
+            };
+            paths.push(...generateRasterToolpath(imageData, cam, operation, bbox));
+          } else {
+            warnings.push(`Missing image data for object ${obj.id}`);
+          }
+        }
+      } else {
+        // Vector operations
+        if (obj.kind === "image") {
+          // Cannot cut/engrave vector on an image
+          continue;
+        }
+        paths.push(...objToPolylines(obj));
+      }
     }
 
     const ordered = orderPaths(paths, operation);

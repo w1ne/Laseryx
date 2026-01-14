@@ -6,7 +6,8 @@ import type {
   Layer,
   MachineProfile,
   Operation,
-  ShapeObj
+  ShapeObj,
+  ImageObj
 } from "../core/model";
 import { IDENTITY_TRANSFORM } from "../core/geom";
 import type { GrblDriver, StatusSnapshot } from "../io/grblDriver";
@@ -242,6 +243,68 @@ export function App() {
     setSelectedObjectId(id);
   };
 
+  const handleImportImage = () => {
+    const input = window.document.createElement("input");
+    input.type = "file";
+    input.accept = "image/png, image/jpeg";
+    input.onchange = () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const src = reader.result as string;
+        const img = new Image();
+        img.onload = () => {
+          const id = `img-${nextRectId}`;
+          setNextRectId(i => i + 1);
+          // Simple auto-scale if too big? MVP: No.
+          const imageObj: ImageObj = {
+            kind: "image",
+            id,
+            layerId: DEFAULT_LAYER_ID,
+            transform: { ...IDENTITY_TRANSFORM, e: 10, f: 10 },
+            width: img.width,
+            height: img.height,
+            src
+          };
+
+          // Auto-scale to fit bed if too large or just generally scale to reasonable size
+          const bedW = machineProfile.bedMm.w;
+          const bedH = machineProfile.bedMm.h;
+
+          // Initial assumption: 96 DPI (1px = 0.264mm)
+          let mmW = img.width * 0.264583;
+          let mmH = img.height * 0.264583;
+
+          // If image is larger than 80% of bed in either dimension, scale it down to fit 80%
+          const targetW = bedW * 0.8;
+          const targetH = bedH * 0.8;
+
+          if (mmW > targetW || mmH > targetH) {
+            const scaleW = targetW / mmW;
+            const scaleH = targetH / mmH;
+            const scale = Math.min(scaleW, scaleH);
+            mmW *= scale;
+            mmH *= scale;
+          }
+
+          imageObj.width = mmW;
+          imageObj.height = mmH;
+
+          // Center it
+          imageObj.transform.e = (bedW - mmW) / 2;
+          imageObj.transform.f = (bedH - mmH) / 2;
+
+          setDocument(prev => ({ ...prev, objects: [...prev.objects, imageObj] }));
+          setSelectedObjectId(id);
+        };
+        img.src = src;
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  };
+
   const generateGcode = async () => {
     const client = clientRef.current;
     if (!client) {
@@ -453,6 +516,9 @@ export function App() {
               <button className="button" onClick={handleAddRectangle}>
                 Add rectangle
               </button>
+              <button className="button" onClick={handleImportImage} style={{ marginLeft: 8 }}>
+                Add image
+              </button>
             </div>
 
             <div className="panel__body">
@@ -462,6 +528,8 @@ export function App() {
                   let label = obj.id;
                   if (obj.kind === "shape" && obj.shape.type === "rect") {
                     label = `Rect ${formatNumber(obj.shape.width)} x ${formatNumber(obj.shape.height)}`;
+                  } else if (obj.kind === "image") {
+                    label = `Image ${formatNumber(obj.width)} x ${formatNumber(obj.height)}`;
                   }
                   return (
                     <button
@@ -476,14 +544,14 @@ export function App() {
                 })}
               </div>
 
-              {rectangleObject ? (
+              {selectedObject ? (
                 <div className="form">
                   <div className="form__row">
                     <label>
                       X (mm)
                       <input
                         type="number"
-                        value={rectangleObject.transform.e}
+                        value={selectedObject.transform.e}
                         onChange={(event) => {
                           const value = event.target.valueAsNumber;
                           if (Number.isNaN(value)) {
@@ -492,7 +560,7 @@ export function App() {
                           setDocument((prev) => ({
                             ...prev,
                             objects: prev.objects.map((obj) =>
-                              obj.id === rectangleObject.id && obj.kind === "shape"
+                              obj.id === selectedObject.id
                                 ? { ...obj, transform: { ...obj.transform, e: value } }
                                 : obj
                             )
@@ -504,7 +572,7 @@ export function App() {
                       Y (mm)
                       <input
                         type="number"
-                        value={rectangleObject.transform.f}
+                        value={selectedObject.transform.f}
                         onChange={(event) => {
                           const value = event.target.valueAsNumber;
                           if (Number.isNaN(value)) {
@@ -513,7 +581,7 @@ export function App() {
                           setDocument((prev) => ({
                             ...prev,
                             objects: prev.objects.map((obj) =>
-                              obj.id === rectangleObject.id && obj.kind === "shape"
+                              obj.id === selectedObject.id
                                 ? { ...obj, transform: { ...obj.transform, f: value } }
                                 : obj
                             )
@@ -527,7 +595,10 @@ export function App() {
                       Width (mm)
                       <input
                         type="number"
-                        value={rectangleObject.shape.width}
+                        value={
+                          selectedObject.kind === "shape" ? selectedObject.shape.width :
+                            selectedObject.kind === "image" ? selectedObject.width : 0
+                        }
                         onChange={(event) => {
                           const value = event.target.valueAsNumber;
                           if (Number.isNaN(value)) {
@@ -535,11 +606,16 @@ export function App() {
                           }
                           setDocument((prev) => ({
                             ...prev,
-                            objects: prev.objects.map((obj) =>
-                              obj.id === rectangleObject.id && obj.kind === "shape"
-                                ? { ...obj, shape: { ...obj.shape, width: value } }
-                                : obj
-                            )
+                            objects: prev.objects.map((obj) => {
+                              if (obj.id !== selectedObject.id) return obj;
+                              if (obj.kind === "shape" && obj.shape.type === "rect") {
+                                return { ...obj, shape: { ...obj.shape, width: value } };
+                              }
+                              if (obj.kind === "image") {
+                                return { ...obj, width: value };
+                              }
+                              return obj;
+                            })
                           }));
                         }}
                       />
@@ -548,7 +624,10 @@ export function App() {
                       Height (mm)
                       <input
                         type="number"
-                        value={rectangleObject.shape.height}
+                        value={
+                          selectedObject.kind === "shape" ? selectedObject.shape.height :
+                            selectedObject.kind === "image" ? selectedObject.height : 0
+                        }
                         onChange={(event) => {
                           const value = event.target.valueAsNumber;
                           if (Number.isNaN(value)) {
@@ -556,11 +635,16 @@ export function App() {
                           }
                           setDocument((prev) => ({
                             ...prev,
-                            objects: prev.objects.map((obj) =>
-                              obj.id === rectangleObject.id && obj.kind === "shape"
-                                ? { ...obj, shape: { ...obj.shape, height: value } }
-                                : obj
-                            )
+                            objects: prev.objects.map((obj) => {
+                              if (obj.id !== selectedObject.id) return obj;
+                              if (obj.kind === "shape" && obj.shape.type === "rect") {
+                                return { ...obj, shape: { ...obj.shape, height: value } };
+                              }
+                              if (obj.kind === "image") {
+                                return { ...obj, height: value };
+                              }
+                              return obj;
+                            })
                           }));
                         }}
                       />
@@ -568,7 +652,7 @@ export function App() {
                   </div>
                 </div>
               ) : (
-                <div className="panel__note">Select a rectangle to edit its dimensions.</div>
+                <div className="panel__note">Select an object to edit its dimensions.</div>
               )}
             </div>
           </section>
@@ -605,6 +689,21 @@ export function App() {
                         obj.id === selectedObjectId ? "preview__shape is-active" : "preview__shape"
                       }
                       rx={4}
+                    />
+                  );
+                })}
+                {document.objects.map((obj) => {
+                  if (obj.kind !== "image") return null;
+                  return (
+                    <image
+                      key={obj.id}
+                      href={obj.src}
+                      x={obj.transform.e}
+                      y={obj.transform.f}
+                      width={obj.width}
+                      height={obj.height}
+                      className={obj.id === selectedObjectId ? "preview__image is-active" : "preview__image"}
+                      style={{ outline: obj.id === selectedObjectId ? "2px solid #00E5FF" : "none" }}
                     />
                   );
                 })}
@@ -668,6 +767,7 @@ export function App() {
                         >
                           <option value="vectorCut">Vector cut</option>
                           <option value="vectorEngrave">Vector engrave</option>
+                          <option value="rasterEngrave">Raster engrave</option>
                         </select>
                       </label>
                       <label>
@@ -839,9 +939,8 @@ export function App() {
                   </button>
                   {exportState.message ? (
                     <div
-                      className={`status status--${
-                        exportState.status === "error" ? "error" : "info"
-                      }`}
+                      className={`status status--${exportState.status === "error" ? "error" : "info"
+                        }`}
                     >
                       {exportState.message}
                     </div>

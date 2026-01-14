@@ -97,9 +97,10 @@ export function generateGcode(
   document: Document,
   cam: CamSettings,
   machine: MachineProfile,
-  dialect: GcodeDialect
+  dialect: GcodeDialect,
+  images?: Map<string, ImageData>
 ): GenerateResult {
-  const { plan, preview, warnings } = planCam(document, cam);
+  const { plan, preview, warnings } = planCam(document, cam, images);
   const { gcode, stats } = emitGcode(plan, cam, machine, dialect);
 
   return { gcode, preview, stats, warnings };

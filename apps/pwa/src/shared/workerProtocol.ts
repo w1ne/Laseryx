@@ -45,7 +45,7 @@ export function isPingRequest(request: WorkerRequest): request is PingRequest {
 export type CamPlanRequest = {
   id: string;
   type: "core.camPlan";
-  payload: { document: Document; cam: CamSettings };
+  payload: { document: Document; cam: CamSettings; images?: Map<string, ImageData> };
 };
 
 export type CamPlanResponse = {
@@ -77,7 +77,13 @@ export function isEmitGcodeRequest(request: WorkerRequest): request is EmitGcode
 export type GenerateGcodeRequest = {
   id: string;
   type: "core.generateGcode";
-  payload: { document: Document; cam: CamSettings; machine: MachineProfile; dialect: GcodeDialect };
+  payload: {
+    document: Document;
+    cam: CamSettings;
+    machine: MachineProfile;
+    dialect: GcodeDialect;
+    images?: Map<string, ImageData>;
+  };
 };
 
 export type GenerateGcodeResponse = {

@@ -81,11 +81,26 @@ export function createWorkerClient(worker: Worker) {
       machine: MachineProfile,
       dialect: GcodeDialect
     ): Promise<{ gcode: string; preview: PreviewGeom; stats: JobStats; warnings: string[] }> => {
+      // 1. Extract images
+      const images = new Map<string, ImageData>();
+      for (const obj of document.objects) {
+        if (obj.kind === "image") {
+          try {
+            const imageData = await decodeImage(obj.src);
+            images.set(obj.id, imageData);
+          } catch (error) {
+            console.warn(`Failed to decode image ${obj.id}`, error);
+          }
+        }
+      }
+
+      // 2. Send request
       const response = await request("core.generateGcode", {
         document,
         cam,
         machine,
-        dialect
+        dialect,
+        images
       });
       return response.payload as {
         gcode: string;
@@ -99,4 +114,24 @@ export function createWorkerClient(worker: Worker) {
       worker.terminate();
     }
   };
+}
+
+async function decodeImage(src: string): Promise<ImageData> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        reject(new Error("Failed to get 2d context"));
+        return;
+      }
+      ctx.drawImage(img, 0, 0);
+      resolve(ctx.getImageData(0, 0, img.width, img.height));
+    };
+    img.onerror = (err) => reject(err);
+    img.src = src;
+  });
 }
