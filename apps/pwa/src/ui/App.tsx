@@ -420,7 +420,7 @@ export function App() {
       <header className="app__header">
         <div>
           <p className="app__eyebrow">Milestone 2</p>
-          <h1>Laser Workspace</h1>
+          <h1>LaserFather Workspace</h1>
           <p className="app__subtitle">
             Design a vector job, export G-code, or stream it over Web Serial.
           </p>
