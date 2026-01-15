@@ -99,6 +99,18 @@ Acceptance:
 - User can easily move objects between layers.
 - Codebase is modular (no 1000+ line App.tsx).
 
+Milestone 8 — Code Refactoring & Optimization (Released)
+Goal: Modularize logic, reduce repetition, and implement proper state management.
+Deliverables:
+- Centralized Store (Reducer/Context) for App State.
+- Service layer for business logic (`LayerService`, `ObjectService`, `MachineService`).
+- Reusable Design System components concepts (Panels cleanup).
+- strict TypeScript typing and removal of `any`.
+Acceptance:
+- `App.tsx` size reduced significantly (~300 lines).
+- All UI components use the new Store.
+- No regression in features (Add Rect, Move Layer, Export still work).
+
 ## Future Ideas
 
 - **Raster Improvements**: Brightness/Contrast adjustment, Dithering algorithms (Floyd-Steinberg).

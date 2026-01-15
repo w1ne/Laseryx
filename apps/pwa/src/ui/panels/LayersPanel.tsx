@@ -1,39 +1,39 @@
 import React from "react";
-import { Document, CamSettings } from "../../core/model";
+import { useStore } from "../../core/state/store";
+import { LayerService } from "../../core/services/LayerService";
 import { updateOperation } from "../../core/util";
 
+// ExportState is still local to App or MachineService, so we accept it for now
 type ExportState = {
     status: "idle" | "working" | "done" | "error";
     message?: string;
 };
 
 type LayersPanelProps = {
-    document: Document;
-    camSettings: CamSettings;
-    setDocument: React.Dispatch<React.SetStateAction<Document>>;
-    setCamSettings: React.Dispatch<React.SetStateAction<CamSettings>>;
-    onAddLayer: () => void;
-    onDeleteLayer: (id: string) => void;
     onExport: () => void;
     exportState: ExportState;
     isExportDisabled: boolean;
 };
 
 export function LayersPanel({
-    document,
-    camSettings,
-    setCamSettings,
-    onAddLayer,
-    onDeleteLayer,
     onExport,
     exportState,
     isExportDisabled
 }: LayersPanelProps) {
+    const { state, dispatch } = useStore();
+    const { document, camSettings } = state;
+
     return (
         <div className="panel">
             <div className="panel__header">
                 <h2>Operations</h2>
-                <button className="button" style={{ fontSize: "12px", padding: "4px 8px", minHeight: "auto" }} onClick={onAddLayer}>+ Add</button>
+                <button
+                    className="button"
+                    style={{ fontSize: "12px", padding: "4px 8px", minHeight: "auto" }}
+                    onClick={() => LayerService.addLayer(state, dispatch)}
+                >
+                    + Add
+                </button>
             </div>
             <div className="panel__body">
                 <div className="layer-list">
@@ -58,7 +58,7 @@ export function LayersPanel({
                                     <button
                                         className="button button--danger"
                                         style={{ fontSize: "11px", padding: "3px 8px", minHeight: "auto", background: "#fff5f5", color: "#d32f2f", border: "1px solid #ffcdd2", borderRadius: "4px" }}
-                                        onClick={() => onDeleteLayer(layer.id)}
+                                        onClick={() => LayerService.deleteLayer(state, dispatch, layer.id)}
                                         title="Delete Layer"
                                     >
                                         Del
@@ -71,7 +71,10 @@ export function LayersPanel({
                                         <select
                                             value={op.type}
                                             style={{ fontSize: "13px", padding: "6px", borderRadius: "4px", border: "1px solid #ccc", background: "#fff", color: "#333" }}
-                                            onChange={e => setCamSettings(p => ({ ...p, operations: updateOperation(p.operations, op.id, o => ({ ...o, type: e.target.value as any })) }))}
+                                            onChange={e => {
+                                                const newOps = updateOperation(camSettings.operations, op.id, o => ({ ...o, type: e.target.value as any }));
+                                                dispatch({ type: "SET_CAM_SETTINGS", payload: { ...camSettings, operations: newOps } });
+                                            }}
                                         >
                                             <option value="vectorCut">Cut</option>
                                             <option value="vectorEngrave">Engrave</option>
@@ -85,7 +88,10 @@ export function LayersPanel({
                                             type="number"
                                             style={{ fontSize: "13px", padding: "6px", width: "100%", borderRadius: "4px", border: "1px solid #ccc", background: "#fff", color: "#333" }}
                                             value={op.speedMmMin}
-                                            onChange={e => setCamSettings(p => ({ ...p, operations: updateOperation(p.operations, op.id, o => ({ ...o, speedMmMin: e.target.valueAsNumber })) }))}
+                                            onChange={e => {
+                                                const newOps = updateOperation(camSettings.operations, op.id, o => ({ ...o, speedMmMin: e.target.valueAsNumber }));
+                                                dispatch({ type: "SET_CAM_SETTINGS", payload: { ...camSettings, operations: newOps } });
+                                            }}
                                         />
                                     </div>
                                     <div style={{ display: "flex", flexDirection: "column" }}>
@@ -94,7 +100,10 @@ export function LayersPanel({
                                             type="number"
                                             style={{ fontSize: "13px", padding: "6px", width: "100%", borderRadius: "4px", border: "1px solid #ccc", background: "#fff", color: "#333" }}
                                             value={op.powerPct}
-                                            onChange={e => setCamSettings(p => ({ ...p, operations: updateOperation(p.operations, op.id, o => ({ ...o, powerPct: e.target.valueAsNumber })) }))}
+                                            onChange={e => {
+                                                const newOps = updateOperation(camSettings.operations, op.id, o => ({ ...o, powerPct: e.target.valueAsNumber }));
+                                                dispatch({ type: "SET_CAM_SETTINGS", payload: { ...camSettings, operations: newOps } });
+                                            }}
                                         />
                                     </div>
                                     <div style={{ display: "flex", flexDirection: "column" }}>
@@ -103,7 +112,10 @@ export function LayersPanel({
                                             type="number"
                                             style={{ fontSize: "13px", padding: "6px", width: "100%", borderRadius: "4px", border: "1px solid #ccc", background: "#fff", color: "#333" }}
                                             value={op.passes}
-                                            onChange={e => setCamSettings(p => ({ ...p, operations: updateOperation(p.operations, op.id, o => ({ ...o, passes: e.target.valueAsNumber })) }))}
+                                            onChange={e => {
+                                                const newOps = updateOperation(camSettings.operations, op.id, o => ({ ...o, passes: e.target.valueAsNumber }));
+                                                dispatch({ type: "SET_CAM_SETTINGS", payload: { ...camSettings, operations: newOps } });
+                                            }}
                                         />
                                     </div>
                                 </div>

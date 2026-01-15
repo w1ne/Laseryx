@@ -1,37 +1,99 @@
-import React from "react";
-import { Document } from "../../core/model";
-import { formatNumber } from "../../core/util";
+import { useStore } from "../../core/state/store";
+import { ObjectService } from "../../core/services/ObjectService";
+import { parseSvg } from "../../core/svgImport";
+import { PathObj, Transform } from "../../core/model";
 
-// Inline formatNumber if not exported, or ensure it is available.
-// Checking App.tsx, formatNumber was used. I'll need to check where it came from.
-// It was likely a helper in App.tsx or imported. I'll assume local or create utility.
-
-type DocumentPanelProps = {
-    document: Document;
-    selectedObjectId: string | null;
-    onSelectObject: (id: string) => void;
-    onAddRectangle: () => void;
-    onImportFile: () => void;
-};
-
-export function DocumentPanel({
-    document,
-    selectedObjectId,
-    onSelectObject,
-    onAddRectangle,
-    onImportFile
-}: DocumentPanelProps) {
+export function DocumentPanel() {
+    const { state, dispatch } = useStore();
+    const { document, selectedObjectId } = state;
 
     // Helper to format numbers for display
     const f = (n: number) => n.toFixed(2);
+
+    const handleAddRectangle = () => {
+        ObjectService.addRectangle(state, dispatch);
+    };
+
+    const handleImportFile = () => {
+        const input = window.document.createElement("input");
+        input.type = "file";
+        input.accept = "image/png, image/jpeg, image/svg+xml, .svg";
+        input.onchange = async () => {
+            const file = input.files?.[0];
+            if (!file) return;
+
+            if (file.name.toLowerCase().endsWith(".svg")) {
+                try {
+                    const text = await file.text();
+                    const importedObjects = parseSvg(text);
+
+                    if (importedObjects.length === 0) {
+                        alert("No supported shapes found in SVG.");
+                        return;
+                    }
+
+                    // Normalize position (simple centering logic logic ported from App.tsx)
+                    const paths = importedObjects.filter(o => o.kind === "path") as PathObj[];
+
+                    if (paths.length > 0) {
+                        let minX = Infinity, minY = Infinity;
+                        const apply = (p: { x: number, y: number }, t: Transform) => ({
+                            x: p.x * t.a + p.y * t.c + t.e,
+                            y: p.x * t.b + p.y * t.d + t.f
+                        });
+
+                        for (const p of paths) {
+                            for (const pt of p.points) {
+                                const t = apply(pt, p.transform);
+                                if (t.x < minX) minX = t.x;
+                                if (t.y < minY) minY = t.y;
+                            }
+                        }
+
+                        if (minX !== Infinity) {
+                            const shiftX = -minX + 10; // 10mm padding
+                            const shiftY = -minY + 10;
+
+                            paths.forEach(obj => {
+                                obj.transform.e += shiftX;
+                                obj.transform.f += shiftY;
+                            });
+                        }
+                    }
+
+                    ObjectService.addObjects(dispatch, importedObjects);
+
+                } catch (error) {
+                    console.error(error);
+                    alert("Failed to parse SVG");
+                }
+            } else {
+                // Image Import
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const src = reader.result as string;
+                    const img = new Image();
+                    img.onload = () => {
+                        // Convert px to mm (assuming 96 DPI: 1 inch = 25.4mm)
+                        const mmW = img.width * 0.264583;
+                        const mmH = img.height * 0.264583;
+                        ObjectService.addImage(dispatch, src, mmW, mmH);
+                    };
+                    img.src = src;
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+        input.click();
+    };
 
     return (
         <div className="panel">
             <div className="panel__header">
                 <h2>Document</h2>
                 <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="button" style={{ fontSize: "11px", padding: "4px 8px" }} onClick={onAddRectangle}>Add Rect</button>
-                    <button className="button" style={{ fontSize: "11px", padding: "4px 8px" }} onClick={onImportFile}>Import</button>
+                    <button className="button" style={{ fontSize: "11px", padding: "4px 8px" }} onClick={handleAddRectangle}>Add Rect</button>
+                    <button className="button" style={{ fontSize: "11px", padding: "4px 8px" }} onClick={handleImportFile}>Import</button>
                 </div>
             </div>
             <div className="panel__body">
@@ -48,7 +110,7 @@ export function DocumentPanel({
                         return (
                             <button key={obj.id}
                                 className={`list__item ${isSelected ? "is-active" : ""}`}
-                                onClick={() => onSelectObject(obj.id)}
+                                onClick={() => dispatch({ type: "SELECT_OBJECT", payload: obj.id })}
                                 style={{
                                     display: "flex",
                                     justifyContent: "space-between",

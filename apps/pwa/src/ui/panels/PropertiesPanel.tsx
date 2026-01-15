@@ -1,18 +1,11 @@
 import React from "react";
-import { Document, ShapeObj, ImageObj } from "../../core/model";
+import { useStore } from "../../core/state/store";
+import { ObjectService } from "../../core/services/ObjectService";
+import { ImageObj } from "../../core/model";
 
-type PropertiesPanelProps = {
-    document: Document;
-    selectedObjectId: string | null;
-    setDocument: React.Dispatch<React.SetStateAction<Document>>;
-};
-
-export function PropertiesPanel({
-    document,
-    selectedObjectId,
-    setDocument
-}: PropertiesPanelProps) {
-
+export function PropertiesPanel() {
+    const { state, dispatch } = useStore();
+    const { document, selectedObjectId } = state;
     const selectedObject = document.objects.find(o => o.id === selectedObjectId);
 
     if (!selectedObject) {
@@ -34,18 +27,18 @@ export function PropertiesPanel({
                     <div className="form__row">
                         <label className="form-label">X <input type="number" className="form-input" value={selectedObject.transform.e} onChange={e => {
                             const v = e.target.valueAsNumber;
-                            if (!isNaN(v)) setDocument(p => ({ ...p, objects: p.objects.map(o => o.id === selectedObjectId ? { ...o, transform: { ...o.transform, e: v } } : o) }));
+                            if (!isNaN(v)) ObjectService.updateObject(dispatch, selectedObject.id, { transform: { ...selectedObject.transform, e: v } });
                         }} /></label>
                         <label className="form-label">Y <input type="number" className="form-input" value={selectedObject.transform.f} onChange={e => {
                             const v = e.target.valueAsNumber;
-                            if (!isNaN(v)) setDocument(p => ({ ...p, objects: p.objects.map(o => o.id === selectedObjectId ? { ...o, transform: { ...o.transform, f: v } } : o) }));
+                            if (!isNaN(v)) ObjectService.updateObject(dispatch, selectedObject.id, { transform: { ...selectedObject.transform, f: v } });
                         }} /></label>
                     </div>
 
                     <div className="form__group">
                         <label className="form-label">Layer
                             <select className="form-input" value={selectedObject.layerId} onChange={e => {
-                                setDocument(p => ({ ...p, objects: p.objects.map(o => o.id === selectedObjectId ? { ...o, layerId: e.target.value } : o) }));
+                                ObjectService.updateObjectLayer(dispatch, selectedObject.id, e.target.value);
                             }}>
                                 {document.layers.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                             </select>
@@ -56,25 +49,23 @@ export function PropertiesPanel({
                         <div className="form__row">
                             <label className="form-label">W <input type="number" className="form-input" value={selectedObject.kind === "shape" ? selectedObject.shape?.width : (selectedObject as ImageObj).width} onChange={e => {
                                 const v = e.target.valueAsNumber;
-                                if (!isNaN(v)) setDocument(p => ({
-                                    ...p, objects: p.objects.map(o => {
-                                        if (o.id !== selectedObjectId) return o;
-                                        if (o.kind === "shape") return { ...o, shape: { ...o.shape, width: v } };
-                                        if (o.kind === "image") return { ...o, width: v };
-                                        return o;
-                                    })
-                                }));
+                                if (!isNaN(v)) {
+                                    if (selectedObject.kind === "shape") {
+                                        ObjectService.updateObject(dispatch, selectedObject.id, { shape: { ...selectedObject.shape, width: v } });
+                                    } else if (selectedObject.kind === "image") {
+                                        ObjectService.updateObject(dispatch, selectedObject.id, { width: v });
+                                    }
+                                }
                             }} /></label>
                             <label className="form-label">H <input type="number" className="form-input" value={selectedObject.kind === "shape" ? selectedObject.shape?.height : (selectedObject as ImageObj).height} onChange={e => {
                                 const v = e.target.valueAsNumber;
-                                if (!isNaN(v)) setDocument(p => ({
-                                    ...p, objects: p.objects.map(o => {
-                                        if (o.id !== selectedObjectId) return o;
-                                        if (o.kind === "shape") return { ...o, shape: { ...o.shape, height: v } };
-                                        if (o.kind === "image") return { ...o, height: v };
-                                        return o;
-                                    })
-                                }));
+                                if (!isNaN(v)) {
+                                    if (selectedObject.kind === "shape") {
+                                        ObjectService.updateObject(dispatch, selectedObject.id, { shape: { ...selectedObject.shape, height: v } });
+                                    } else if (selectedObject.kind === "image") {
+                                        ObjectService.updateObject(dispatch, selectedObject.id, { height: v });
+                                    }
+                                }
                             }} /></label>
                         </div>
                     )}
