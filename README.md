@@ -80,7 +80,3 @@ If you see **"Failed to open serial port"** or cannot connect:
     sudo systemctl stop ModemManager
     sudo systemctl disable ModemManager
     ```
-
-3.  **Baud Rate**: The default is `115200`. If your machine differs, you may need to adjust the `INITIAL_MACHINE_PROFILE` in `types.ts` or select a different profile.
-
-4.  **Simulation Mode**: If the machine moves in the UI but not in real life, you might be in Simulation Mode. This is enabled via code for testing. Check `driverSingleton.ts` and ensure `useSimulation` is false for production use.
