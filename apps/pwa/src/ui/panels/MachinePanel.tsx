@@ -54,8 +54,6 @@ export function MachinePanel({
                     </div>
                     <div className="machine-meta">
                         {f(state.machineProfile?.bedMm.w)} x {f(state.machineProfile?.bedMm.h)} mm
-                        <span className="separator">•</span>
-                        {state.machineProfile?.baudRate || 115200} baud
                     </div>
                 </div>
 
@@ -209,35 +207,32 @@ export function MachinePanel({
 
             <style>{`
                 .machine-panel {
-                    padding: 24px;
-                    background: rgba(255, 255, 255, 0.88);
-                    backdrop-filter: blur(12px);
+                    padding: 16px;
+                    background: #fff;
                     color: #0f172a;
                     height: 100%;
                     overflow-y: auto;
                     font-family: 'Inter', system-ui, sans-serif;
-                    border-radius: 20px;
-                    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.15);
-                    border: 1px solid rgba(255,255,255,0.5);
-                    max-width: 900px;
-                    margin: 0 auto;
+                    border-right: 1px solid #e2e8f0;
                 }
                 
                 /* Header */
                 .panel-header {
                     background: linear-gradient(180deg, rgba(248, 250, 252, 0.5) 0%, rgba(241, 245, 249, 0.5) 100%);
-                    padding: 16px 20px;
-                    border-radius: 16px;
-                    margin-bottom: 24px;
+                    padding: 12px;
+                    border-radius: 12px;
+                    margin-bottom: 16px;
                     border: 1px solid rgba(226, 232, 240, 0.6);
                     display: flex;
-                    justify-content: space-between;
-                    align-items: center;
+                    flex-direction: column;
+                    gap: 12px;
+                    align-items: stretch;
                 }
                 .machine-info { display: flex; flex-direction: column; gap: 4px; }
-                .machine-title-row { display: flex; align-items: center; gap: 8px; }
-                .machine-name { font-size: 1.25rem; font-weight: 700; color: #0f172a; letter-spacing: -0.02em; }
+                .machine-title-row { display: flex; align-items: center; justify-content: space-between; }
+                .machine-name { font-size: 1.1rem; font-weight: 700; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
                 .icon-button { 
+                    flex-shrink: 0;
                     background: rgba(148, 163, 184, 0.1); 
                     border: none; 
                     color: #64748b; 
@@ -251,11 +246,11 @@ export function MachinePanel({
                 .machine-meta { font-size: 0.85rem; color: #64748b; font-family: 'JetBrains Mono', monospace; }
                 .separator { margin: 0 6px; color: #cbd5e1; }
                 
-                .connection-status { display: flex; align-items: center; gap: 16px; }
+                .connection-status { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
                 .status-badge { 
-                    display: flex; align-items: center; gap: 8px; 
-                    padding: 6px 14px; border-radius: 20px;
-                    font-size: 0.8rem; font-weight: 700; letter-spacing: 0.05em;
+                    display: flex; align-items: center; gap: 6px; 
+                    padding: 6px 10px; border-radius: 16px;
+                    font-size: 0.75rem; font-weight: 700;
                     background: #f1f5f9;
                     border: 1px solid #e2e8f0;
                     color: #64748b;
@@ -275,8 +270,8 @@ export function MachinePanel({
                 
                 .btn-connect { 
                     background: linear-gradient(120deg, #3b82f6, #06b6d4); 
-                    color: white; border: none; padding: 10px 24px; 
-                    border-radius: 12px; cursor: pointer; font-weight: 600; font-size: 0.9rem;
+                    color: white; border: none; padding: 8px 16px; 
+                    border-radius: 12px; cursor: pointer; font-weight: 600; font-size: 0.85rem;
                     box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
                     transition: transform 0.2s, box-shadow 0.2s;
                 }
@@ -286,14 +281,14 @@ export function MachinePanel({
                 .btn-disconnect { 
                     background: white; 
                     color: #64748b; border: 1px solid #cbd5e1; 
-                    padding: 8px 16px; border-radius: 12px; cursor: pointer; 
+                    padding: 6px 12px; border-radius: 8px; cursor: pointer; 
                     transition: all 0.2s;
-                    font-size: 0.9rem;
+                    font-size: 0.8rem;
                     font-weight: 500;
                 }
                 .btn-disconnect:hover { background: #f8fafc; border-color: #94a3b8; color: #334155; }
 
-                .panel-content { display: grid; grid-template-columns: 3fr 2fr; gap: 24px; }
+                .panel-content { display: flex; flex-direction: column; gap: 16px; }
                 .control-group { 
                     background: rgba(255, 255, 255, 0.5); 
                     border-radius: 16px; 
@@ -301,15 +296,15 @@ export function MachinePanel({
                     border: 1px solid rgba(226, 232, 240, 0.6); 
                 }
                 
-                /* Layout Shifts */
-                .dro-group { grid-column: span 1; display: flex; flex-direction: column; justify-content: space-between; gap: 16px; }
-                .jog-group { grid-column: span 1; }
-                .job-group { grid-column: 1 / -1; margin-top: 8px; }
+                /* Layout Shifts - Removed grid specific shifts for sidebar flow */
+                .dro-group { }
+                .jog-group { }
+                .job-group { margin-top: 8px; }
 
                 /* DRO */
                 .dro-display { 
-                    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; 
-                    background: #f8fafc; padding: 16px; border-radius: 12px;
+                    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; 
+                    background: #f8fafc; padding: 12px; border-radius: 12px;
                     border: 1px solid #e2e8f0;
                     box-shadow: inset 0 2px 4px rgba(15, 23, 42, 0.03);
                 }

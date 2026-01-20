@@ -12,6 +12,7 @@ import { parseSvg } from "../core/svgImport";
 import { Transform } from "../core/model";
 import { IDENTITY_TRANSFORM } from "../core/geom";
 import { ObjectService } from "../core/services/ObjectService";
+import { PreviewPanel } from "./panels/PreviewPanel";
 import "./app.css";
 
 export function App() {
@@ -90,7 +91,14 @@ export function App() {
 
       try {
         const status = await driver.getStatus();
-        if (active) dispatch({ type: "SET_MACHINE_STATUS", payload: status });
+        const safeStatus = {
+          state: status.state,
+          mpos: status.mpos || { x: 0, y: 0, z: 0 },
+          wpos: status.wpos || { x: 0, y: 0, z: 0 },
+          feed: 0, // Driver doesn't return feed yet?
+          spindle: 0
+        };
+        if (active) dispatch({ type: "SET_MACHINE_STATUS", payload: safeStatus });
       } catch (error) {
         // If poll fails repeatedly, we might be disconnected, but let's just log or ignore specific errors
         console.warn("Poll failed", error);
@@ -310,61 +318,29 @@ export function App() {
                 isExportDisabled={!workerStatus.ready}
               />
             </div>
-
-            <div className="panel panel--preview">
-              <div className="preview-container">
-                {/* Simplified Preview Render - Ideally move to a PreviewComponent */}
-                <svg className="preview-svg" viewBox={`0 0 ${machineProfile.bedMm.w} ${machineProfile.bedMm.h}`} preserveAspectRatio="xMidYMid meet">
-                  <defs>
-                    <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
-                      <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#333" strokeWidth="0.5" />
-                    </pattern>
-                  </defs>
-                  <rect width="100%" height="100%" fill="url(#grid)" />
-                  {doc.objects.map(obj => {
-                    if (obj.kind === "image") {
-                      return (
-                        <image key={obj.id} href={obj.src} x={obj.transform.e} y={obj.transform.f} width={obj.width} height={obj.height}
-                          onClick={() => dispatch({ type: "SELECT_OBJECT", payload: obj.id })}
-                          style={{ outline: obj.id === selectedObjectId ? "2px solid #00E5FF" : "none", cursor: "pointer" }}
-                        />
-                      );
-                    }
-                    if (obj.kind === "path") {
-                      const t = obj.transform;
-                      const points = obj.points.map(p => `${p.x},${p.y}`).join(" ");
-                      return <g key={obj.id} transform={`matrix(${t.a},${t.b},${t.c},${t.d},${t.e},${t.f})`}
-                        onClick={() => dispatch({ type: "SELECT_OBJECT", payload: obj.id })}
-                        style={{ cursor: "pointer" }}>
-                        {obj.closed ?
-                          <polygon points={points} fill="none" stroke={obj.id === selectedObjectId ? "#00E5FF" : "white"} strokeWidth="1" /> :
-                          <polyline points={points} fill="none" stroke={obj.id === selectedObjectId ? "#00E5FF" : "white"} strokeWidth="1" />
-                        }
-                      </g>;
-                    }
-                    if (obj.kind === "shape" && obj.shape.type === "rect") {
-                      const t = obj.transform;
-                      return <g key={obj.id} transform={`matrix(${t.a},${t.b},${t.c},${t.d},${t.e},${t.f})`}
-                        onClick={() => dispatch({ type: "SELECT_OBJECT", payload: obj.id })}
-                        style={{ outline: obj.id === selectedObjectId ? "2px solid #00E5FF" : "none" }}>
-                        <rect width={obj.shape.width} height={obj.shape.height} fill="rgba(255,255,255,0.1)" stroke="white" />
-                      </g>;
-                    }
-                    return null;
-                  })}
-                </svg>
-              </div>
+            <div className="app__preview-area">
+              <PreviewPanel />
             </div>
           </>
         ) : (
-          <MachinePanel
-            onConnect={handleConnect}
-            onDisconnect={handleDisconnect}
-            onStreamStart={handleStreamStart}
-            onStreamPause={handleStreamPause}
-            onStreamResume={handleStreamResume}
-            onStreamAbort={handleStreamAbort}
-          />
+          <>
+            <div className="app__sidebar">
+              <MachinePanel
+                onConnect={handleConnect}
+                onDisconnect={handleDisconnect}
+                onStreamStart={handleStreamStart}
+                onStreamPause={handleStreamPause}
+                onStreamResume={handleStreamResume}
+                onStreamAbort={handleStreamAbort}
+              />
+            </div>
+            <div className="app__preview-area">
+              <PreviewPanel
+                showMachineHead={true}
+                machineStatus={state.machineStatus}
+              />
+            </div>
+          </>
         )}
       </main>
     </div>

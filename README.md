@@ -31,7 +31,8 @@ Tests:
 
 ### 🤖 Machine Control
 - **Direct Connection**: Web Serial API support for connecting directly to GRBL firmware (v1.1+).
-- **Unified Interface**: Clean, "Design-tab" styled machine panel.
+- **Split View Interface**: Optimized layout with controls on the left and a large, live preview on the right.
+- **Live Preview**: Real-time visualization of the machine bed and laser head position.
 - **Reliability**: Optimized streaming/buffering for smooth motion without "jerks".
 - **Simulation**: Built-in simulator for testing workflows without physical hardware.
 

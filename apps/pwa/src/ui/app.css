@@ -111,6 +111,19 @@ body {
   grid-template-columns: 1fr;
 }
 
+.app__sidebar {
+  grid-column: span 1;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.app__preview-area {
+  grid-column: span 2;
+  display: flex;
+  flex-direction: column;
+}
+
 .panel {
   background: rgba(255, 255, 255, 0.88);
   border-radius: 18px;
@@ -396,6 +409,7 @@ select {
     opacity: 0;
     transform: translateY(12px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -405,6 +419,11 @@ select {
 @media (max-width: 1000px) {
   .app__main {
     grid-template-columns: 1fr;
+  }
+
+  .app__sidebar,
+  .app__preview-area {
+    grid-column: span 1;
   }
 
   .panel--preview {

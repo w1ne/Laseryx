@@ -155,48 +155,77 @@ export function MachineManagerDialog({ isOpen, onClose }: Props) {
             <style>{`
                 .modal-overlay {
                     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-                    background: rgba(0,0,0,0.5);
+                    background: rgba(15, 23, 42, 0.4);
+                    backdrop-filter: blur(4px);
                     display: flex; align-items: center; justify-content: center;
                     z-index: 1000;
                 }
                 .modal {
                     background: #fff;
-                    width: 400px;
-                    border-radius: 8px;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                    width: 450px;
+                    border-radius: 16px;
+                    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
                     overflow: hidden;
-                    color: #333;
+                    color: #0f172a;
+                    font-family: 'Inter', system-ui, sans-serif;
                 }
                 .modal-header {
-                    padding: 12px 16px;
-                    border-bottom: 1px solid #eee;
+                    padding: 16px 20px;
+                    border-bottom: 1px solid #e2e8f0;
                     display: flex; justify-content: space-between; align-items: center;
+                    background: #f8fafc;
                 }
-                .modal-header h3 { margin: 0; font-size: 16px; }
-                .modal-body { padding: 16px; }
+                .modal-header h3 { margin: 0; font-size: 1rem; font-weight: 600; color: #334155; }
+                .modal-header button { 
+                    border: none; background: transparent; font-size: 1.5rem; color: #94a3b8; cursor: pointer; line-height: 1;
+                }
+                .modal-header button:hover { color: #64748b; }
+                
+                .modal-body { padding: 20px; }
                 
                 .machine-item {
                     display: flex; justify-content: space-between; align-items: center;
-                    padding: 8px; border: 1px solid #eee; border-radius: 4px; margin-bottom: 8px;
-                    cursor: pointer;
+                    padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 8px;
+                    cursor: pointer; transition: all 0.2s;
+                    background: #fff;
                 }
-                .machine-item.active { border-color: #2196f3; background: #e3f2fd; }
+                .machine-item:hover { border-color: #cbd5e1; transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+                .machine-item.active { border-color: #3b82f6; background: #eff6ff; ring: 1px solid #3b82f6; }
+                
                 .machine-info { flex: 1; }
-                .machine-name { font-weight: 600; font-size: 14px; }
-                .machine-meta { font-size: 11px; color: #666; }
-                .machine-actions { display: flex; gap: 4px; }
+                .machine-name { font-weight: 600; font-size: 0.95rem; margin-bottom: 2px; }
+                .machine-meta { font-size: 0.8rem; color: #64748b; font-family: 'JetBrains Mono', monospace; }
+                .machine-actions { display: flex; gap: 8px; }
                 
-                .edit-form { display: flex; flex-direction: column; gap: 12px; }
-                .form-group label { display: block; font-size: 12px; margin-bottom: 4px; color: #555; }
-                .form-group input, .form-group select { width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 4px; }
-                .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-                .form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+                .edit-form { display: flex; flex-direction: column; gap: 16px; }
+                .form-group label { display: block; font-size: 0.8rem; margin-bottom: 6px; color: #64748b; font-weight: 500; }
+                .form-group input, .form-group select { 
+                    width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem;
+                    outline: none; transition: border-color 0.2s;
+                }
+                .form-group input:focus, .form-group select:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1); }
                 
-                .button { padding: 6px 12px; border: 1px solid #ddd; background: #fff; border-radius: 4px; cursor: pointer; font-size: 13px; }
-                .button--primary { background: #2196f3; color: white; border-color: #2196f3; }
-                .button--danger { color: #d32f2f; border-color: #ffcdd2; background: #ffebee; }
-                .button--small { padding: 2px 6px; font-size: 11px; }
-                .button--full { width: 100%; margin-top: 8px; }
+                .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+                .form-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 8px; }
+                
+                .button { 
+                    padding: 8px 16px; border: 1px solid #cbd5e1; background: #fff; 
+                    border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 500;
+                    color: #334155; transition: all 0.2s;
+                }
+                .button:hover { background: #f8fafc; border-color: #94a3b8; }
+                
+                .button--primary { 
+                    background: #3b82f6; color: white; border-color: #3b82f6; 
+                    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+                }
+                .button--primary:hover { background: #2563eb; border-color: #2563eb; transform: translateY(-1px); }
+                
+                .button--danger { color: #dc2626; border-color: #fecaca; background: #fef2f2; }
+                .button--danger:hover { background: #fee2e2; border-color: #fca5a5; }
+                
+                .button--small { padding: 4px 10px; font-size: 0.75rem; }
+                .button--full { width: 100%; margin-top: 12px; border-style: dashed; }
             `}</style>
         </div>
     );
