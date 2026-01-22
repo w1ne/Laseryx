@@ -42,7 +42,7 @@ Definition of Done (any PR)
 - No new TODO without an issue link.
 
 Support the Project
-- If you find this useful, consider [donating](https://github.com/sponsors/w1ne) to support development.
+- If you find this useful, consider [buying me a coffee](https://buymeacoffee.com/3qutj2ucoq) to support development.
 
 Repo structure (single app, minimal)
 - /apps/pwa

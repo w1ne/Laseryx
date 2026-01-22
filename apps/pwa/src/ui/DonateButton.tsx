@@ -1,7 +1,7 @@
 import React from "react";
 
 export const DonateButton: React.FC = () => {
-    const DONATE_URL = "https://github.com/sponsors/w1ne"; // Placeholder URL
+    const DONATE_URL = "https://buymeacoffee.com/3qutj2ucoq";
 
     return (
         <a
@@ -14,8 +14,8 @@ export const DonateButton: React.FC = () => {
                 alignItems: "center",
                 justifyContent: "center",
                 padding: "6px 12px",
-                backgroundColor: "#ea4aaa", // Pinkish color to stand out
-                color: "white",
+                backgroundColor: "#FFDD00", // SMB Yellow
+                color: "#000000",
                 textDecoration: "none",
                 borderRadius: "4px",
                 fontWeight: "bold",
@@ -25,7 +25,7 @@ export const DonateButton: React.FC = () => {
                 marginLeft: "8px"
             }}
         >
-            ♥ Donate
+            ☕ Buy me a coffee
         </a>
     );
 };

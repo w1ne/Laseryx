@@ -1,6 +1,6 @@
 # LaserFather PWA
 
-[![Support](https://img.shields.io/badge/Support-Donate-ea4aaa?style=flat-square)](https://github.com/sponsors/w1ne)
+[![Buy Me A Coffee](https://img.shields.io/badge/Support-Buy%20Me%20A%20Coffee-FFDD00?style=flat-square&logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/3qutj2ucoq)
 
 
 Short guide to the repo layout:
