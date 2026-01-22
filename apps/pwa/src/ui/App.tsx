@@ -197,19 +197,29 @@ export function App() {
   // So we pass `handleStartJob` to MachinePanel? 
   // MachinePanel logic for `onStreamStart` was: call handleStartJob -> generateGcode -> stream.
 
-  const generateGcode = async () => {
-    if (!clientRef.current) throw new Error("Worker not ready");
-    // Use implicit default dialect for now
-    const dialect = { newline: "\n", useG0ForTravel: true, powerCommand: "S", enableLaser: "M4", disableLaser: "M5" } as any;
-    // Update logic to pull from machineProfile if needed.
-    const result = await clientRef.current.generateGcode(doc, camSettings, machineProfile, dialect);
-    return result.gcode;
+  // --- G-code Generation State ---
+  const [generatedGcode, setGeneratedGcode] = useState<string | null>(null);
+  const [generationState, setGenerationState] = useState<{ status: "idle" | "working" | "done" | "error"; message?: string }>({ status: "idle" });
+
+  const handleGenerateGcode = async () => {
+    if (!clientRef.current) return;
+    try {
+      setGenerationState({ status: "working", message: "Generating..." });
+      // Use implicit default dialect for now
+      const dialect = { newline: "\n", useG0ForTravel: true, powerCommand: "S", enableLaser: "M4", disableLaser: "M5" } as any;
+      const result = await clientRef.current.generateGcode(doc, camSettings, machineProfile, dialect);
+      setGeneratedGcode(result.gcode);
+      setGenerationState({ status: "done", message: "Ready" });
+    } catch (e) {
+      setGeneratedGcode(null);
+      setGenerationState({ status: "error", message: String(e) });
+    }
   };
 
-  const handleExport = async () => {
+  const handleDownloadGcode = () => {
+    if (!generatedGcode) return;
     try {
-      const gcode = await generateGcode();
-      const blob = new Blob([gcode], { type: "text/plain" });
+      const blob = new Blob([generatedGcode], { type: "text/plain" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -217,6 +227,9 @@ export function App() {
       a.click();
     } catch (e) { alert(e); }
   };
+
+  // --- Export / Stream Logic wrappers --- 
+  // Kept local or passed to Panels. 
 
   const handleConnect = async () => {
     try {
@@ -235,13 +248,14 @@ export function App() {
 
   // Streaming Handlers
   const handleStreamStart = async () => {
+    if (!generatedGcode) {
+      alert("Please generate G-code first!");
+      return;
+    }
     try {
-      dispatch({ type: "SET_STREAM_STATUS", payload: { state: "streaming", message: "Generating..." } });
-      const gcode = await generateGcode();
-
       dispatch({ type: "SET_STREAM_STATUS", payload: { state: "streaming", message: "Sending..." } });
       const driver = getDriver();
-      const handle = driver.streamJob(gcode, "ack");
+      const handle = driver.streamJob(generatedGcode, "ack");
       await handle.done;
 
       dispatch({ type: "SET_STREAM_STATUS", payload: { state: "done", message: "Job Complete" } });
@@ -271,7 +285,7 @@ export function App() {
     <div className="app">
       <header className="app__header">
         <div>
-          <p className="app__eyebrow">Milestone 8</p>
+          <p className="app__eyebrow">Release 1.0</p>
           <h1>LaserFather Workspace</h1>
           <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
             <button onClick={handleNewProject}>New</button>
@@ -315,9 +329,11 @@ export function App() {
               <DocumentPanel />
               <PropertiesPanel />
               <LayersPanel
-                onExport={handleExport}
-                exportState={{ status: "idle" }} // TODO: Move export state to Store if we want proper UI feedback
-                isExportDisabled={!workerStatus.ready}
+                onGenerate={handleGenerateGcode}
+                onDownload={handleDownloadGcode}
+                generationState={generationState}
+                hasGcode={!!generatedGcode}
+                isWorkerReady={workerStatus.ready}
               />
             </div>
             <div className="app__preview-area">
@@ -334,6 +350,7 @@ export function App() {
                 onStreamPause={handleStreamPause}
                 onStreamResume={handleStreamResume}
                 onStreamAbort={handleStreamAbort}
+                isGcodeReady={!!generatedGcode}
               />
             </div>
             <div className="app__preview-area">

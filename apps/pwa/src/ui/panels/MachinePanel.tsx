@@ -11,6 +11,7 @@ type MachinePanelProps = {
     onStreamPause: () => void;
     onStreamResume: () => void;
     onStreamAbort: () => void;
+    isGcodeReady?: boolean; // Optional to be backward compatible if needed, but we will pass it
 };
 
 export function MachinePanel({
@@ -19,7 +20,8 @@ export function MachinePanel({
     onStreamStart,
     onStreamPause,
     onStreamResume,
-    onStreamAbort
+    onStreamAbort,
+    isGcodeReady = false
 }: MachinePanelProps) {
     const { state } = useStore();
     const { machineStatus, machineConnection, machineStream } = state;
@@ -176,13 +178,17 @@ export function MachinePanel({
 
                         <div className="job-actions">
                             {(machineStream.state === "idle" || machineStream.state === "done" || machineStream.state === "error") ? (
-                                <button
-                                    className="btn-primary btn-large"
-                                    disabled={!armLaser || status.state !== "IDLE"}
-                                    onClick={onStreamStart}
-                                >
-                                    Start Job
-                                </button>
+                                <>
+                                    <button
+                                        className="btn-primary btn-large"
+                                        disabled={!armLaser || status.state !== "IDLE" || !isGcodeReady}
+                                        onClick={onStreamStart}
+                                        title={!isGcodeReady ? "Please Generate G-code in Design tab first" : ""}
+                                    >
+                                        Start Job
+                                    </button>
+                                    {!isGcodeReady && <div style={{ fontSize: "0.8rem", color: "#b91c1c", marginTop: "4px", textAlign: "center" }}>⚠ No G-code generated</div>}
+                                </>
                             ) : (
                                 <div className="active-job-controls">
                                     <button
@@ -201,9 +207,13 @@ export function MachinePanel({
                             )}
                         </div>
                         {machineStream.message && <div className="stream-msg">Status: {machineStream.state.toUpperCase()} - {machineStream.message}</div>}
+                        {!isGcodeReady && (machineStream.state === "idle" || machineStream.state === "done") && (
+                            <div className="stream-msg" style={{ background: "#eff6ff", color: "#1e40af", borderColor: "#bfdbfe" }}>Tip: Design &gt; Generate G-code</div>
+                        )}
                     </section>
                 </div>
             )}
+
 
             <style>{`
                 .machine-panel {

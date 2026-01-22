@@ -4,21 +4,25 @@ import { LayerService } from "../../core/services/LayerService";
 import { updateOperation } from "../../core/util";
 
 // ExportState is still local to App or MachineService, so we accept it for now
-type ExportState = {
+type GenerationState = {
     status: "idle" | "working" | "done" | "error";
     message?: string;
 };
 
 type LayersPanelProps = {
-    onExport: () => void;
-    exportState: ExportState;
-    isExportDisabled: boolean;
+    onGenerate: () => void;
+    onDownload: () => void;
+    generationState: GenerationState;
+    hasGcode: boolean;
+    isWorkerReady: boolean;
 };
 
 export function LayersPanel({
-    onExport,
-    exportState,
-    isExportDisabled
+    onGenerate,
+    onDownload,
+    generationState,
+    hasGcode,
+    isWorkerReady
 }: LayersPanelProps) {
     const { state, dispatch } = useStore();
     const { document, camSettings } = state;
@@ -153,9 +157,31 @@ export function LayersPanel({
                     })}
                 </div>
 
-                <div className="form__group" style={{ marginTop: "12px" }}>
-                    <button className="button button--primary" onClick={onExport} disabled={isExportDisabled} style={{ width: "100%" }}>Export G-code</button>
-                    {exportState.message && <div className={`status status--${exportState.status === "error" ? "error" : "info"}`} style={{ marginTop: "8px" }}>{exportState.message}</div>}
+                <div className="form__group" style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "8px" }}>
+                    <div style={{ display: "flex", gap: "8px" }}>
+                        <button
+                            className="button button--primary"
+                            onClick={onGenerate}
+                            disabled={!isWorkerReady || generationState.status === "working"}
+                            style={{ flex: 1 }}
+                        >
+                            {generationState.status === "working" ? "Generating..." : "Generate G-code"}
+                        </button>
+                        <button
+                            className="button"
+                            onClick={onDownload}
+                            disabled={!hasGcode}
+                            style={{ flex: 1 }}
+                            title={!hasGcode ? "Trigger Generation first" : "Download .gcode file"}
+                        >
+                            Download
+                        </button>
+                    </div>
+                    {generationState.message && (
+                        <div className={`status status--${generationState.status === "error" ? "error" : "info"}`}>
+                            {generationState.message}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
