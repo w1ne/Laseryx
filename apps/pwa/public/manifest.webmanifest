@@ -1,7 +1,7 @@
 {
   "name": "LaserFather",
   "short_name": "LaserFather",
-  "description": "LaserFather: Linux-first laser CAM PWA",
+  "description": "Free, open-source Laser Cutting & Engraving software for the web. Supports G-code generation, vector design, and direct GRBL machine control.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f172a",

@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { formatNumber, randomId } from "../core/util";
+
 import { useStore } from "../core/state/store";
 import { getDriver } from "../io/driverSingleton";
 import { createWorkerClient } from "./workerClient";
@@ -140,7 +142,7 @@ export function App() {
         if (obj.kind === "image" && obj.src.startsWith("blob:")) {
           const res = await fetch(obj.src);
           const blob = await res.blob();
-          const assetId = crypto.randomUUID();
+          const assetId = randomId();
           assets.set(assetId, blob);
           obj.src = assetId;
         }

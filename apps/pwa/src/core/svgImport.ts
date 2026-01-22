@@ -1,5 +1,6 @@
 import { IDENTITY_TRANSFORM, composeTransforms } from "./geom";
 import { Obj, PathObj, Point, Transform } from "./model";
+import { randomId } from "./util";
 
 /**
  * Basic SVG Parser using DOMParser and browser SVG APIs.
@@ -121,7 +122,7 @@ function elementToPathObj(element: SVGGeometryElement, transform: Transform): Pa
 
     return {
         kind: "path",
-        id: crypto.randomUUID(),
+        id: randomId(),
         layerId: "layer-1", // Default layer
         transform: transform,
         points: points,

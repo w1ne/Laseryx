@@ -1,5 +1,6 @@
 import { getDb, ProjectRec } from './db';
 import { Document } from '../core/model';
+import { randomId } from '../core/util';
 
 export interface ProjectSummary {
     id: string;
@@ -80,7 +81,7 @@ export const projectRepo = {
      */
     async save(document: Document, assets: Map<string, Blob>, name?: string, id?: string): Promise<string> {
         const db = await getDb();
-        const projectId = id || crypto.randomUUID();
+        const projectId = id || randomId();
         const timestamp = Date.now();
         const projectName = name || "Untitled Project";
 
