@@ -9,7 +9,15 @@ This document outlines the process for releasing a new version of LaserFather.
 
 ## Release Checklist
 
-1.  **Update Version**
+
+1.  **Merge Develop to Master**
+    - The `master` branch is for releases only. Merge stable `develop` changes into it.
+    ```bash
+    git checkout master
+    git merge develop
+    ```
+
+2.  **Update Version**
     - Bump version in `package.json` (and `apps/pwa/package.json`).
     - Update `docs/CHANGELOG.md` with the new version number and date.
 
