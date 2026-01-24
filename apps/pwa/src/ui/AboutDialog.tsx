@@ -17,8 +17,12 @@ export function AboutDialog({ isOpen, onClose }: AboutDialogProps) {
                 </div>
                 <div className="modal-body" style={{ lineHeight: "1.6", color: "#333" }}>
                     <p>
-                        <strong>LaserFather v{__APP_VERSION__}</strong> <span style={{ fontSize: "0.8em", opacity: 0.6 }}>({__GIT_SHA__})</span><br />
-                        Release {__APP_VERSION__}
+                        <strong>LaserFather v{__APP_VERSION__}</strong>
+                        {__GIT_SHA__ && __GIT_SHA__ !== `v${__APP_VERSION__}` && __GIT_SHA__ !== __APP_VERSION__ && (
+                            <span style={{ fontSize: "0.8em", opacity: 0.6, marginLeft: "8px" }}>
+                                ({__GIT_SHA__})
+                            </span>
+                        )}
                     </p>
                     <hr style={{ margin: "16px 0", border: "0", borderTop: "1px solid #eee" }} />
                     <p>
