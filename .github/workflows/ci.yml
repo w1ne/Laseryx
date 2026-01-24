@@ -2,9 +2,11 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ develop, master ]
+    tags:
+      - 'v*'
   pull_request:
-    branches: [ main ]
+    branches: [ develop, master ]
 
 jobs:
   build:
@@ -25,6 +27,11 @@ jobs:
         
     - name: Install dependencies
       run: npm ci
+
+    - name: Lint
+      # Run lint if script exists, otherwise skip (robustness) 
+      # But we know we just added it.
+      run: npm run lint --if-present
 
     - name: Run Tests
       run: npm test
