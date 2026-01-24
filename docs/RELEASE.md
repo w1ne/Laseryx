@@ -1,55 +1,86 @@
 # Release Instructions
 
-This document outlines the process for releasing a new version of LaserFather.
+This document outlines the step-by-step process for releasing a new version of LaserFather.
 
 ## Prerequisites
-- [ ] Ensure all tests pass: `npm run test`
-- [ ] Verify production build: `npm run build`
-- [ ] Check console for errors in a local preview: `npm run preview`
+- [ ] You are on the `develop` branch: `git checkout develop`
+- [ ] Your local branch is up to date: `git pull origin develop`
+- [ ] All tests pass locally: `npm run test`
+- [ ] Production build succeeds: `npm run build`
 
 ## Release Checklist
 
+### 1. Merge Develop to Master
+The `master` branch is for stable releases only.
 
-1.  **Merge Develop to Master**
-    - The `master` branch is for releases only. Merge stable `develop` changes into it.
-    ```bash
-    git checkout master
-    git merge develop
-    ```
+```bash
+# Swith to master and update
+git checkout master
+git pull origin master
 
-2.  **Update Version**
-    - Bump version in `package.json` (and `apps/pwa/package.json`).
-    - Update `docs/CHANGELOG.md` with the new version number and date.
+# Merge develop into master
+git merge develop
+```
 
-2.  **Verify Documentation**
-    - Ensure `README.md` features are up to date.
-    - Check `docs/roadmap.md` reflects current progress.
-    - Check `architecture.md` and `interfaces.md` for any missing details.
+### 2. Update Version & Changelog
+Bump the version number for the release.
 
-3.  **Commit and Tag**
-    ```bash
-    git add .
-    git commit -m "chore: release v1.x.x"
-    git tag v1.x.x
-    git push origin main --tags
-    ```
+1.  **package.json**: Update `version` to `x.x.x` in root.
+2.  **apps/pwa/package.json**: Update `version` to `x.x.x` in app.
+3.  **docs/CHANGELOG.md**: Add header `## X.X.X - YYYY-MM-DD` and move "Unreleased" changes under it.
 
-5.  **GitHub Release**
-    - Create a release on GitHub linked to the tag.
-    - Paste the relevant section from `docs/CHANGELOG.md` into the release notes.
-    - You can use the CLI:
-      ```bash
-      gh release create v1.x.x --title "v1.x.x" --notes-file release_notes.txt
-      ```
+### 3. Commit and Tag
+Create the release commit and tag on `master`.
 
-4.  **Deployment**
-    - The CI/CD pipeline (GitHub Actions) will automatically deploy to GitHub Pages when a tag is pushed.
-    - Verify the live site works after deployment.
+```bash
+# Stage changes
+git add .
+
+# Commit with release message
+git commit -m "chore: release v1.1.0"
+
+# Create a signed tag (optional but recommended)
+git tag v1.1.0
+```
+
+### 4. Push Release
+Push the `master` branch and the new tag to GitHub. **This triggers the Deployment Pipeline.**
+
+```bash
+# Push commits
+git push origin master
+
+# Push tags (This triggers deployment!)
+git push origin v1.1.0
+```
+
+### 5. Sync Develop
+Merge the release commit (version bump) back into `develop` so development continues with the correct version history.
+
+```bash
+git checkout develop
+git merge master
+git push origin develop
+```
+
+### 6. GitHub Release
+Create the official release on GitHub.
+
+1.  Go to [Releases](https://github.com/w1ne/Laserfather/releases).
+2.  Click **Draft a new release**.
+3.  Choose the tag you just pushed (`v1.1.0`).
+4.  Paste the release notes from `docs/CHANGELOG.md`.
+5.  Click **Publish release**.
+
+Alternatively, use the CLI:
+```bash
+gh release create v1.1.0 --title "v1.1.0" --notes-file release_notes.txt
+```
 
 ## Best Practices
 - **Semantic Versioning**: Follow [SemVer](https://semver.org/).
     - Major (1.0.0): Breaking changes
     - Minor (0.1.0): New features (backward compatible)
     - Patch (0.0.1): Bug fixes
-- **Clean Commits**: Squash merge PRs to keep history clean.
-- **Testing**: Always run the full test suite before tagging.
+- **Clean History**: Ensure `develop` is clean before starting.
+- **Verification**: Always verify the live site (`https://w1ne.github.io/Laserfather/`) after deployment finishes.
