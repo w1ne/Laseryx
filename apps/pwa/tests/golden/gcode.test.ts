@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { generateGcode } from "../../src/core/gcode";
 import type { CamSettings, Document, GcodeDialect, MachineProfile } from "../../src/core/model";

@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi, beforeAll } from "vitest";
+import { svgPathProperties } from "svg-path-properties"; // Polyfill
 import { parseSvg } from "./svgImport";
 import { Point } from "./model";
 
@@ -137,6 +138,41 @@ function getNextPoint(curr: Point, seg: Segment): Point {
 }
 
 describe("parseSvg", () => {
+    beforeAll(() => {
+        // Force Polyfill on Window
+        const polyfill = (proto: any) => {
+            Object.defineProperty(proto, "getTotalLength", {
+                value: function () {
+                    const d = this.getAttribute("d") || "";
+                    console.log("Polyfill d:", d);
+                    if (!d) return 0;
+                    const props = new svgPathProperties(d);
+                    return props.getTotalLength();
+                },
+                writable: true,
+                configurable: true
+            });
+            Object.defineProperty(proto, "getPointAtLength", {
+                value: function (len: number) {
+                    const d = this.getAttribute("d") || "";
+                    if (!d) return { x: 0, y: 0 };
+                    const props = new svgPathProperties(d);
+                    const pt = props.getPointAtLength(len);
+                    return { x: pt.x, y: pt.y };
+                },
+                writable: true,
+                configurable: true
+            });
+        };
+
+        if (typeof window !== "undefined") {
+            // @ts-ignore
+            if (window.SVGElement) polyfill(window.SVGElement.prototype);
+            // @ts-ignore
+            if (window.SVGPathElement) polyfill(window.SVGPathElement.prototype);
+        }
+    });
+
     it("should handle null SVG string", () => {
         // @ts-expect-error Testing invalid input
         expect(() => parseSvg(null)).toThrow();

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect, beforeEach } from 'vitest';
 import "fake-indexeddb/auto"; // Mocks global functions
 import { projectRepo } from './projectRepo';
