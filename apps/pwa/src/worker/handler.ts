@@ -77,5 +77,5 @@ export function handleWorkerRequest(request: WorkerRequest): WorkerResponse {
         message: error instanceof Error ? error.message : "Worker error"
       }
     }
-  };
+  }
 }

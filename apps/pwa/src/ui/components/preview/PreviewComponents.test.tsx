@@ -29,7 +29,7 @@ describe("MachineHead", () => {
     });
 
     it("renders at correct position", () => {
-        // @ts-ignore
+        // @ts-expect-error Mocking status with string
         const status = { state: "Idle", wpos: { x: 50, y: 50 }, mpos: { x: 0, y: 0 }, feed: 0, spindle: 0 };
         const { container } = render(<svg><MachineHead status={status} /></svg>);
         const g = container.querySelector("g");

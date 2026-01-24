@@ -3,54 +3,50 @@ import { describe, it, expect, vi, beforeAll } from "vitest";
 import { parseSvg } from "./svgImport";
 import { Point } from "./model";
 
+declare const global: any;
+
 // Minimal mock for SVG geometry since JSDOM doesn't support getPointAtLength
 // This only needs to support the commands we generate in svgImport.ts (M, L, H, V)
 beforeAll(() => {
     // Polyfill SVGPathElement if missing (JSDOM might not expose it globally or at all)
-    if (typeof global.SVGPathElement === 'undefined') {
-        // @ts-ignore
-        global.SVGPathElement = class SVGPathElement {
+    if (typeof (global as any).SVGPathElement === 'undefined') {
+        (global as any).SVGPathElement = class SVGPathElement {
             getAttribute(name: string) { return ""; } // Mock for generic usage
         };
     }
 
-    // @ts-ignore
-    if (!global.SVGPathElement.prototype.getTotalLength) {
-        // @ts-ignore
-        global.SVGPathElement.prototype.getTotalLength = function () {
+    if (!(global as any).SVGPathElement.prototype.getTotalLength) {
+        (global as any).SVGPathElement.prototype.getTotalLength = function () {
             const d = this.getAttribute("d") || "";
             return calculatePathLength(d);
         };
     }
-    // @ts-ignore
-    if (!global.SVGPathElement.prototype.getPointAtLength) {
-        // @ts-ignore
-        global.SVGPathElement.prototype.getPointAtLength = function (len: number) {
+
+    if (!(global as any).SVGPathElement.prototype.getPointAtLength) {
+        (global as any).SVGPathElement.prototype.getPointAtLength = function (len: number) {
             const d = this.getAttribute("d") || "";
             return calculatePointAtLength(d, len);
         };
     }
 
     // Also need to support document.createElementNS for the test to work since svgImport uses it
-    // @ts-ignore
-    if (!global.document) {
-        // @ts-ignore
-        global.document = {
-            createElementNS: (ns, tag) => {
-                if (tag === 'path') return new global.SVGPathElement();
+    if (!(global as any).document) {
+        (global as any).document = {
+            createElementNS: (ns: any, tag: any) => {
+                if (tag === 'path') return new (global as any).SVGPathElement();
                 return {};
             }
         }
     } else {
         // If document exists (JSDOM), patch createElementNS if needed
         const orig = document.createElementNS;
-        document.createElementNS = (ns, tag) => {
+        document.createElementNS = (ns: any, tag: any) => {
             if (tag === 'path') {
                 const el = orig.call(document, ns, tag);
                 // Ensure it has methods if JSDOM didn't add them to the instance
                 if (!el.getTotalLength) {
-                    el.getTotalLength = global.SVGPathElement.prototype.getTotalLength;
-                    el.getPointAtLength = global.SVGPathElement.prototype.getPointAtLength;
+                    el.getTotalLength = (global as any).SVGPathElement.prototype.getTotalLength;
+                    el.getPointAtLength = (global as any).SVGPathElement.prototype.getPointAtLength;
                 }
                 return el;
             }
@@ -125,7 +121,7 @@ function parseSegments(d: string): Segment[] {
         // A ... (not supported in this mock yet, but we test rect/line)
         if (cmd === 'M' || cmd === 'L') { args.push(parseFloat(tokens[i++]), parseFloat(tokens[i++])); }
         else if (cmd === 'h' || cmd === 'v') { args.push(parseFloat(tokens[i++])); }
-        else if (cmd.toLowerCase() === 'z') { } // no args
+        else if (cmd.toLowerCase() === 'z') { /* no args */ }
 
         segs.push({ cmd, args });
     }
@@ -141,6 +137,21 @@ function getNextPoint(curr: Point, seg: Segment): Point {
 }
 
 describe("parseSvg", () => {
+    it("should handle null SVG string", () => {
+        // @ts-expect-error Testing invalid input
+        expect(() => parseSvg(null)).toThrow();
+    });
+
+    it("should handle invalid SVG string", () => {
+        // @ts-expect-error Testing invalid input
+        expect(() => parseSvg("not an svg")).toThrow();
+    });
+
+    it("should handle SVG without shapes", () => {
+        const result = parseSvg("<svg></svg>");
+        expect(result).toEqual([]);
+    });
+
     it("parses a simple rectangle", () => {
         const svg = `<svg><rect x="10" y="10" width="100" height="50" /></svg>`;
         const objs = parseSvg(svg);

@@ -85,15 +85,17 @@ export function createWebSerialGrblDriver(options: WebSerialOptions = {}): GrblD
       return;
     }
     try {
-      while (true) {
-        const result = await reader.read();
-        if (result.done) {
+      let keepReading = true;
+      while (keepReading) {
+        const { value, done } = await reader.read();
+        if (done) {
+          keepReading = false;
           break;
         }
-        if (!result.value) {
+        if (!value) {
           continue;
         }
-        buffer += decoder.decode(result.value, { stream: true });
+        buffer += decoder.decode(value, { stream: true });
         const parts = buffer.split(/\r?\n/);
         buffer = parts.pop() ?? "";
         for (const part of parts) {
@@ -146,6 +148,7 @@ export function createWebSerialGrblDriver(options: WebSerialOptions = {}): GrblD
 
   const readAck = async (signal?: AbortSignal): Promise<Ack> => {
     const lines: string[] = [];
+    // eslint-disable-next-line no-constant-condition
     while (true) {
       const line = await waitForLine(signal);
       if (line.startsWith("ok")) {
@@ -156,6 +159,7 @@ export function createWebSerialGrblDriver(options: WebSerialOptions = {}): GrblD
       }
       lines.push(line);
     }
+    throw new Error("Stream ended without ack");
   };
 
   const parseStatus = (line: string): StatusSnapshot => {
