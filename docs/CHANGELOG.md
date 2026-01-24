@@ -2,6 +2,25 @@
 
 All notable changes to LaserFather.
 
+## 1.1.0 - 2026-01-24
+
+### Added
+**High-Performance Preview**
+We completely rewrote the G-code preview engine. It now uses HTML5 Canvas to handle complex designs with thousands of moves instantly. No more lag.
+
+**Zoom and Pan**
+You can now freely explore your preview. Use the mouse wheel to zoom (centered on your cursor) and drag to pan around. Controls are also available on screen.
+
+**Automatic Preview**
+When you generate G-code, the app auto-switches to the Preview tab so you can verify the output immediately.
+
+### Technical
+**Modular Architecture**
+The preview system was refactored into testable, independent components (`CanvasGcodeView`, `MachineHead`, `DesignView`).
+
+**Unit Tests**
+Added comprehensive test suites for the G-code parser and UI components to ensure stability.
+
 ## 1.0.0 - 2026-01-23
 
 ### Added

@@ -88,7 +88,7 @@ Deliverables:
 - Zeroing ("Set Zero" for Work Coordinate System).
 - Digital Readout (DRO) for Work and Machine coordinates.
 
-Milestone 7 — UI Refactoring & UX Simplification (In Progress)
+Milestone 7 — UI Refactoring & UX Simplification (Released)
 Goal: Make the interface logical, simple, and scalable.
 Deliverables:
 - Split monolithic `App.tsx` into focused panels (`DocumentPanel`, `PropertiesPanel`, `LayersPanel`).
@@ -128,7 +128,7 @@ Acceptance:
 - Can "Line" a Vector Box.
 - Importing Image defaults to Fill.
 
-Milestone 10 — Machine Configuration Manager (Planned)
+Milestone 10 — Machine Configuration Manager (Released)
 Goal: Manage multiple machine profiles (size, speed, firmware settings).
 Deliverables:
 - **Persistence**: Store machine profiles locally (IndexedDB/LocalStorage).
@@ -146,6 +146,20 @@ Acceptance:
 
 ## Future Ideas
 
-- **Material Library**: Presets for Speed/Power based on material.
-- **Parametric Shapes**: Circle, Star, Gear generators.
+
+
+## Next Priorities (High Impact)
+The focus for the next releases is on features that bring the most value to every user.
+
+- [ ] **Job Estimation**: Calculate accurate time and cost estimates before running the job.
+- [ ] **Material Library**: Save and recall Speed/Power presets for common materials (Plywood, Acrylic, Leather).
+- [ ] **Path Optimization**: Smart path finding (Nearest Neighbor) to significantly reduce air travel time.
+- [ ] **Offline Reliability**: Ensure the app works flawlessly in workshops with poor or no internet connection.
+
+## Backlog (Future Ideas)
+- **Camera Integration**: Webcam overlay for alignment.
+- **Mobile Layout**: Improved UI for phone control.
+- **Parametric Shapes**: Built-in generators for gears and boxes.
+
+
 

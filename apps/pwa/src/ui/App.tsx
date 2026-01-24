@@ -204,6 +204,7 @@ export function App() {
   // --- G-code Generation State ---
   const [generatedGcode, setGeneratedGcode] = useState<string | null>(null);
   const [generationState, setGenerationState] = useState<{ status: "idle" | "working" | "done" | "error"; message?: string }>({ status: "idle" });
+  const [previewMode, setPreviewMode] = useState<"design" | "gcode">("design");
 
   const handleGenerateGcode = async () => {
     if (!clientRef.current) return;
@@ -214,6 +215,7 @@ export function App() {
       const result = await clientRef.current.generateGcode(doc, camSettings, machineProfile, dialect);
       setGeneratedGcode(result.gcode);
       setGenerationState({ status: "done", message: "Ready" });
+      setPreviewMode("gcode");
     } catch (e) {
       setGeneratedGcode(null);
       setGenerationState({ status: "error", message: String(e) });
@@ -341,8 +343,54 @@ export function App() {
                 isWorkerReady={workerStatus.ready}
               />
             </div>
-            <div className="app__preview-area">
-              <PreviewPanel />
+            <div className="app__preview-area" style={{ position: "relative" }}>
+              <div style={{
+                position: "absolute",
+                top: "16px",
+                left: "50%",
+                transform: "translateX(-50%)",
+                zIndex: 10,
+                background: "#e2e8f0",
+                padding: "4px",
+                borderRadius: "8px",
+                display: "flex",
+                gap: "4px",
+                boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+              }}>
+                <button
+                  style={{
+                    border: "none",
+                    background: previewMode === "design" ? "#fff" : "transparent",
+                    padding: "4px 12px",
+                    borderRadius: "6px",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    color: previewMode === "design" ? "#0f172a" : "#64748b",
+                    boxShadow: previewMode === "design" ? "0 1px 2px rgba(0,0,0,0.05)" : "none",
+                    cursor: "pointer"
+                  }}
+                  onClick={() => setPreviewMode("design")}
+                >Design</button>
+                <button
+                  style={{
+                    border: "none",
+                    background: previewMode === "gcode" ? "#fff" : "transparent",
+                    padding: "4px 12px",
+                    borderRadius: "6px",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    color: previewMode === "gcode" ? "#0f172a" : "#64748b",
+                    boxShadow: previewMode === "gcode" ? "0 1px 2px rgba(0,0,0,0.05)" : "none",
+                    cursor: !generatedGcode ? "not-allowed" : "pointer",
+                    opacity: !generatedGcode ? 0.5 : 1
+                  }}
+                  onClick={() => generatedGcode && setPreviewMode("gcode")}
+                >Preview</button>
+              </div>
+              <PreviewPanel
+                viewMode={previewMode}
+                gcode={generatedGcode || undefined}
+              />
             </div>
           </>
         ) : (
@@ -362,6 +410,8 @@ export function App() {
               <PreviewPanel
                 showMachineHead={true}
                 machineStatus={state.machineStatus}
+                viewMode={previewMode}
+                gcode={generatedGcode || undefined}
               />
             </div>
           </>
