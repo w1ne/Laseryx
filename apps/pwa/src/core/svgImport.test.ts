@@ -166,10 +166,9 @@ describe("parseSvg", () => {
         };
 
         if (typeof window !== "undefined") {
-            // @ts-ignore
-            if (window.SVGElement) polyfill(window.SVGElement.prototype);
-            // @ts-ignore
-            if (window.SVGPathElement) polyfill(window.SVGPathElement.prototype);
+            const win = window as any;
+            if (win.SVGElement) polyfill(win.SVGElement.prototype);
+            if (win.SVGPathElement) polyfill(win.SVGPathElement.prototype);
         }
     });
 
