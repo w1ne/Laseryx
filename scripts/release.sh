@@ -18,8 +18,10 @@ git pull origin develop
 # 2. Run Quality Checks
 echo "🧪 Running Tests & Lint..."
 npm ci
-npm run lint --prefix apps/pwa
-npm run test
+npm run lint
+npm test
+npm run build
+
 
 # 3. Merge to Master
 echo "🔀 Merging develop -> master..."
