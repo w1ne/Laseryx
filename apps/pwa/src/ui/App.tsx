@@ -291,7 +291,7 @@ export function App() {
     <div className="app">
       <header className="app__header">
         <div>
-          <p className="app__eyebrow">Release 1.0</p>
+          <p className="app__eyebrow">Release {__APP_VERSION__}</p>
           <h1>LaserFather Workspace</h1>
           <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
             <button onClick={handleNewProject}>New</button>

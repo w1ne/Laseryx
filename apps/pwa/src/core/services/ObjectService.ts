@@ -6,8 +6,8 @@ export const ObjectService = {
     addRectangle: (state: AppState, dispatch: React.Dispatch<Action>) => {
         const uniqueId = `shape-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-        // Robust default layer logic
-        const layerId = state.document.layers.length > 0 ? state.document.layers[0].id : "layer-1";
+        // Ensure a layer exists using the shared helper
+        const layerId = ObjectService.findOrCreateLayer(state, dispatch, "line", "Layer");
 
         const newObj: ShapeObj = {
             id: uniqueId,

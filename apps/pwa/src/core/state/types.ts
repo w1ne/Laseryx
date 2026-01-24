@@ -50,11 +50,15 @@ export const INITIAL_STATE: AppState = {
     document: {
         version: 1,
         units: "mm",
-        layers: [],
+        layers: [
+            { id: "layer-1", name: "Layer 1", visible: true, locked: false, operationId: "op-1" }
+        ],
         objects: []
     },
     camSettings: {
-        operations: []
+        operations: [
+            { id: "op-1", name: "Cut", mode: "line", speed: 1000, power: 80, passes: 1 }
+        ]
     },
     machineProfile: INITIAL_MACHINE_PROFILE,
     machineProfiles: [INITIAL_MACHINE_PROFILE],
