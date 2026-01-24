@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+// @vitest-environment happy-dom
 import { describe, it, expect, vi, beforeAll } from "vitest";
 import { parseSvg } from "./svgImport";
 import { Point } from "./model";

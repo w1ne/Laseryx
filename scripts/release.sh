@@ -17,7 +17,7 @@ git pull origin develop
 
 # 2. Run Quality Checks
 echo "🧪 Running Tests & Lint..."
-npm install
+npm ci
 npm run lint --prefix apps/pwa
 npm run test
 
