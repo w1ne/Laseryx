@@ -26,6 +26,14 @@ This document outlines the process for releasing a new version of LaserFather.
     git push origin main --tags
     ```
 
+5.  **GitHub Release**
+    - Create a release on GitHub linked to the tag.
+    - Paste the relevant section from `docs/CHANGELOG.md` into the release notes.
+    - You can use the CLI:
+      ```bash
+      gh release create v1.x.x --title "v1.x.x" --notes-file release_notes.txt
+      ```
+
 4.  **Deployment**
     - The CI/CD pipeline (GitHub Actions) will automatically deploy to GitHub Pages when a tag is pushed.
     - Verify the live site works after deployment.
