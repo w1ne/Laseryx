@@ -21,14 +21,19 @@
   <link rel="manifest" href="/manifest.webmanifest" />
   <title>LaserFather - Laser Cutting & GRBL Control</title>
 
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-G2RP0S1FW8"></script>
+  <!-- Google tag (gtag.js) - Loaded only in production -->
   <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag() { dataLayer.push(arguments); }
-    gtag('js', new Date());
+    if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+      const script = document.createElement("script");
+      script.async = true;
+      script.src = "https://www.googletagmanager.com/gtag/js?id=G-G2RP0S1FW8";
+      document.head.appendChild(script);
 
-    gtag('config', 'G-G2RP0S1FW8');
+      window.dataLayer = window.dataLayer || [];
+      function gtag() { dataLayer.push(arguments); }
+      gtag('js', new Date());
+      gtag('config', 'G-G2RP0S1FW8');
+    }
   </script>
 </head>
 
