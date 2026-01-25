@@ -45,4 +45,4 @@ After the script finishes, creates the draft release on GitHub.
     - Minor (0.1.0): New features (backward compatible)
     - Patch (0.0.1): Bug fixes
 - **Clean History**: Ensure `develop` is clean before starting.
-- **Verification**: Always verify the live site (`https://w1ne.github.io/Laserfather/`) after deployment finishes.
+- **Verification**: Always verify the live site (`https://laseryx.com/`) after deployment finishes.

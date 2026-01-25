@@ -31,7 +31,7 @@ let dbPromise: Promise<IDBPDatabase<LaserDB>>;
 
 export function getDb() {
     if (!dbPromise) {
-        dbPromise = openDB<LaserDB>('laserfather-db', 1, {
+        dbPromise = openDB<LaserDB>('laseryx-db', 1, {
             upgrade(db) {
                 if (!db.objectStoreNames.contains('projects')) {
                     const store = db.createObjectStore('projects', { keyPath: 'id' });

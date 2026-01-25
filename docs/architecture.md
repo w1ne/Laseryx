@@ -1,6 +1,6 @@
 # Architecture
 
-LaserFather is a Linux-first, PWA-only application. It uses React for the UI and a TypeScript Worker for the core logic.
+Laseryx is a Linux-first, PWA-only application. It uses React for the UI and a TypeScript Worker for the core logic.
 
 ## High Level
 

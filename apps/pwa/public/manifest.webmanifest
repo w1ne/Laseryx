@@ -1,6 +1,6 @@
 {
-  "name": "LaserFather",
-  "short_name": "LaserFather",
+  "name": "Laseryx",
+  "short_name": "Laseryx",
   "description": "Free, open-source Laser Cutting & Engraving software for the web. Supports G-code generation, vector design, and direct GRBL machine control.",
   "start_url": "/",
   "display": "standalone",

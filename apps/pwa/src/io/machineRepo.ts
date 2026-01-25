@@ -9,7 +9,7 @@ interface MachineDB extends DBSchema {
     };
 }
 
-const DB_NAME = "laserfather-machines";
+const DB_NAME = "laseryx-machines";
 const DB_VERSION = 1;
 
 class MachineRepository {

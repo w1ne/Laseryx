@@ -1,4 +1,4 @@
-const CACHE_NAME = "laserfather-shell-v1";
+const CACHE_NAME = "laseryx-shell-v1";
 const CORE_ASSETS = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg"];
 
 self.addEventListener("install", (event) => {

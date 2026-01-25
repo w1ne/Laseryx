@@ -1,8 +1,8 @@
-# LaserFather PWA
+# Laseryx PWA
 
 [![Buy Me A Coffee](https://img.shields.io/badge/Support-Buy%20Me%20A%20Coffee-FFDD00?style=flat-square&logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/3qutj2ucoq)
 
-LaserFather is a tool for your laser cutter. It runs in your browser. You can design, plan, and cut without installing anything.
+Laseryx is a tool for your laser cutter. It runs in your browser. You can design, plan, and cut without installing anything.
 
 ## Features
 

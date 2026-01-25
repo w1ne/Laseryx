@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to LaserFather.
+All notable changes to Laseryx.
 
 ## 1.1.2 - 2026-01-25
 

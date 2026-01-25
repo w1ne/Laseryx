@@ -12,12 +12,12 @@ export function AboutDialog({ isOpen, onClose }: AboutDialogProps) {
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h2>About LaserFather</h2>
+                    <h2>About Laseryx</h2>
                     <button className="close-button" onClick={onClose}>×</button>
                 </div>
                 <div className="modal-body" style={{ lineHeight: "1.6", color: "#333" }}>
                     <p>
-                        <strong>LaserFather v{__APP_VERSION__}</strong>
+                        <strong>Laseryx v{__APP_VERSION__}</strong>
                         {__GIT_SHA__ && __GIT_SHA__ !== `v${__APP_VERSION__}` && __GIT_SHA__ !== __APP_VERSION__ && (
                             <span style={{ fontSize: "0.8em", opacity: 0.6, marginLeft: "8px" }}>
                                 ({__GIT_SHA__})
