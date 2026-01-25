@@ -2,6 +2,15 @@
 
 All notable changes to Laseryx.
 
+## 1.2.0 - 2026-01-25
+
+### Changed
+**Rebranding**
+Project renamed from **LaserFather** to **Laseryx**.
+- Updated domain to `laseryx.com`.
+- Updated application title and metadata.
+- Renamed internal databases (Note: Local data will be reset).
+
 ## 1.1.2 - 2026-01-25
 
 ### Added
