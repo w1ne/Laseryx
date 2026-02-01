@@ -40,15 +40,13 @@ export function LayersPanel({
                 <h2>Operations</h2>
                 <div style={{ display: "flex", gap: "8px" }}>
                     <button
-                        className="button"
-                        style={{ fontSize: "12px", padding: "4px 8px", minHeight: "auto", background: "#f8f9fa", border: "1px solid #ddd" }}
+                        className="button button--small"
                         onClick={onOpenMaterialManager}
                     >
-                        Manage
+                        Materials
                     </button>
                     <button
-                        className="button"
-                        style={{ fontSize: "12px", padding: "4px 8px", minHeight: "auto" }}
+                        className="button button--small"
                         onClick={() => LayerService.addLayer(state, dispatch)}
                     >
                         + Add
