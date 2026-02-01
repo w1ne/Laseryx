@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { generateRasterToolpath } from "./raster";
-import { Document, Layer, Operation, MachineProfile } from "./model";
+import { Operation } from "./model";
 
 describe("generateRasterToolpath", () => {
     it("should generate horizontal lines for a black image", () => {

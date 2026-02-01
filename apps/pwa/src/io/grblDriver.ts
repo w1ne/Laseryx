@@ -541,10 +541,6 @@ export function createVirtualGrblDriver(options: SimulatedOptions = {}): Virtual
     },
     isConnected: () => connected,
     getStatus: async () => {
-      // Construct GRBL status string like <Idle|MPos:0.000,0.000,0.000|FS:0,0>
-      const s = state.status;
-      const m = state.mpos;
-      const fs = `FS:${state.feedRate},${state.spindleSpeed}`;
       // Note: Real GRBL reports MPos usually.
       // We can attach the parsed object directly if we want, but the interface returns snapshot
       return {

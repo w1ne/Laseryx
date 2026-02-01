@@ -1,4 +1,4 @@
-import { getDb, ProjectRec } from './db';
+import { getDb } from './db';
 import { Document } from '../core/model';
 import { randomId } from '../core/util';
 

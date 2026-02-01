@@ -1,6 +1,6 @@
 import { AppState } from "../state/types";
 import { Action } from "../state/actions";
-import { ShapeObj } from "../model";
+import { ShapeObj, Obj, ImageObj } from "../model";
 
 export const ObjectService = {
     addRectangle: (state: AppState, dispatch: React.Dispatch<Action>) => {
@@ -28,7 +28,7 @@ export const ObjectService = {
         });
     },
 
-    updateObject: (dispatch: React.Dispatch<Action>, objectId: string, changes: any) => {
+    updateObject: (dispatch: React.Dispatch<Action>, objectId: string, changes: Partial<Obj>) => {
         dispatch({
             type: "UPDATE_OBJECT",
             payload: { id: objectId, changes }
@@ -42,7 +42,7 @@ export const ObjectService = {
     },
 
     // Import Helpers
-    addObjects: (dispatch: React.Dispatch<Action>, state: AppState, objects: any[]) => {
+    addObjects: (dispatch: React.Dispatch<Action>, state: AppState, objects: Obj[]) => {
         // Find a "Line" layer (default for vectors)
         const layerId = ObjectService.findOrCreateLayer(state, dispatch, "line", "Vector Layer");
 
@@ -60,7 +60,7 @@ export const ObjectService = {
         const layerId = ObjectService.findOrCreateLayer(state, dispatch, "fill", "Image Layer");
 
         const uniqueId = `img-${Date.now()}`;
-        const newObj = {
+        const newObj: ImageObj = {
             kind: "image",
             id: uniqueId,
             layerId: layerId,
@@ -69,7 +69,7 @@ export const ObjectService = {
             height,
             src
         };
-        dispatch({ type: "ADD_OBJECT", payload: newObj as any });
+        dispatch({ type: "ADD_OBJECT", payload: newObj });
         dispatch({ type: "SELECT_OBJECT", payload: uniqueId });
     },
 

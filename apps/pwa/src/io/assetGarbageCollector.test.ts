@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { getDb } from "./db";
 import { projectRepo } from "./projectRepo";
-import { collectGarbage, getAssetStorageSize } from "./assetGarbageCollector";
+import { collectGarbage } from "./assetGarbageCollector";
 import { Document } from "../core/model";
 
 describe("Asset Garbage Collection", () => {

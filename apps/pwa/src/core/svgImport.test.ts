@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { describe, it, expect, vi, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll } from "vitest";
 import { svgPathProperties } from "svg-path-properties"; // Polyfill
 import { parseSvg } from "./svgImport";
 import { Point } from "./model";
@@ -12,7 +12,7 @@ beforeAll(() => {
     // Polyfill SVGPathElement if missing (JSDOM might not expose it globally or at all)
     if (typeof (global as any).SVGPathElement === 'undefined') {
         (global as any).SVGPathElement = class SVGPathElement {
-            getAttribute(name: string) { return ""; } // Mock for generic usage
+            getAttribute(_name: string) { return ""; } // Mock for generic usage
         };
     }
 

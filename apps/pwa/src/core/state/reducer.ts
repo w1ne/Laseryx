@@ -1,4 +1,5 @@
 import { AppState } from "./types";
+import { Obj } from "../model";
 import { Action } from "./actions";
 import { pushState, undo, redo, UndoableState } from "./history";
 
@@ -96,7 +97,7 @@ function internalReducer(state: AppState, action: Action): AppState {
                     ...state.document,
                     objects: state.document.objects.map(obj =>
                         obj.id === action.payload.id
-                            ? { ...obj, ...action.payload.changes } as any
+                            ? ({ ...obj, ...action.payload.changes } as Obj)
                             : obj
                     )
                 }

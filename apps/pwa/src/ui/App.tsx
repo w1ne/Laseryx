@@ -273,7 +273,7 @@ export function App() {
     try {
       setGenerationState({ status: "working", message: "Generating..." });
       // Use implicit default dialect for now
-      const dialect = { newline: "\n", useG0ForTravel: true, powerCommand: "S", enableLaser: "M4", disableLaser: "M5" } as any;
+      const dialect: GcodeDialect = { newline: "\n", useG0ForTravel: true, powerCommand: "S", enableLaser: "M4", disableLaser: "M5" };
       const result = await clientRef.current.generateGcode(doc, camSettings, machineProfile, dialect);
       setGeneratedGcode(result.gcode);
       setJobStats(result.stats);

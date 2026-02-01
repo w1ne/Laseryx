@@ -41,27 +41,6 @@ export function usePanZoom({ initialViewport }: UsePanZoomProps) {
         });
     }, []);
 
-    const handlePointerDown = useCallback((e: React.PointerEvent) => {
-        // Allow Pan on Middle Click (1) OR Left Click (0) if specifically requested/configured?
-        // For this generic hook, we assume the caller binds it to a container where they WANT pan.
-        // However, we should check `buttons` for robustness.
-        // Let's support Middle Click OR "Left Click on Background" logic which must be handled by caller?
-        // No, the hook receives the event.
-
-        // Let's rely on the caller to call this handler ONLY when they want to start a pan?
-        // Or we check buttons here.
-
-        // Standard behavior: 
-        // Button 0 (Left) -> Select (handled by others, but if propagated here?)
-        // Button 1 (Middle) -> Pan
-
-        // BUT we implemented "Drag Background to Pan" in previous thought.
-        // To support that, we need to know if the target was the background.
-        // That is hard for a generic hook unless we pass a "panTrigger" predicate or similar.
-
-        // Simplification: This hook exposes `startPan`, `movePan`, `endPan`.
-        // The `handlers` object will bind generic pointer events.
-    }, []);
 
     // Revised Hook Strategy:
     // Expose `panTo`, `zoomTo`, `panBy`, `zoomAt` helpers.

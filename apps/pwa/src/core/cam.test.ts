@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { planCam } from "./cam";
 import { Document, CamSettings } from "./model";
-import { IDENTITY_TRANSFORM } from "./geom";
 
 describe("cam", () => {
     const minDoc: Document = {

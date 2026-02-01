@@ -1,4 +1,4 @@
-import { Point, PolylinePath } from "./model";
+import { PolylinePath } from "./model";
 
 /**
  * Generates scanline toolpaths for a set of closed polylines.

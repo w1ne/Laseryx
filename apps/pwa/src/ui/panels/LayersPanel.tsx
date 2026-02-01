@@ -140,7 +140,7 @@ export function LayersPanel({
                                             value={op.mode}
                                             style={{ fontSize: "13px", padding: "6px", borderRadius: "4px", border: "1px solid #ccc", background: "#fff", color: "#333" }}
                                             onChange={e => {
-                                                const newOps = updateOperation(camSettings.operations, op.id, o => ({ ...o, mode: e.target.value as any }));
+                                                const newOps = updateOperation(camSettings.operations, op.id, o => ({ ...o, mode: e.target.value as OperationMode }));
                                                 dispatch({ type: "SET_CAM_SETTINGS", payload: { ...camSettings, operations: newOps } });
                                             }}
                                         >
