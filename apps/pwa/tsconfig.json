@@ -18,10 +18,12 @@
     "strict": true,
     "types": [
       "vite/client",
-      "w3c-web-serial"
+      "w3c-web-serial",
+      "@testing-library/jest-dom"
     ]
   },
   "include": [
-    "src"
+    "src",
+    "tests"
   ]
 }
