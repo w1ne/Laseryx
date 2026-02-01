@@ -1,23 +1,24 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // @vitest-environment happy-dom
 import { describe, it, expect, beforeAll } from "vitest";
 import { svgPathProperties } from "svg-path-properties"; // Polyfill
 import { parseSvg } from "./svgImport";
 import { Point } from "./model";
 
-declare const global: any;
+declare const global: unknown;
 
 // Minimal mock for SVG geometry since JSDOM doesn't support getPointAtLength
 // This only needs to support the commands we generate in svgImport.ts (M, L, H, V)
 beforeAll(() => {
     // Polyfill SVGPathElement if missing (JSDOM might not expose it globally or at all)
-    if (typeof (global as any).SVGPathElement === 'undefined') {
-        (global as any).SVGPathElement = class SVGPathElement {
+    if (typeof (global as { SVGPathElement: unknown }).SVGPathElement === 'undefined') {
+        (global as { SVGPathElement: unknown }).SVGPathElement = class SVGPathElement {
             getAttribute(_name: string) { return ""; } // Mock for generic usage
         };
     }
 
-    if (!(global as any).SVGPathElement.prototype.getTotalLength) {
-        (global as any).SVGPathElement.prototype.getTotalLength = function () {
+    if (!(global as { SVGPathElement: { prototype: any } }).SVGPathElement.prototype.getTotalLength) {
+        (global as { SVGPathElement: { prototype: any } }).SVGPathElement.prototype.getTotalLength = function () {
             const d = this.getAttribute("d") || "";
             return calculatePathLength(d);
         };

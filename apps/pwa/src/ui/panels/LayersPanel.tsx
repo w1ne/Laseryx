@@ -1,4 +1,5 @@
 import React from "react";
+import { OperationMode } from "../../core/model";
 import { useStore } from "../../core/state/store";
 import { LayerService } from "../../core/services/LayerService";
 import { updateOperation } from "../../core/util";

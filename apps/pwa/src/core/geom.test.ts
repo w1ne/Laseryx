@@ -2,9 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
     applyTransform,
     composeTransforms,
-    transformPoints,
-    rectToPolyline,
-    distance,
     computeBounds,
     polygonArea,
     pathLength,

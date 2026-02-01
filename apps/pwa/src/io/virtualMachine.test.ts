@@ -101,7 +101,7 @@ describe('Virtual Machine Integration', () => {
 
         // Pause
         await driver.pause();
-        const status = await driver.getStatus();
+        await driver.getStatus();
         // Race condition: might pause before RUN or after
         // Ideally we wait for RUN then pause?
 

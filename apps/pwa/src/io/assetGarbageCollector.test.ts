@@ -2,7 +2,9 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { getDb } from "./db";
 import { projectRepo } from "./projectRepo";
 import { collectGarbage } from "./assetGarbageCollector";
-import { Document } from "../core/model";
+import { Document, Obj } from "../core/model";
+
+const dummyTransform = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
 
 describe("Asset Garbage Collection", () => {
     beforeEach(async () => {
@@ -22,8 +24,8 @@ describe("Asset Garbage Collection", () => {
             units: "mm",
             layers: [{ id: "l1", name: "Layer 1", visible: true, locked: false, operationId: "op1" }],
             objects: [
-                { kind: "image", id: "img1", layerId: "l1", x: 0, y: 0, width: 100, height: 100, src: "asset-1" } as any,
-                { kind: "image", id: "img2", layerId: "l1", x: 100, y: 0, width: 100, height: 100, src: "asset-2" } as any
+                { kind: "image", id: "img1", layerId: "l1", transform: dummyTransform, width: 100, height: 100, src: "asset-1" } as Obj,
+                { kind: "image", id: "img2", layerId: "l1", transform: dummyTransform, width: 100, height: 100, src: "asset-2" } as Obj
             ]
         };
 
@@ -55,7 +57,7 @@ describe("Asset Garbage Collection", () => {
             units: "mm",
             layers: [{ id: "l1", name: "Layer 1", visible: true, locked: false, operationId: "op1" }],
             objects: [
-                { kind: "image", id: "img1", layerId: "l1", x: 0, y: 0, width: 100, height: 100, src: "asset-shared" } as any
+                { kind: "image", id: "img1", layerId: "l1", transform: dummyTransform, width: 100, height: 100, src: "asset-shared" } as Obj
             ]
         };
 
@@ -65,7 +67,7 @@ describe("Asset Garbage Collection", () => {
             units: "mm",
             layers: [{ id: "l1", name: "Layer 1", visible: true, locked: false, operationId: "op1" }],
             objects: [
-                { kind: "image", id: "img2", layerId: "l1", x: 0, y: 0, width: 100, height: 100, src: "asset-shared" } as any
+                { kind: "image", id: "img2", layerId: "l1", transform: dummyTransform, width: 100, height: 100, src: "asset-shared" } as Obj
             ]
         };
 

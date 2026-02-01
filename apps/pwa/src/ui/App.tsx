@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from "react";
+import { GcodeDialect } from "../core/model";
 import { randomId } from "../core/util";
 
 import { useStore } from "../core/state/store";
@@ -19,6 +20,12 @@ import { useToast } from "./hooks/useToast";
 import { ToastContainer } from "./components/Toast";
 import "./app.css";
 
+// --- PWA Types ---
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
+
 export function App() {
   const { state, dispatch } = useStore();
   const { ui, machineConnection, document: doc, camSettings, machineProfile } = state;
@@ -36,7 +43,7 @@ export function App() {
 
   const [showAbout, setShowAbout] = useState(false);
   const [showMaterialManager, setShowMaterialManager] = useState(false);
-  const [installPrompt, setInstallPrompt] = useState<any>(null); // BeforeInstallPromptEvent
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
 
   // --- Worker Init ---
   useEffect(() => {
@@ -56,12 +63,12 @@ export function App() {
 
   // --- PWA Install Prompt ---
   useEffect(() => {
-    const handler = (e: any) => {
+    const handler = (e: BeforeInstallPromptEvent) => {
       e.preventDefault();
       setInstallPrompt(e);
     };
-    window.addEventListener("beforeinstallprompt", handler);
-    return () => window.removeEventListener("beforeinstallprompt", handler);
+    window.addEventListener("beforeinstallprompt", handler as EventListener);
+    return () => window.removeEventListener("beforeinstallprompt", handler as EventListener);
   }, []);
 
   // --- Keyboard Shortcuts ---
@@ -88,7 +95,7 @@ export function App() {
   const handleInstallClick = () => {
     if (!installPrompt) return;
     installPrompt.prompt();
-    installPrompt.userChoice.then((choice: any) => {
+    installPrompt.userChoice.then((choice) => {
       if (choice.outcome === "accepted") {
         setInstallPrompt(null);
       }

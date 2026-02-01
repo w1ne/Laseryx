@@ -8,6 +8,7 @@ import { INITIAL_STATE } from "../../core/state/types";
 // Mock the store
 vi.mock("../../core/state/store", () => ({
     useStore: vi.fn(),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     StoreProvider: ({ children }: any) => <div>{children}</div>,
 }));
 
@@ -63,6 +64,7 @@ vi.mock("../../io/materialRepo", () => ({
 describe("PWA Installation", () => {
     beforeEach(() => {
         vi.resetAllMocks();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (useStore as any).mockReturnValue({
             state: INITIAL_STATE,
             dispatch: vi.fn(),

@@ -187,7 +187,8 @@ export function createWebSerialGrblDriver(options: WebSerialOptions = {}): GrblD
       }
 
       // Determine which serial implementation to use
-      let serialImpl: any = (navigator as any).serial;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let serialImpl = (navigator as unknown as { serial: any }).serial;
 
       // Check if we are on Android (heuristic) or if native serial is missing
       const isAndroid = /android/i.test(navigator.userAgent);
@@ -206,7 +207,7 @@ export function createWebSerialGrblDriver(options: WebSerialOptions = {}): GrblD
 
       // Android/WebUSB often requires filters to show devices.
       // We list common USB-Serial chips used in lasers (CH340, CP210x, FTDI, CDC, Arduino).
-      const filters = (isAndroid || serialImpl === (polyfillSerial as any)) ? [
+      const filters = (isAndroid || serialImpl === polyfillSerial) ? [
         { usbVendorId: 0x1a86 }, // CH340
         { usbVendorId: 0x10c4 }, // CP210x (Silicon Labs)
         { usbVendorId: 0x0403 }, // FTDI

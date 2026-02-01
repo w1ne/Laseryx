@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import React from "react";
@@ -21,7 +22,7 @@ vi.mock("../workerClient", () => ({
         ping: () => Promise.resolve(),
         dispose: vi.fn(),
         // Mock Generation response
-        generateGcode: (req: any) => Promise.resolve({
+        generateGcode: (_req: any) => Promise.resolve({
             ok: true,
             gcode: "G0 X0 Y0\nM3 S1000\nG1 X10 Y10\nM5",
             preview: []

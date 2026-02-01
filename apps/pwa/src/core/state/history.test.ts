@@ -1,8 +1,10 @@
 import { describe, it, expect } from "vitest";
+import { Document, CamSettings } from "../model";
+import { AppState } from "../state/types";
 import { createHistory, pushState, undo, redo, canUndo, canRedo } from "./history";
 
 describe("history", () => {
-    const s1 = { document: { version: 1, units: "mm", layers: [], objects: [] } as any, camSettings: { operations: [] } as any, selectedObjectId: null };
+    const s1 = { document: { version: 1, units: "mm", layers: [], objects: [] } as unknown as Document, camSettings: { operations: [] } as unknown as CamSettings, selectedObjectId: null } as AppState;
     const s2 = { ...s1, selectedObjectId: "obj1" };
     const s3 = { ...s1, selectedObjectId: "obj2" };
 
