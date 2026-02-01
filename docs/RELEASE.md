@@ -5,15 +5,13 @@ This document outlines the step-by-step process for releasing a new version of L
 ## Prerequisites
 - [ ] You are on the `develop` branch: `git checkout develop`
 - [ ] Your local branch is up to date: `git pull origin develop`
-- [ ] All tests pass locally: `npm run test`
-- [ ] Production build succeeds: `npm run build`
+- [ ] **Run pre-release verification**: `npm run pre-release`
+  - This will run all tests, build, and lint checks
+  - Must pass before proceeding with release
 
 ## Release Checklist
 
 1.  **Update Documentation**
-    - [ ] `docs/architecture.md`: Reflect any system design changes.
-    - [ ] `docs/interfaces.md`: Update API/Interface definitions.
-    - [ ] `README.md`: Ensure installation/usage instructions are current.
     - [ ] `docs/CHANGELOG.md`: Summarize changes for this version.
 
 

@@ -12,6 +12,7 @@
     "preview": "npm --prefix apps/pwa run preview",
     "test": "npm --prefix apps/pwa run test",
     "lint": "npm --prefix apps/pwa run lint",
+    "pre-release": "./scripts/pre-release.sh",
     "release": "./scripts/release.sh"
   },
   "devDependencies": {
