@@ -1,7 +1,7 @@
 {
   "name": "laser-pwa",
   "private": true,
-  "version": "1.5.4",
+  "version": "1.6.0",
   "license": "CC-BY-NC-SA-4.0",
   "type": "module",
   "scripts": {
