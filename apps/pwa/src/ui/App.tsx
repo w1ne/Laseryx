@@ -365,14 +365,14 @@ export function App() {
           <p className="app__eyebrow">Release {__APP_VERSION__}</p>
           <h1>Laseryx Workspace</h1>
           <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
-            <button onClick={handleNewProject}>New</button>
-            <button onClick={handleListProjects}>Open</button>
-            <button onClick={handleSaveProject}>Save</button>
-            <button onClick={() => setShowAbout(true)}>About</button>
+            <button className="button" onClick={handleNewProject}>New</button>
+            <button className="button" onClick={handleListProjects}>Open</button>
+            <button className="button" onClick={handleSaveProject}>Save</button>
+            <button className="button" onClick={() => setShowAbout(true)}>About</button>
             {installPrompt && (
               <button
+                className="button button--accent"
                 onClick={handleInstallClick}
-                style={{ background: "#4f46e5", color: "white", border: "none" }}
               >
                 Install App
               </button>

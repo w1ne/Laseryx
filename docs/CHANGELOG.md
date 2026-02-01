@@ -19,6 +19,8 @@ All notable changes to Laseryx.
 - Added `optimizePaths` flag to `CamSettings` model.
 - Comprehensive test coverage: 16 tests (14 unit + 2 integration).
 - All 145 tests passing.
+- Achieved zero lint warnings across the entire codebase.
+- Improved type safety and reduced use of 'any' across core and UI components.
 
 ## [1.4.0] - 2026-02-01
 
