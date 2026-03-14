@@ -1,0 +1,38 @@
+name: Site Canary
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'  # Every 15 minutes
+  workflow_dispatch:
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check main page (HTTP 200)
+        id: check_page
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 https://laseryx.com/)
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+          if [ "$STATUS" != "200" ]; then
+            echo "::error::laseryx.com returned HTTP $STATUS (expected 200)"
+            exit 1
+          fi
+          echo "Main page OK (HTTP $STATUS)"
+
+      - name: Check JS bundle is reachable
+        run: |
+          HTML=$(curl -s --max-time 30 https://laseryx.com/)
+          JS_PATH=$(echo "$HTML" | grep -o 'src="[^"]*assets/index-[^"]*\.js"' | sed 's/src="//;s/"//')
+          if [ -z "$JS_PATH" ]; then
+            echo "::error::Could not find JS bundle reference in HTML"
+            exit 1
+          fi
+          # Resolve relative path (./assets/...) to absolute URL
+          JS_URL="https://laseryx.com/${JS_PATH#./}"
+          JS_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$JS_URL")
+          if [ "$JS_STATUS" != "200" ]; then
+            echo "::error::JS bundle 404 — white page likely! $JS_URL returned HTTP $JS_STATUS"
+            exit 1
+          fi
+          echo "JS bundle OK: $JS_URL (HTTP $JS_STATUS)"
