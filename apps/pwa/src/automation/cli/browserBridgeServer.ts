@@ -6,10 +6,13 @@ type PendingCommand = {
   request: AutomationProtocolRequest;
   resolve: (response: AutomationProtocolResponse) => void;
   reject: (error: Error) => void;
+  timeout?: ReturnType<typeof setTimeout>;
 };
 
 export type LocalBrowserBridgeServerOptions = {
   token: string;
+  commandTimeoutMs?: number;
+  pollTimeoutMs?: number;
 };
 
 function assertToken(actual: string | null, expected: string): void {
@@ -39,12 +42,25 @@ function writeJson(response: ServerResponse, status: number, value: unknown): vo
 
 export class LocalBrowserBridgeServer {
   private readonly token: string;
+  private readonly commandTimeoutMs: number;
+  private readonly pollTimeoutMs: number;
   private queue: PendingCommand[] = [];
   private inFlight = new Map<string, PendingCommand>();
   private waiters: Array<(command: PendingCommand | null) => void> = [];
 
   constructor(options: LocalBrowserBridgeServerOptions) {
     this.token = options.token;
+    this.commandTimeoutMs = options.commandTimeoutMs ?? 30_000;
+    this.pollTimeoutMs = options.pollTimeoutMs ?? 25_000;
+  }
+
+  private markInFlight(pending: PendingCommand): void {
+    this.inFlight.set(pending.request.requestId, pending);
+    pending.timeout = setTimeout(() => {
+      if (this.inFlight.delete(pending.request.requestId)) {
+        pending.reject(new Error(`Timed out waiting for browser response: ${pending.request.command}`));
+      }
+    }, this.commandTimeoutMs);
   }
 
   enqueueCommand(command: AutomationProtocolCommand, args: Record<string, unknown> = {}): Promise<AutomationProtocolResponse> {
@@ -59,7 +75,7 @@ export class LocalBrowserBridgeServer {
       const pending: PendingCommand = { request, resolve, reject };
       const waiter = this.waiters.shift();
       if (waiter) {
-        this.inFlight.set(request.requestId, pending);
+        this.markInFlight(pending);
         waiter(pending);
       } else {
         this.queue.push(pending);
@@ -71,16 +87,20 @@ export class LocalBrowserBridgeServer {
     assertToken(token, this.token);
     const existing = this.queue.shift();
     if (existing) {
-      this.inFlight.set(existing.request.requestId, existing);
+      this.markInFlight(existing);
       return existing.request;
     }
 
     return new Promise((resolve) => {
-      const timer = setTimeout(() => resolve(null), 25_000);
-      this.waiters.push((pending) => {
+      const waiter = (pending: PendingCommand | null) => {
         clearTimeout(timer);
         resolve(pending?.request ?? null);
-      });
+      };
+      const timer = setTimeout(() => {
+        this.waiters = this.waiters.filter((item) => item !== waiter);
+        resolve(null);
+      }, this.pollTimeoutMs);
+      this.waiters.push(waiter);
     });
   }
 
@@ -88,6 +108,9 @@ export class LocalBrowserBridgeServer {
     assertToken(token, this.token);
     const pending = this.inFlight.get(response.requestId);
     if (pending) {
+      if (pending.timeout) {
+        clearTimeout(pending.timeout);
+      }
       pending.resolve(response);
       this.inFlight.delete(response.requestId);
     }

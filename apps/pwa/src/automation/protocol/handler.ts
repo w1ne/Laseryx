@@ -4,13 +4,24 @@ import type { AgentJobInput, GenerateData, InspectData, PreflightData } from "..
 import { AUTOMATION_PROTOCOL_VERSION, type AutomationProtocolResponse } from "./types";
 import { validateProtocolRequest } from "./validate";
 
+function responseRequestId(input: unknown): string {
+  return typeof input === "object" &&
+    input !== null &&
+    !Array.isArray(input) &&
+    "requestId" in input &&
+    typeof input.requestId === "string" &&
+    input.requestId.length > 0
+    ? input.requestId
+    : "unknown";
+}
+
 export function handleProtocolRequest(input: unknown, job: AgentJobInput): AutomationProtocolResponse {
   const validation = validateProtocolRequest(input);
 
   if (!validation.ok) {
     return {
       protocolVersion: AUTOMATION_PROTOCOL_VERSION,
-      requestId: "unknown",
+      requestId: responseRequestId(input),
       ...errorResponse<InspectData | PreflightData | GenerateData>("inspect", validation.errors)
     };
   }

@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 
 const appRoot = dirname(dirname(fileURLToPath(import.meta.url)));
-const lockPath = join(appRoot, "dist-mcp", ".build.lock");
+const lockPath = join(appRoot, ".laseryx-build-locks", "mcp");
 
 function run(command, args, options = {}) {
   return new Promise((resolve) => {

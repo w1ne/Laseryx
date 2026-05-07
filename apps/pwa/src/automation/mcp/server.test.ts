@@ -39,6 +39,7 @@ describe("mcp json-rpc server", () => {
     const response = await handleMcpRequest({ jsonrpc: "2.0", id: "tools", method: "tools/list" }, createContext());
 
     expect(response?.result.tools.map((tool: { name: string }) => tool.name)).toEqual([
+      "laseryx_status",
       "laseryx_browser_run",
       "laseryx_project_list",
       "laseryx_project_open",

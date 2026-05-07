@@ -19,6 +19,7 @@ function createPoster(): BrowserCommandPoster {
 describe("mcp tools", () => {
   it("lists deterministic tool definitions", () => {
     expect(listMcpTools().map((tool) => tool.name)).toEqual([
+      "laseryx_status",
       "laseryx_browser_run",
       "laseryx_project_list",
       "laseryx_project_open",
@@ -26,6 +27,19 @@ describe("mcp tools", () => {
       "laseryx_document_add_rect",
       "laseryx_generate"
     ]);
+  });
+
+  it("reports MCP bridge configuration without requiring a browser command", async () => {
+    const poster = createPoster();
+    const result = await callMcpTool("laseryx_status", {}, { bridgeUrl: "http://127.0.0.1:17321", token: "dev", postBrowserCommand: poster });
+
+    expect(poster).not.toHaveBeenCalled();
+    expect(result.isError).toBe(false);
+    expect(JSON.parse(result.content[0].text)).toEqual({
+      ok: true,
+      bridgeUrl: "http://127.0.0.1:17321",
+      tokenConfigured: true
+    });
   });
 
   it("maps project list to the browser protocol", async () => {

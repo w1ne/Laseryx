@@ -83,6 +83,27 @@ describe("automation protocol", () => {
     );
   });
 
+  it("preserves request ids on validation error responses", () => {
+    const response = handleProtocolRequest(
+      {
+        protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+        requestId: "req-bad-command",
+        command: "burn",
+        args: {}
+      },
+      job
+    );
+
+    expect(response).toMatchObject({
+      requestId: "req-bad-command",
+      ok: false
+    });
+    expect(response.errors[0]).toMatchObject({
+      code: "UNKNOWN_COMMAND",
+      message: "Unknown command: burn"
+    });
+  });
+
   it("dispatches inspect through the automation service", () => {
     const response = handleProtocolRequest(
       {

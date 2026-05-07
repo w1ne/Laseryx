@@ -2,6 +2,7 @@ node_modules/
 dist/
 dist-cli/
 dist-mcp/
+.laseryx-build-locks/
 build/
 .vite/
 coverage/

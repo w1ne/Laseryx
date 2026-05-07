@@ -34,6 +34,11 @@ export type McpToolContext = {
 
 const TOOL_DEFINITIONS: McpToolDefinition[] = [
   {
+    name: "laseryx_status",
+    description: "Report MCP bridge configuration without sending a browser command.",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false }
+  },
+  {
     name: "laseryx_browser_run",
     description: "Run any Laseryx browser automation protocol command through the configured local bridge.",
     inputSchema: {
@@ -122,8 +127,10 @@ function requireString(args: Record<string, unknown>, key: string): string {
   return value;
 }
 
-function commandForTool(name: string, args: Record<string, unknown>): { command: AutomationProtocolCommand; args: Record<string, unknown> } {
+function commandForTool(name: string, args: Record<string, unknown>): { command: AutomationProtocolCommand; args: Record<string, unknown> } | null {
   switch (name) {
+    case "laseryx_status":
+      return null;
     case "laseryx_browser_run":
       return {
         command: requireString(args, "command") as AutomationProtocolCommand,
@@ -152,6 +159,13 @@ export async function callMcpTool(name: string, rawArgs: unknown, context: McpTo
   try {
     const args = asRecord(rawArgs);
     const mapped = commandForTool(name, args);
+    if (!mapped) {
+      return textResult({
+        ok: true,
+        bridgeUrl: context.bridgeUrl,
+        tokenConfigured: context.token.length > 0
+      });
+    }
     const postBrowserCommand = context.postBrowserCommand ?? defaultPostBrowserCommand;
     const response = await postBrowserCommand(context.bridgeUrl, context.token, mapped.command, mapped.args);
     return textResult(response, !response.ok);

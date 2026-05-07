@@ -57,4 +57,33 @@ describe("LocalBrowserBridgeServer", () => {
     });
     await expect(pending).resolves.toMatchObject({ ok: true });
   });
+
+  it("rejects a pending command when no browser response arrives before the timeout", async () => {
+    const bridge = new LocalBrowserBridgeServer({ token: "dev", commandTimeoutMs: 5 });
+    const pending = bridge.enqueueCommand("inspect", {});
+
+    await expect(bridge.takeNextCommand("dev")).resolves.toMatchObject({ command: "inspect" });
+    await expect(pending).rejects.toThrow("Timed out waiting for browser response");
+  });
+
+  it("does not lose commands after an empty browser poll times out", async () => {
+    const bridge = new LocalBrowserBridgeServer({ token: "dev", pollTimeoutMs: 5 });
+
+    await expect(bridge.takeNextCommand("dev")).resolves.toBeNull();
+
+    const pending = bridge.enqueueCommand("inspect", {});
+    const next = await bridge.takeNextCommand("dev");
+
+    expect(next).toMatchObject({ command: "inspect" });
+    bridge.acceptResponse("dev", {
+      protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+      requestId: next?.requestId ?? "",
+      ok: true,
+      command: "inspect",
+      data: { summary: { document: { objectCount: 0 } } },
+      warnings: [],
+      errors: []
+    });
+    await expect(pending).resolves.toMatchObject({ ok: true });
+  });
 });
