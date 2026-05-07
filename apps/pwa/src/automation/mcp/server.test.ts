@@ -46,6 +46,8 @@ describe("mcp json-rpc server", () => {
       "laseryx_project_open",
       "laseryx_project_save",
       "laseryx_project_export_json",
+      "laseryx_project_import_json",
+      "laseryx_project_delete",
       "laseryx_document_add_rect",
       "laseryx_document_list_objects",
       "laseryx_document_update_transform",

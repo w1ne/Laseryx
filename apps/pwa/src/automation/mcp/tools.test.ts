@@ -26,6 +26,8 @@ describe("mcp tools", () => {
       "laseryx_project_open",
       "laseryx_project_save",
       "laseryx_project_export_json",
+      "laseryx_project_import_json",
+      "laseryx_project_delete",
       "laseryx_document_add_rect",
       "laseryx_document_list_objects",
       "laseryx_document_update_transform",
@@ -80,12 +82,98 @@ describe("mcp tools", () => {
 
   it("maps project lifecycle typed tools to automation commands", async () => {
     const poster = createPoster();
+    const job = { document: { version: 1, units: "mm", layers: [], objects: [] }, camSettings: { operations: [] } };
 
     await callMcpTool("laseryx_project_new", {}, { bridgeUrl: "http://127.0.0.1:17321", token: "dev", postBrowserCommand: poster });
     await callMcpTool("laseryx_project_export_json", {}, { bridgeUrl: "http://127.0.0.1:17321", token: "dev", postBrowserCommand: poster });
+    await callMcpTool("laseryx_project_import_json", { job }, { bridgeUrl: "http://127.0.0.1:17321", token: "dev", postBrowserCommand: poster });
+    await callMcpTool("laseryx_project_delete", { id: "project-1" }, { bridgeUrl: "http://127.0.0.1:17321", token: "dev", postBrowserCommand: poster });
 
     expect(poster).toHaveBeenNthCalledWith(1, "http://127.0.0.1:17321", "dev", "project.new", {});
     expect(poster).toHaveBeenNthCalledWith(2, "http://127.0.0.1:17321", "dev", "project.exportJson", {});
+    expect(poster).toHaveBeenNthCalledWith(3, "http://127.0.0.1:17321", "dev", "project.importJson", { job });
+    expect(poster).toHaveBeenNthCalledWith(4, "http://127.0.0.1:17321", "dev", "project.delete", { id: "project-1" });
+  });
+
+  it("adds a compact summary content block for generation responses", async () => {
+    const poster = vi.fn(async () => ({
+      protocolVersion: 1,
+      requestId: "req-generate",
+      ok: true,
+      command: "generate" as const,
+      data: {
+        summary: {
+          document: { objectCount: 2 },
+          cam: { operationCount: 1 },
+          machine: { id: "default-machine" }
+        },
+        preview: { bbox: { minX: 1, minY: 2, maxX: 10, maxY: 20 } },
+        stats: { estTimeS: 12.5, travelMm: 4, markMm: 16, segments: 3 },
+        gcode: "G0 X0 Y0"
+      },
+      warnings: [],
+      errors: []
+    }));
+
+    const result = await callMcpTool("laseryx_generate", { includeGcode: true }, { bridgeUrl: "http://127.0.0.1:17321", token: "dev", postBrowserCommand: poster });
+    const summary = JSON.parse(result.content[1].text);
+
+    expect(result.structuredContent).toEqual(summary);
+    expect(summary).toEqual({
+      summary: {
+        command: "generate",
+        ok: true,
+        objectCount: 2,
+        operationCount: 1,
+        bbox: { minX: 1, minY: 2, maxX: 10, maxY: 20 },
+        estTimeS: 12.5,
+        gcodeIncluded: true
+      }
+    });
+  });
+
+  it("adds compact summaries for project, object list, and CAM responses", async () => {
+    const poster = vi.fn(async (_bridgeUrl, _token, command) => ({
+      protocolVersion: 1,
+      requestId: "req-summary",
+      ok: true,
+      command,
+      data: command === "document.listObjects"
+        ? { objects: [{ id: "rect-1", kind: "shape", layerId: "layer-1" }], selectedObjectId: "rect-1" }
+        : command === "cam.setOperation"
+          ? { operation: { id: "op-1", speed: 1400, power: 62, passes: 2 } }
+          : { project: { id: "project-1", name: "Project 1", summary: { objectCount: 1, operationCount: 1 } } },
+      warnings: [],
+      errors: []
+    }));
+
+    const list = await callMcpTool("laseryx_document_list_objects", {}, { bridgeUrl: "http://127.0.0.1:17321", token: "dev", postBrowserCommand: poster });
+    const cam = await callMcpTool("laseryx_cam_set_operation", { operation: "op-1", speed: 1400 }, { bridgeUrl: "http://127.0.0.1:17321", token: "dev", postBrowserCommand: poster });
+    const save = await callMcpTool("laseryx_project_save", { id: "project-1", name: "Project 1" }, { bridgeUrl: "http://127.0.0.1:17321", token: "dev", postBrowserCommand: poster });
+
+    expect(JSON.parse(list.content[1].text)).toEqual({
+      summary: {
+        command: "document.listObjects",
+        ok: true,
+        objectCount: 1,
+        objects: [{ id: "rect-1", kind: "shape", layerId: "layer-1" }],
+        selectedObjectId: "rect-1"
+      }
+    });
+    expect(JSON.parse(cam.content[1].text)).toEqual({
+      summary: {
+        command: "cam.setOperation",
+        ok: true,
+        operation: { id: "op-1", speed: 1400, power: 62, passes: 2 }
+      }
+    });
+    expect(JSON.parse(save.content[1].text)).toEqual({
+      summary: {
+        command: "project.save",
+        ok: true,
+        project: { id: "project-1", name: "Project 1", summary: { objectCount: 1, operationCount: 1 } }
+      }
+    });
   });
 
   it("maps document typed tools to automation commands", async () => {

@@ -17,6 +17,7 @@ export type McpToolDefinition = {
 export type McpToolResult = {
   content: Array<{ type: "text"; text: string }>;
   isError?: boolean;
+  structuredContent?: Record<string, unknown>;
 };
 
 export type BrowserCommandPoster = (
@@ -87,6 +88,28 @@ const TOOL_DEFINITIONS: McpToolDefinition[] = [
     name: "laseryx_project_export_json",
     description: "Export the current Laseryx browser project as JSON.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false }
+  },
+  {
+    name: "laseryx_project_import_json",
+    description: "Import a Laseryx project JSON object into the browser workspace.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        job: { type: "object", additionalProperties: true }
+      },
+      required: ["job"],
+      additionalProperties: false
+    }
+  },
+  {
+    name: "laseryx_project_delete",
+    description: "Delete a saved Laseryx browser project by id.",
+    inputSchema: {
+      type: "object",
+      properties: { id: { type: "string" } },
+      required: ["id"],
+      additionalProperties: false
+    }
   },
   {
     name: "laseryx_document_add_rect",
@@ -178,6 +201,101 @@ function textResult(value: unknown, isError = false): McpToolResult {
   };
 }
 
+function maybeRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : null;
+}
+
+function arrayLength(value: unknown): number | undefined {
+  return Array.isArray(value) ? value.length : undefined;
+}
+
+function summarizeJob(job: unknown): Record<string, unknown> | undefined {
+  const jobRecord = maybeRecord(job);
+  const document = maybeRecord(jobRecord?.document);
+  const camSettings = maybeRecord(jobRecord?.camSettings);
+  if (!document && !camSettings) {
+    return undefined;
+  }
+  return {
+    objectCount: arrayLength(document?.objects) ?? 0,
+    layerCount: arrayLength(document?.layers) ?? 0,
+    operationCount: arrayLength(camSettings?.operations) ?? 0
+  };
+}
+
+function summarizeResponse(response: AutomationProtocolResponse): Record<string, unknown> | null {
+  const data = maybeRecord(response.data);
+  const base = { command: response.command, ok: response.ok };
+  if (!data) {
+    return null;
+  }
+
+  if (response.command === "generate") {
+    const summary = maybeRecord(data.summary);
+    const document = maybeRecord(summary?.document);
+    const cam = maybeRecord(summary?.cam);
+    const preview = maybeRecord(data.preview);
+    const stats = maybeRecord(data.stats);
+    return {
+      ...base,
+      objectCount: document?.objectCount,
+      operationCount: cam?.operationCount,
+      bbox: preview?.bbox,
+      estTimeS: stats?.estTimeS,
+      gcodeIncluded: typeof data.gcode === "string" && data.gcode.length > 0
+    };
+  }
+
+  if (response.command === "document.listObjects") {
+    return {
+      ...base,
+      objectCount: arrayLength(data.objects) ?? 0,
+      objects: Array.isArray(data.objects) ? data.objects : [],
+      selectedObjectId: data.selectedObjectId ?? null
+    };
+  }
+
+  if (response.command === "cam.setOperation") {
+    return { ...base, operation: data.operation };
+  }
+
+  if ("project" in data) {
+    return { ...base, project: data.project };
+  }
+
+  if ("projects" in data) {
+    return {
+      ...base,
+      projectCount: arrayLength(data.projects) ?? 0,
+      projects: Array.isArray(data.projects) ? data.projects : []
+    };
+  }
+
+  if ("job" in data) {
+    return {
+      ...base,
+      job: summarizeJob(data.job)
+    };
+  }
+
+  if ("deletedProjectId" in data) {
+    return { ...base, deletedProjectId: data.deletedProjectId };
+  }
+
+  return null;
+}
+
+function protocolResult(response: AutomationProtocolResponse): McpToolResult {
+  const content = [{ type: "text" as const, text: JSON.stringify(response, null, 2) }];
+  const summary = summarizeResponse(response);
+  if (summary) {
+    const structuredContent = { summary };
+    content.push({ type: "text", text: JSON.stringify(structuredContent, null, 2) });
+    return { content, structuredContent, isError: !response.ok };
+  }
+  return { content, isError: !response.ok };
+}
+
 function requireString(args: Record<string, unknown>, key: string): string {
   const value = args[key];
   if (typeof value !== "string" || value.trim() === "") {
@@ -205,6 +323,10 @@ function commandForTool(name: string, args: Record<string, unknown>): { command:
       return { command: "project.save", args };
     case "laseryx_project_export_json":
       return { command: "project.exportJson", args: {} };
+    case "laseryx_project_import_json":
+      return { command: "project.importJson", args: { job: asRecord(args.job) } };
+    case "laseryx_project_delete":
+      return { command: "project.delete", args: { id: requireString(args, "id") } };
     case "laseryx_document_add_rect":
       return { command: "document.addRect", args };
     case "laseryx_document_list_objects":
@@ -239,7 +361,7 @@ export async function callMcpTool(name: string, rawArgs: unknown, context: McpTo
     }
     const postBrowserCommand = context.postBrowserCommand ?? defaultPostBrowserCommand;
     const response = await postBrowserCommand(context.bridgeUrl, context.token, mapped.command, mapped.args);
-    return textResult(response, !response.ok);
+    return protocolResult(response);
   } catch (error) {
     return textResult(error instanceof Error ? error.message : String(error), true);
   }
