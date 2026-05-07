@@ -52,6 +52,11 @@ const TOOL_DEFINITIONS: McpToolDefinition[] = [
     }
   },
   {
+    name: "laseryx_project_new",
+    description: "Reset the browser workspace to a new Laseryx project.",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false }
+  },
+  {
     name: "laseryx_project_list",
     description: "List saved Laseryx browser projects.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false }
@@ -79,6 +84,11 @@ const TOOL_DEFINITIONS: McpToolDefinition[] = [
     }
   },
   {
+    name: "laseryx_project_export_json",
+    description: "Export the current Laseryx browser project as JSON.",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false }
+  },
+  {
     name: "laseryx_document_add_rect",
     description: "Add a rectangle to the current Laseryx document.",
     inputSchema: {
@@ -92,6 +102,55 @@ const TOOL_DEFINITIONS: McpToolDefinition[] = [
         height: { type: "number" }
       },
       required: ["object", "layer", "width", "height"],
+      additionalProperties: false
+    }
+  },
+  {
+    name: "laseryx_document_list_objects",
+    description: "List objects in the current Laseryx document.",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false }
+  },
+  {
+    name: "laseryx_document_update_transform",
+    description: "Update transform fields for an object in the current Laseryx document.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        object: { type: "string" },
+        x: { type: "number" },
+        y: { type: "number" },
+        rotation: { type: "number" },
+        scaleX: { type: "number" },
+        scaleY: { type: "number" }
+      },
+      required: ["object"],
+      additionalProperties: false
+    }
+  },
+  {
+    name: "laseryx_document_delete_object",
+    description: "Delete an object from the current Laseryx document.",
+    inputSchema: {
+      type: "object",
+      properties: { object: { type: "string" } },
+      required: ["object"],
+      additionalProperties: false
+    }
+  },
+  {
+    name: "laseryx_cam_set_operation",
+    description: "Update a CAM operation in the current Laseryx project.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        operation: { type: "string" },
+        name: { type: "string" },
+        mode: { type: "string" },
+        speed: { type: "number" },
+        power: { type: "number" },
+        passes: { type: "number" }
+      },
+      required: ["operation"],
       additionalProperties: false
     }
   },
@@ -136,14 +195,26 @@ function commandForTool(name: string, args: Record<string, unknown>): { command:
         command: requireString(args, "command") as AutomationProtocolCommand,
         args: asRecord(args.args)
       };
+    case "laseryx_project_new":
+      return { command: "project.new", args: {} };
     case "laseryx_project_list":
       return { command: "project.list", args: {} };
     case "laseryx_project_open":
       return { command: "project.open", args: { id: requireString(args, "id") } };
     case "laseryx_project_save":
       return { command: "project.save", args };
+    case "laseryx_project_export_json":
+      return { command: "project.exportJson", args: {} };
     case "laseryx_document_add_rect":
       return { command: "document.addRect", args };
+    case "laseryx_document_list_objects":
+      return { command: "document.listObjects", args: {} };
+    case "laseryx_document_update_transform":
+      return { command: "document.updateObjectTransform", args };
+    case "laseryx_document_delete_object":
+      return { command: "document.deleteObject", args: { object: requireString(args, "object") } };
+    case "laseryx_cam_set_operation":
+      return { command: "cam.setOperation", args };
     case "laseryx_generate":
       return { command: "generate", args };
     default:

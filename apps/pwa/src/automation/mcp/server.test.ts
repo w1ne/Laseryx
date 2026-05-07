@@ -41,10 +41,16 @@ describe("mcp json-rpc server", () => {
     expect(response?.result.tools.map((tool: { name: string }) => tool.name)).toEqual([
       "laseryx_status",
       "laseryx_browser_run",
+      "laseryx_project_new",
       "laseryx_project_list",
       "laseryx_project_open",
       "laseryx_project_save",
+      "laseryx_project_export_json",
       "laseryx_document_add_rect",
+      "laseryx_document_list_objects",
+      "laseryx_document_update_transform",
+      "laseryx_document_delete_object",
+      "laseryx_cam_set_operation",
       "laseryx_generate"
     ]);
   });

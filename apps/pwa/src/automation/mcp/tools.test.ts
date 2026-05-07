@@ -21,10 +21,16 @@ describe("mcp tools", () => {
     expect(listMcpTools().map((tool) => tool.name)).toEqual([
       "laseryx_status",
       "laseryx_browser_run",
+      "laseryx_project_new",
       "laseryx_project_list",
       "laseryx_project_open",
       "laseryx_project_save",
+      "laseryx_project_export_json",
       "laseryx_document_add_rect",
+      "laseryx_document_list_objects",
+      "laseryx_document_update_transform",
+      "laseryx_document_delete_object",
+      "laseryx_cam_set_operation",
       "laseryx_generate"
     ]);
   });
@@ -69,6 +75,56 @@ describe("mcp tools", () => {
       y: 20,
       width: 30,
       height: 40
+    });
+  });
+
+  it("maps project lifecycle typed tools to automation commands", async () => {
+    const poster = createPoster();
+
+    await callMcpTool("laseryx_project_new", {}, { bridgeUrl: "http://127.0.0.1:17321", token: "dev", postBrowserCommand: poster });
+    await callMcpTool("laseryx_project_export_json", {}, { bridgeUrl: "http://127.0.0.1:17321", token: "dev", postBrowserCommand: poster });
+
+    expect(poster).toHaveBeenNthCalledWith(1, "http://127.0.0.1:17321", "dev", "project.new", {});
+    expect(poster).toHaveBeenNthCalledWith(2, "http://127.0.0.1:17321", "dev", "project.exportJson", {});
+  });
+
+  it("maps document typed tools to automation commands", async () => {
+    const poster = createPoster();
+
+    await callMcpTool("laseryx_document_list_objects", {}, { bridgeUrl: "http://127.0.0.1:17321", token: "dev", postBrowserCommand: poster });
+    await callMcpTool("laseryx_document_update_transform", {
+      object: "rect-1",
+      x: 5,
+      y: 7,
+      rotation: 15
+    }, { bridgeUrl: "http://127.0.0.1:17321", token: "dev", postBrowserCommand: poster });
+    await callMcpTool("laseryx_document_delete_object", { object: "rect-1" }, { bridgeUrl: "http://127.0.0.1:17321", token: "dev", postBrowserCommand: poster });
+
+    expect(poster).toHaveBeenNthCalledWith(1, "http://127.0.0.1:17321", "dev", "document.listObjects", {});
+    expect(poster).toHaveBeenNthCalledWith(2, "http://127.0.0.1:17321", "dev", "document.updateObjectTransform", {
+      object: "rect-1",
+      x: 5,
+      y: 7,
+      rotation: 15
+    });
+    expect(poster).toHaveBeenNthCalledWith(3, "http://127.0.0.1:17321", "dev", "document.deleteObject", { object: "rect-1" });
+  });
+
+  it("maps CAM typed tools to automation commands", async () => {
+    const poster = createPoster();
+
+    await callMcpTool("laseryx_cam_set_operation", {
+      operation: "op-1",
+      speed: 1600,
+      power: 55,
+      passes: 2
+    }, { bridgeUrl: "http://127.0.0.1:17321", token: "dev", postBrowserCommand: poster });
+
+    expect(poster).toHaveBeenNthCalledWith(1, "http://127.0.0.1:17321", "dev", "cam.setOperation", {
+      operation: "op-1",
+      speed: 1600,
+      power: 55,
+      passes: 2
     });
   });
 
