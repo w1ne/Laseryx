@@ -1,5 +1,6 @@
 import { runAgentCommand } from "../agentApi";
 import { errorResponse } from "../responses";
+import { automationCapabilities, type AutomationCapabilitiesData } from "../capabilities";
 import type { AgentJobInput, GenerateData, InspectData, PreflightData } from "../types";
 import { AUTOMATION_PROTOCOL_VERSION, type AutomationProtocolResponse } from "./types";
 import { validateProtocolRequest } from "./validate";
@@ -24,6 +25,18 @@ export function handleProtocolRequest(input: unknown, job: AgentJobInput): Autom
       requestId: responseRequestId(input),
       ...errorResponse<InspectData | PreflightData | GenerateData>("inspect", validation.errors)
     };
+  }
+
+  if (validation.request.command === "automation.capabilities") {
+    return {
+      protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+      requestId: validation.request.requestId,
+      ok: true,
+      command: "automation.capabilities",
+      data: { capabilities: automationCapabilities() } satisfies AutomationCapabilitiesData,
+      warnings: [],
+      errors: []
+    } as AutomationProtocolResponse;
   }
 
   const response = runAgentCommand(validation.request.command, job, validation.request.args);

@@ -1,5 +1,6 @@
 import type { AutomationProtocolCommand, AutomationProtocolResponse } from "../protocol/types";
 import { fetchBridgeStatus as defaultFetchBridgeStatus, postBrowserCommand as defaultPostBrowserCommand, type BrowserBridgeStatus } from "../cli/browserBridgeServer";
+import { automationCapabilities } from "../capabilities";
 
 type JsonSchema = {
   type: "object";
@@ -48,6 +49,11 @@ const TOOL_DEFINITIONS: McpToolDefinition[] = [
   {
     name: "laseryx_bridge_status",
     description: "Report live local browser bridge lifecycle status.",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false }
+  },
+  {
+    name: "laseryx_capabilities",
+    description: "List supported Laseryx automation commands and their metadata.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false }
   },
   {
@@ -344,6 +350,8 @@ function commandForTool(name: string, args: Record<string, unknown>): { command:
       return null;
     case "laseryx_bridge_status":
       return null;
+    case "laseryx_capabilities":
+      return null;
     case "laseryx_browser_run":
       return {
         command: requireString(args, "command") as AutomationProtocolCommand,
@@ -403,6 +411,12 @@ export async function callMcpTool(name: string, rawArgs: unknown, context: McpTo
     const args = asRecord(rawArgs);
     const mapped = commandForTool(name, args);
     if (!mapped) {
+      if (name === "laseryx_capabilities") {
+        return textResult({
+          ok: true,
+          capabilities: automationCapabilities()
+        });
+      }
       if (name === "laseryx_bridge_status") {
         const postBridgeStatus = context.postBridgeStatus ?? defaultFetchBridgeStatus;
         const status = await postBridgeStatus(context.bridgeUrl, context.token);

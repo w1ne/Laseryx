@@ -144,4 +144,41 @@ describe("in-app automation bridge", () => {
     expect(response.command).toBe("project.list");
     expect(response.data).toEqual({ projects: [] });
   });
+
+  it("routes project summary through the live executor", async () => {
+    const bridge = createInAppAutomationBridge(() => job, {
+      request: async (request) => ({
+        protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+        requestId: request.requestId,
+        ok: true,
+        command: "project.summary",
+        data: {
+          jobSummary: {
+            document: { objectCount: 0 },
+            cam: { operationCount: 1 },
+            machine: { id: "default-machine" }
+          }
+        },
+        warnings: [],
+        errors: []
+      })
+    });
+
+    const response = await bridge.request({
+      protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+      requestId: "req-live-project-summary",
+      command: "project.summary",
+      args: {}
+    });
+
+    expect(response.ok).toBe(true);
+    expect(response.command).toBe("project.summary");
+    expect(response.data).toEqual({
+      jobSummary: {
+        document: { objectCount: 0 },
+        cam: { operationCount: 1 },
+        machine: { id: "default-machine" }
+      }
+    });
+  });
 });

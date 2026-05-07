@@ -124,6 +124,26 @@ describe("automation protocol", () => {
     expect(response.data?.summary.document.objectCount).toBe(1);
   });
 
+  it("dispatches automation capability discovery without a job mutation", () => {
+    const response = handleProtocolRequest(
+      {
+        protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+        requestId: "req-capabilities",
+        command: "automation.capabilities",
+        args: {}
+      },
+      job
+    );
+
+    expect(response).toMatchObject({
+      protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+      requestId: "req-capabilities",
+      ok: true,
+      command: "automation.capabilities"
+    });
+    expect(response.data?.capabilities.map((capability) => capability.command)).toContain("project.summary");
+  });
+
   it("dispatches generate through the automation service", () => {
     const response = handleProtocolRequest(
       {

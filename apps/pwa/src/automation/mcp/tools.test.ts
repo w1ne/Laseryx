@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { automationCapabilities } from "../capabilities";
 import type { AutomationProtocolResponse } from "../protocol/types";
 import { callMcpTool, listMcpTools, type BrowserCommandPoster } from "./tools";
 
@@ -21,6 +22,7 @@ describe("mcp tools", () => {
     expect(listMcpTools().map((tool) => tool.name)).toEqual([
       "laseryx_status",
       "laseryx_bridge_status",
+      "laseryx_capabilities",
       "laseryx_browser_run",
       "laseryx_project_new",
       "laseryx_project_list",
@@ -37,6 +39,19 @@ describe("mcp tools", () => {
       "laseryx_cam_set_operation",
       "laseryx_generate"
     ]);
+  });
+
+  it("returns automation capabilities without requiring a browser command", async () => {
+    const poster = createPoster();
+    const result = await callMcpTool("laseryx_capabilities", {}, { bridgeUrl: "http://127.0.0.1:17321", token: "dev", postBrowserCommand: poster });
+    const parsed = JSON.parse(result.content[0].text);
+
+    expect(poster).not.toHaveBeenCalled();
+    expect(result.isError).toBe(false);
+    expect(parsed.ok).toBe(true);
+    expect(parsed.capabilities.map((capability: { command: string }) => capability.command)).toEqual(
+      automationCapabilities().map((capability) => capability.command)
+    );
   });
 
   it("reports MCP bridge configuration without requiring a browser command", async () => {

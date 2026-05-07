@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { cliAutomationCapabilities } from "../capabilities";
 import { parseCliArgs } from "./args";
 
 describe("parseCliArgs", () => {
@@ -65,6 +66,24 @@ describe("parseCliArgs", () => {
       token: "dev",
       args: {}
     });
+  });
+
+  it("accepts every CLI-exposed browser automation capability", () => {
+    for (const capability of cliAutomationCapabilities()) {
+      expect(parseCliArgs([
+        "browser",
+        "run",
+        capability.command,
+        "--bridge",
+        "http://127.0.0.1:17321",
+        "--token",
+        "dev"
+      ])).toMatchObject({
+        ok: true,
+        mode: "browser-run",
+        command: capability.command
+      });
+    }
   });
 
   it("parses browser status", () => {

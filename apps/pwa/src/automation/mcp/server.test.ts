@@ -41,6 +41,7 @@ describe("mcp json-rpc server", () => {
     expect(response?.result.tools.map((tool: { name: string }) => tool.name)).toEqual([
       "laseryx_status",
       "laseryx_bridge_status",
+      "laseryx_capabilities",
       "laseryx_browser_run",
       "laseryx_project_new",
       "laseryx_project_list",

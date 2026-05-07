@@ -1,5 +1,6 @@
 import type { AutomationProtocolCommand } from "../protocol/types";
 import type { AgentCommand } from "../types";
+import { cliAutomationCapabilities } from "../capabilities";
 
 type ParsedArgs =
   | { ok: true; mode: "file"; command: AgentCommand; inputPath: string; gcodeOut?: string; includeGcode: boolean }
@@ -10,29 +11,7 @@ type ParsedArgs =
   | { ok: false; message: string };
 
 const COMMANDS = new Set(["inspect", "preflight", "generate"]);
-const BROWSER_COMMANDS = new Set([
-  "inspect",
-  "preflight",
-  "generate",
-  "cam.setOperation",
-  "ui.setActiveTab",
-  "ui.setPreviewMode",
-  "ui.selectDesignPanel",
-  "document.listObjects",
-  "document.selectObject",
-  "document.addRect",
-  "document.updateObjectTransform",
-  "document.setObjectLayer",
-  "document.deleteObject",
-  "project.new",
-  "project.save",
-  "project.list",
-  "project.open",
-  "project.delete",
-  "project.summary",
-  "project.exportJson",
-  "project.importJson"
-]);
+const BROWSER_COMMANDS = new Set(cliAutomationCapabilities().map((capability) => capability.command));
 
 function readOption(rest: string[], name: string): string | undefined {
   const index = rest.indexOf(name);

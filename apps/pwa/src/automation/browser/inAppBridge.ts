@@ -1,30 +1,15 @@
 import type { AgentJobInput } from "../types";
 import { handleProtocolRequest } from "../protocol/handler";
 import type { AutomationProtocolRequest, AutomationProtocolResponse, LiveAutomationCommand } from "../protocol/types";
+import { liveAutomationCapabilities } from "../capabilities";
 
 export type InAppAutomationBridge = {
   request: (request: AutomationProtocolRequest) => AutomationProtocolResponse | Promise<AutomationProtocolResponse>;
 };
 
-const LIVE_COMMANDS = new Set<LiveAutomationCommand>([
-  "cam.setOperation",
-  "ui.setActiveTab",
-  "ui.setPreviewMode",
-  "ui.selectDesignPanel",
-  "document.listObjects",
-  "document.selectObject",
-  "document.addRect",
-  "document.updateObjectTransform",
-  "document.setObjectLayer",
-  "document.deleteObject",
-  "project.new",
-  "project.save",
-  "project.list",
-  "project.open",
-  "project.delete",
-  "project.exportJson",
-  "project.importJson"
-]);
+const LIVE_COMMANDS = new Set<LiveAutomationCommand>(
+  liveAutomationCapabilities().map((capability) => capability.command as LiveAutomationCommand)
+);
 
 export function createInAppAutomationBridge(
   getJob: () => AgentJobInput,

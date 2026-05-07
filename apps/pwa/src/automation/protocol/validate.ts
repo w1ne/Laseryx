@@ -1,34 +1,11 @@
 import { diagnostic } from "../responses";
+import { isAutomationCommand } from "../capabilities";
 import {
   AUTOMATION_PROTOCOL_VERSION,
   type AutomationProtocolCommand,
   type AutomationProtocolRequest,
   type AutomationProtocolValidationResult
 } from "./types";
-
-const SUPPORTED_COMMANDS = new Set<AutomationProtocolCommand>([
-  "inspect",
-  "preflight",
-  "generate",
-  "cam.setOperation",
-  "ui.setActiveTab",
-  "ui.setPreviewMode",
-  "ui.selectDesignPanel",
-  "document.listObjects",
-  "document.selectObject",
-  "document.addRect",
-  "document.updateObjectTransform",
-  "document.setObjectLayer",
-  "document.deleteObject",
-  "project.new",
-  "project.save",
-  "project.list",
-  "project.open",
-  "project.delete",
-  "project.summary",
-  "project.exportJson",
-  "project.importJson"
-]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -57,7 +34,7 @@ export function validateProtocolRequest(input: unknown): AutomationProtocolValid
 
   if (typeof input.command !== "string" || input.command.length === 0) {
     errors.push(diagnostic("INVALID_PROTOCOL", "error", "Missing command"));
-  } else if (!SUPPORTED_COMMANDS.has(input.command as AutomationProtocolCommand)) {
+  } else if (!isAutomationCommand(input.command)) {
     errors.push(diagnostic("UNKNOWN_COMMAND", "error", `Unknown command: ${input.command}`));
   }
 
