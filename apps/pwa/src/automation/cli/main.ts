@@ -1,7 +1,7 @@
 import { runAgentCommand } from "../agentApi";
 import { diagnostic, errorResponse } from "../responses";
 import { parseCliArgs } from "./args";
-import { LocalBrowserBridgeServer, postBrowserCommand } from "./browserBridgeServer";
+import { fetchBridgeStatus, LocalBrowserBridgeServer, postBrowserCommand } from "./browserBridgeServer";
 import { readJsonFile, writeTextFile } from "./fileIo";
 
 export type CliResult = {
@@ -11,6 +11,13 @@ export type CliResult = {
 
 function stringify(value: unknown): string {
   return `${JSON.stringify(value, null, 2)}\n`;
+}
+
+function buildAttachUrl(appUrl: string, bridgeUrl: string, token: string): string {
+  const url = new URL(appUrl);
+  url.searchParams.set("laseryxBridge", bridgeUrl);
+  url.searchParams.set("laseryxToken", token);
+  return url.toString();
 }
 
 export async function runCli(argv: string[]): Promise<CliResult> {
@@ -51,6 +58,30 @@ export async function runCli(argv: string[]): Promise<CliResult> {
     }
   }
 
+  if (parsed.mode === "browser-status") {
+    try {
+      const status = await fetchBridgeStatus(parsed.bridgeUrl, parsed.token);
+      return {
+        exitCode: 0,
+        stdout: stringify(status)
+      };
+    } catch (error) {
+      return {
+        exitCode: 1,
+        stdout: stringify(errorResponse("inspect", [
+          diagnostic("BRIDGE_STATUS_FAILED", "error", error instanceof Error ? error.message : String(error))
+        ]))
+      };
+    }
+  }
+
+  if (parsed.mode === "browser-attach-url") {
+    return {
+      exitCode: 0,
+      stdout: `${buildAttachUrl(parsed.appUrl, parsed.bridgeUrl, parsed.token)}\n`
+    };
+  }
+
   let input: unknown;
   try {
     input = await readJsonFile(parsed.inputPath);
@@ -65,7 +96,7 @@ export async function runCli(argv: string[]): Promise<CliResult> {
 
   let response = runAgentCommand(parsed.command, input, {
     gcodePath: parsed.gcodeOut,
-    includeGcode: parsed.includeGcode || !!parsed.gcodeOut
+    includeGcode: parsed.command === "generate" && !parsed.gcodeOut ? true : parsed.includeGcode || !!parsed.gcodeOut
   });
 
   if (response.ok && parsed.command === "generate" && parsed.gcodeOut && response.data && "gcode" in response.data) {

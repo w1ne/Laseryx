@@ -67,6 +67,52 @@ describe("parseCliArgs", () => {
     });
   });
 
+  it("parses browser status", () => {
+    expect(parseCliArgs([
+      "browser",
+      "status",
+      "--bridge",
+      "http://127.0.0.1:17321",
+      "--token",
+      "dev"
+    ])).toEqual({
+      ok: true,
+      mode: "browser-status",
+      bridgeUrl: "http://127.0.0.1:17321",
+      token: "dev"
+    });
+  });
+
+  it("parses browser attach-url", () => {
+    expect(parseCliArgs([
+      "browser",
+      "attach-url",
+      "--bridge",
+      "http://127.0.0.1:17321",
+      "--token",
+      "dev",
+      "--app",
+      "http://localhost:5173"
+    ])).toEqual({
+      ok: true,
+      mode: "browser-attach-url",
+      appUrl: "http://localhost:5173",
+      bridgeUrl: "http://127.0.0.1:17321",
+      token: "dev"
+    });
+  });
+
+  it("requires bridge URL for browser status and attach-url", () => {
+    expect(parseCliArgs(["browser", "status"])).toEqual({
+      ok: false,
+      message: "Missing --bridge"
+    });
+    expect(parseCliArgs(["browser", "attach-url"])).toEqual({
+      ok: false,
+      message: "Missing --bridge"
+    });
+  });
+
   it("parses browser run command args", () => {
     expect(parseCliArgs([
       "browser",

@@ -9,15 +9,40 @@ type PendingCommand = {
   timeout?: ReturnType<typeof setTimeout>;
 };
 
+export type BrowserBridgeLifecycleState = "detached" | "waiting" | "busy" | "idle";
+
+export type BrowserBridgeStatus = {
+  ok: true;
+  attached: boolean;
+  state: BrowserBridgeLifecycleState;
+  pendingCount: number;
+  inFlightCount: number;
+  waiterCount: number;
+  uptimeMs: number;
+  lastBrowserPollAt: number | null;
+  lastBrowserResponseAt: number | null;
+};
+
+class BridgeHttpError extends Error {
+  constructor(
+    readonly status: number,
+    message: string
+  ) {
+    super(message);
+  }
+}
+
 export type LocalBrowserBridgeServerOptions = {
   token: string;
   commandTimeoutMs?: number;
   pollTimeoutMs?: number;
+  browserStaleMs?: number;
+  now?: () => number;
 };
 
 function assertToken(actual: string | null, expected: string): void {
   if (actual !== expected) {
-    throw new Error("Invalid bridge token");
+    throw new BridgeHttpError(401, "Invalid bridge token");
   }
 }
 
@@ -44,23 +69,59 @@ export class LocalBrowserBridgeServer {
   private readonly token: string;
   private readonly commandTimeoutMs: number;
   private readonly pollTimeoutMs: number;
+  private readonly browserStaleMs: number;
+  private readonly now: () => number;
+  private readonly startedAt: number;
   private queue: PendingCommand[] = [];
   private inFlight = new Map<string, PendingCommand>();
   private waiters: Array<(command: PendingCommand | null) => void> = [];
+  private lastBrowserPollAt: number | null = null;
+  private lastBrowserResponseAt: number | null = null;
 
   constructor(options: LocalBrowserBridgeServerOptions) {
     this.token = options.token;
     this.commandTimeoutMs = options.commandTimeoutMs ?? 30_000;
     this.pollTimeoutMs = options.pollTimeoutMs ?? 25_000;
+    this.browserStaleMs = options.browserStaleMs ?? 30_000;
+    this.now = options.now ?? (() => Date.now());
+    this.startedAt = this.now();
+  }
+
+  private startTimeout(pending: PendingCommand): void {
+    if (pending.timeout) return;
+    pending.timeout = setTimeout(() => {
+      this.inFlight.delete(pending.request.requestId);
+      this.queue = this.queue.filter((item) => item !== pending);
+      pending.reject(new BridgeHttpError(504, `Timed out waiting for browser response: ${pending.request.command}`));
+      this.armQueuedTimeouts();
+    }, this.commandTimeoutMs);
+  }
+
+  private clearTimeout(pending: PendingCommand): void {
+    if (pending.timeout) {
+      clearTimeout(pending.timeout);
+      pending.timeout = undefined;
+    }
+  }
+
+  private armQueuedTimeouts(): void {
+    if (this.inFlight.size > 0) return;
+    for (const pending of this.queue) {
+      this.startTimeout(pending);
+    }
+  }
+
+  private disarmQueuedTimeouts(): void {
+    for (const pending of this.queue) {
+      this.clearTimeout(pending);
+    }
   }
 
   private markInFlight(pending: PendingCommand): void {
+    this.clearTimeout(pending);
     this.inFlight.set(pending.request.requestId, pending);
-    pending.timeout = setTimeout(() => {
-      if (this.inFlight.delete(pending.request.requestId)) {
-        pending.reject(new Error(`Timed out waiting for browser response: ${pending.request.command}`));
-      }
-    }, this.commandTimeoutMs);
+    this.startTimeout(pending);
+    this.disarmQueuedTimeouts();
   }
 
   enqueueCommand(command: AutomationProtocolCommand, args: Record<string, unknown> = {}): Promise<AutomationProtocolResponse> {
@@ -79,12 +140,14 @@ export class LocalBrowserBridgeServer {
         waiter(pending);
       } else {
         this.queue.push(pending);
+        this.armQueuedTimeouts();
       }
     });
   }
 
   async takeNextCommand(token: string): Promise<AutomationProtocolRequest | null> {
     assertToken(token, this.token);
+    this.lastBrowserPollAt = this.now();
     const existing = this.queue.shift();
     if (existing) {
       this.markInFlight(existing);
@@ -94,6 +157,7 @@ export class LocalBrowserBridgeServer {
     return new Promise((resolve) => {
       const waiter = (pending: PendingCommand | null) => {
         clearTimeout(timer);
+        this.lastBrowserPollAt = this.now();
         resolve(pending?.request ?? null);
       };
       const timer = setTimeout(() => {
@@ -106,14 +170,39 @@ export class LocalBrowserBridgeServer {
 
   acceptResponse(token: string, response: AutomationProtocolResponse): void {
     assertToken(token, this.token);
+    this.lastBrowserResponseAt = this.now();
     const pending = this.inFlight.get(response.requestId);
     if (pending) {
-      if (pending.timeout) {
-        clearTimeout(pending.timeout);
-      }
+      this.clearTimeout(pending);
       pending.resolve(response);
       this.inFlight.delete(response.requestId);
+      this.armQueuedTimeouts();
     }
+  }
+
+  getStatus(): BrowserBridgeStatus {
+    const now = this.now();
+    const attached = this.lastBrowserPollAt !== null && now - this.lastBrowserPollAt <= this.browserStaleMs;
+    const pendingCount = this.queue.length;
+    const inFlightCount = this.inFlight.size;
+    const state: BrowserBridgeLifecycleState = inFlightCount > 0
+      ? "busy"
+      : pendingCount > 0
+        ? "waiting"
+        : attached
+          ? "idle"
+          : "detached";
+    return {
+      ok: true,
+      attached,
+      state,
+      pendingCount,
+      inFlightCount,
+      waiterCount: this.waiters.length,
+      uptimeMs: Math.max(0, now - this.startedAt),
+      lastBrowserPollAt: this.lastBrowserPollAt,
+      lastBrowserResponseAt: this.lastBrowserResponseAt
+    };
   }
 
   createHttpServer(): Server {
@@ -134,6 +223,11 @@ export class LocalBrowserBridgeServer {
 
         if (request.method === "GET" && url.pathname === "/health") {
           writeJson(response, 200, { ok: true });
+          return;
+        }
+
+        if (request.method === "GET" && url.pathname === "/status") {
+          writeJson(response, 200, this.getStatus());
           return;
         }
 
@@ -168,7 +262,12 @@ export class LocalBrowserBridgeServer {
 
         writeJson(response, 404, { ok: false, error: "Not found" });
       } catch (error) {
-        writeJson(response, 401, {
+        const status = error instanceof BridgeHttpError
+          ? error.status
+          : error instanceof SyntaxError
+            ? 400
+            : 500;
+        writeJson(response, status, {
           ok: false,
           error: error instanceof Error ? error.message : String(error)
         });
@@ -191,7 +290,36 @@ export async function postBrowserCommand(
     body: JSON.stringify({ command, args })
   });
   if (!response.ok) {
-    throw new Error(`Bridge command failed: ${response.status}`);
+    const text = await response.text();
+    let message = "";
+    try {
+      const body = JSON.parse(text) as { error?: unknown };
+      message = typeof body.error === "string" ? body.error : "";
+    } catch {
+      message = text.trim();
+    }
+    throw new Error(`Bridge command failed: ${response.status}${message ? ` ${message}` : ""}`);
   }
   return await response.json() as AutomationProtocolResponse;
+}
+
+export async function fetchBridgeStatus(
+  bridgeUrl: string,
+  token: string
+): Promise<BrowserBridgeStatus> {
+  const url = new URL("/status", bridgeUrl);
+  url.searchParams.set("token", token);
+  const response = await fetch(url);
+  if (!response.ok) {
+    const text = await response.text();
+    let message = "";
+    try {
+      const body = JSON.parse(text) as { error?: unknown };
+      message = typeof body.error === "string" ? body.error : "";
+    } catch {
+      message = text.trim();
+    }
+    throw new Error(`Bridge status failed: ${response.status}${message ? ` ${message}` : ""}`);
+  }
+  return await response.json() as BrowserBridgeStatus;
 }

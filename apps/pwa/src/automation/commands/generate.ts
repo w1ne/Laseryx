@@ -15,7 +15,7 @@ const DEFAULT_DIALECT: GcodeDialect = {
 
 export type GenerateCommandOptions = {
   includeGcode?: boolean;
-  gcodePath?: string;
+  gcodePath?: string | null;
 };
 
 export function generateCommand(input: unknown, options: GenerateCommandOptions = {}): AgentResponse<GenerateData> {
@@ -39,8 +39,8 @@ export function generateCommand(input: unknown, options: GenerateCommandOptions 
 
     return okResponse("generate", {
       summary: summarizeJob(validation.job),
-      gcode: options.gcodePath && !options.includeGcode ? undefined : result.gcode,
-      gcodePath: options.gcodePath,
+      gcode: options.includeGcode === false ? undefined : result.gcode,
+      gcodePath: options.gcodePath ?? undefined,
       preview: result.preview,
       stats: result.stats
     }, diagnostics);

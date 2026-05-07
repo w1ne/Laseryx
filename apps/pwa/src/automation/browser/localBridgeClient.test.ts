@@ -87,6 +87,50 @@ describe("localBridgeClient", () => {
     });
   });
 
+  it("posts a protocol error response when the browser bridge throws", async () => {
+    const posted: unknown[] = [];
+    const fetchImpl = async (url: string, init?: RequestInit) => {
+      if (url.includes("/next")) {
+        return new Response(JSON.stringify({
+          protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+          requestId: "req-throw",
+          command: "project.list",
+          args: {}
+        }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      if (url.includes("/response")) {
+        posted.push(JSON.parse(String(init?.body)));
+        return new Response("{}", { status: 200 });
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    };
+
+    const didWork = await runLocalBridgePollOnce({
+      bridgeUrl: "http://127.0.0.1:17321",
+      token: "dev",
+      bridge: {
+        request: async () => {
+          throw new Error("IndexedDB is unavailable");
+        }
+      },
+      fetchImpl
+    });
+
+    expect(didWork).toBe(true);
+    expect(posted[0]).toMatchObject({
+      protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+      requestId: "req-throw",
+      ok: false,
+      command: "project.list",
+      data: null,
+      errors: [{
+        code: "BRIDGE_REQUEST_FAILED",
+        severity: "error",
+        message: "IndexedDB is unavailable"
+      }]
+    });
+  });
+
   it("returns false when the broker has no pending command", async () => {
     const didWork = await runLocalBridgePollOnce({
       bridgeUrl: "http://127.0.0.1:17321",

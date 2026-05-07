@@ -26,6 +26,7 @@ export type LiveCommandExecutorOptions = {
 
 type LiveResponseData =
   | { operation: Operation }
+  | { operation: Operation; dryRun: true; changed: false }
   | { activeTab: AppState["ui"]["activeTab"] }
   | { previewMode: PreviewMode }
   | { designPanel: DesignPanel }
@@ -101,6 +102,13 @@ function setOperation(options: LiveCommandExecutorOptions, request: AutomationPr
     ...(passes !== undefined ? { passes } : {}),
     ...(mode !== undefined ? { mode: mode as OperationMode } : {})
   };
+  if (args.dryRun === true) {
+    return wrap(request, okResponse<LiveResponseData>("cam.setOperation", {
+      dryRun: true,
+      changed: false,
+      operation: updated
+    }));
+  }
   options.dispatch({
     type: "SET_CAM_SETTINGS",
     payload: {

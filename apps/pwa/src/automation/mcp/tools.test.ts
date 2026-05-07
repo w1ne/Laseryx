@@ -20,6 +20,7 @@ describe("mcp tools", () => {
   it("lists deterministic tool definitions", () => {
     expect(listMcpTools().map((tool) => tool.name)).toEqual([
       "laseryx_status",
+      "laseryx_bridge_status",
       "laseryx_browser_run",
       "laseryx_project_new",
       "laseryx_project_list",
@@ -47,6 +48,43 @@ describe("mcp tools", () => {
       ok: true,
       bridgeUrl: "http://127.0.0.1:17321",
       tokenConfigured: true
+    });
+  });
+
+  it("reports live bridge status through the configured status reader", async () => {
+    const postStatus = vi.fn(async () => ({
+      ok: true,
+      attached: true,
+      state: "idle",
+      pendingCount: 0,
+      inFlightCount: 0,
+      waiterCount: 1,
+      uptimeMs: 10,
+      lastBrowserPollAt: 123,
+      lastBrowserResponseAt: 120
+    }));
+
+    const result = await callMcpTool("laseryx_bridge_status", {}, {
+      bridgeUrl: "http://127.0.0.1:17321",
+      token: "dev",
+      postBrowserCommand: createPoster(),
+      postBridgeStatus: postStatus
+    });
+
+    expect(postStatus).toHaveBeenCalledWith("http://127.0.0.1:17321", "dev");
+    expect(result.isError).toBe(false);
+    expect(result.structuredContent).toEqual({
+      summary: {
+        ok: true,
+        attached: true,
+        state: "idle",
+        pendingCount: 0,
+        inFlightCount: 0,
+        waiterCount: 1,
+        uptimeMs: 10,
+        lastBrowserPollAt: 123,
+        lastBrowserResponseAt: 120
+      }
     });
   });
 
@@ -132,6 +170,17 @@ describe("mcp tools", () => {
     });
   });
 
+  it("maps includeGcode false to an explicit gcode suppression request", async () => {
+    const poster = createPoster();
+
+    await callMcpTool("laseryx_generate", { includeGcode: false }, { bridgeUrl: "http://127.0.0.1:17321", token: "dev", postBrowserCommand: poster });
+
+    expect(poster).toHaveBeenCalledWith("http://127.0.0.1:17321", "dev", "generate", {
+      includeGcode: false,
+      gcodePath: null
+    });
+  });
+
   it("adds compact summaries for project, object list, and CAM responses", async () => {
     const poster = vi.fn(async (_bridgeUrl, _token, command) => ({
       protocolVersion: 1,
@@ -186,7 +235,7 @@ describe("mcp tools", () => {
       y: 7,
       rotation: 15
     }, { bridgeUrl: "http://127.0.0.1:17321", token: "dev", postBrowserCommand: poster });
-    await callMcpTool("laseryx_document_delete_object", { object: "rect-1" }, { bridgeUrl: "http://127.0.0.1:17321", token: "dev", postBrowserCommand: poster });
+    await callMcpTool("laseryx_document_delete_object", { object: "rect-1", dryRun: true }, { bridgeUrl: "http://127.0.0.1:17321", token: "dev", postBrowserCommand: poster });
 
     expect(poster).toHaveBeenNthCalledWith(1, "http://127.0.0.1:17321", "dev", "document.listObjects", {});
     expect(poster).toHaveBeenNthCalledWith(2, "http://127.0.0.1:17321", "dev", "document.updateObjectTransform", {
@@ -195,7 +244,7 @@ describe("mcp tools", () => {
       y: 7,
       rotation: 15
     });
-    expect(poster).toHaveBeenNthCalledWith(3, "http://127.0.0.1:17321", "dev", "document.deleteObject", { object: "rect-1" });
+    expect(poster).toHaveBeenNthCalledWith(3, "http://127.0.0.1:17321", "dev", "document.deleteObject", { object: "rect-1", dryRun: true });
   });
 
   it("maps CAM typed tools to automation commands", async () => {

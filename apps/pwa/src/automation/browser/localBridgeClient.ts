@@ -1,4 +1,5 @@
 import type { InAppAutomationBridge } from "./inAppBridge";
+import type { AutomationProtocolRequest, AutomationProtocolResponse } from "../protocol/types";
 
 type FetchLike = typeof fetch;
 
@@ -27,6 +28,22 @@ export function readLocalBridgeConfig(search: string): LocalBridgeConfig | null 
   };
 }
 
+function bridgeErrorResponse(request: AutomationProtocolRequest, error: unknown): AutomationProtocolResponse {
+  return {
+    protocolVersion: request.protocolVersion,
+    requestId: request.requestId,
+    ok: false,
+    command: request.command,
+    data: null,
+    warnings: [],
+    errors: [{
+      code: "BRIDGE_REQUEST_FAILED",
+      severity: "error",
+      message: error instanceof Error ? error.message : String(error)
+    }]
+  } as AutomationProtocolResponse;
+}
+
 function buildBridgeUrl(base: string, path: string, token: string): string {
   const url = new URL(path, base);
   url.searchParams.set("token", token);
@@ -45,7 +62,12 @@ export async function runLocalBridgePollOnce(options: LocalBridgeClientOptions):
   }
 
   const request = await nextResponse.json();
-  const protocolResponse = await options.bridge.request(request);
+  let protocolResponse: AutomationProtocolResponse;
+  try {
+    protocolResponse = await options.bridge.request(request);
+  } catch (error) {
+    protocolResponse = bridgeErrorResponse(request, error);
+  }
 
   const postResponse = await fetchImpl(buildBridgeUrl(options.bridgeUrl, "/response", options.token), {
     method: "POST",

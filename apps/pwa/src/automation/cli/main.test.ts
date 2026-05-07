@@ -43,6 +43,19 @@ describe("runCli", () => {
     expect(gcode).toContain("G1");
   });
 
+  it("includes gcode in stdout when generating without an output path", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "laseryx-cli-"));
+    const inputPath = join(dir, "job.json");
+    await writeFile(inputPath, JSON.stringify(minimalJob), "utf8");
+
+    const result = await runCli(["generate", "--input", inputPath]);
+    const parsed = JSON.parse(result.stdout);
+
+    expect(result.exitCode).toBe(0);
+    expect(parsed.ok).toBe(true);
+    expect(parsed.data.gcode).toContain("G1");
+  });
+
   it("runs a browser command through a local bridge server", async () => {
     const bridge = new LocalBrowserBridgeServer({ token: "dev" });
     const server = bridge.createHttpServer();
@@ -86,5 +99,52 @@ describe("runCli", () => {
         server.close((error) => error ? reject(error) : resolve());
       });
     }
+  });
+
+  it("returns browser bridge status as JSON", async () => {
+    const bridge = new LocalBrowserBridgeServer({ token: "dev" });
+    const server = bridge.createHttpServer();
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const address = server.address();
+    if (!address || typeof address === "string") throw new Error("Expected TCP server address");
+
+    try {
+      const result = await runCli([
+        "browser",
+        "status",
+        "--bridge",
+        `http://127.0.0.1:${address.port}`,
+        "--token",
+        "dev"
+      ]);
+      const parsed = JSON.parse(result.stdout);
+
+      expect(result.exitCode).toBe(0);
+      expect(parsed).toMatchObject({
+        ok: true,
+        attached: false,
+        state: "detached"
+      });
+    } finally {
+      await new Promise<void>((resolve, reject) => {
+        server.close((error) => error ? reject(error) : resolve());
+      });
+    }
+  });
+
+  it("prints an attach URL for the browser bridge", async () => {
+    const result = await runCli([
+      "browser",
+      "attach-url",
+      "--bridge",
+      "http://127.0.0.1:17321",
+      "--token",
+      "dev token",
+      "--app",
+      "http://localhost:5173/workbench"
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.trim()).toBe("http://localhost:5173/workbench?laseryxBridge=http%3A%2F%2F127.0.0.1%3A17321&laseryxToken=dev+token");
   });
 });

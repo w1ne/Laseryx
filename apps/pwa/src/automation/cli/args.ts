@@ -5,6 +5,8 @@ type ParsedArgs =
   | { ok: true; mode: "file"; command: AgentCommand; inputPath: string; gcodeOut?: string; includeGcode: boolean }
   | { ok: true; mode: "browser-serve"; host: string; port: number; token: string }
   | { ok: true; mode: "browser-run"; command: AutomationProtocolCommand; bridgeUrl: string; token: string; args: Record<string, unknown> }
+  | { ok: true; mode: "browser-status"; bridgeUrl: string; token: string }
+  | { ok: true; mode: "browser-attach-url"; appUrl: string; bridgeUrl: string; token: string }
   | { ok: false; message: string };
 
 const COMMANDS = new Set(["inspect", "preflight", "generate"]);
@@ -96,6 +98,33 @@ function parseBrowserArgs(rest: string[]): ParsedArgs {
         const previous = runOptions[index - 1];
         return item !== "--bridge" && item !== "--token" && previous !== "--bridge" && previous !== "--token";
       }))
+    };
+  }
+
+  if (subcommand === "status") {
+    const bridgeUrl = readOption(options, "--bridge");
+    if (!bridgeUrl) {
+      return { ok: false, message: "Missing --bridge" };
+    }
+    return {
+      ok: true,
+      mode: "browser-status",
+      bridgeUrl,
+      token: readOption(options, "--token") ?? "dev"
+    };
+  }
+
+  if (subcommand === "attach-url") {
+    const bridgeUrl = readOption(options, "--bridge");
+    if (!bridgeUrl) {
+      return { ok: false, message: "Missing --bridge" };
+    }
+    return {
+      ok: true,
+      mode: "browser-attach-url",
+      appUrl: readOption(options, "--app") ?? "http://localhost:5173",
+      bridgeUrl,
+      token: readOption(options, "--token") ?? "dev"
     };
   }
 

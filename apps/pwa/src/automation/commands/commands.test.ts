@@ -48,4 +48,12 @@ describe("automation commands", () => {
     expect(response.data?.stats.segments).toBeGreaterThan(0);
     expect(response.errors).toEqual([]);
   });
+
+  it("omits gcode from generate responses when requested", () => {
+    const response = generateCommand(minimalJob, { includeGcode: false });
+
+    expect(response.ok).toBe(true);
+    expect(response.data?.gcode).toBeUndefined();
+    expect(response.data?.stats.segments).toBeGreaterThan(0);
+  });
 });

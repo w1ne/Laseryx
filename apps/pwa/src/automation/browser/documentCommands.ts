@@ -22,10 +22,20 @@ export type DocumentCommandExecutorOptions = {
 
 type DocumentCommandResponseData =
   | { object: Obj }
-  | { selectedObjectId: string | null };
+  | { selectedObjectId: string | null }
+  | { object: Obj; dryRun: true; changed: false }
+  | { selectedObjectId: string | null; dryRun: true; changed: false };
 
 function asRecord(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function isDryRun(args: Record<string, unknown>): boolean {
+  return args.dryRun === true;
+}
+
+function cloneObject<T extends Obj>(object: T): T {
+  return structuredClone(object);
 }
 
 function wrap(
@@ -192,6 +202,13 @@ function updateObjectTransform(options: DocumentCommandExecutorOptions, request:
       ...changes
     }
   };
+  if (isDryRun(args)) {
+    return wrap(request, okResponse<DocumentCommandResponseData>("document.updateObjectTransform", {
+      dryRun: true,
+      changed: false,
+      object: cloneObject(updated)
+    }));
+  }
   options.dispatch({ type: "UPDATE_OBJECT", payload: { id: object.id, changes: { transform: updated.transform } } });
   return wrap(request, okResponse<DocumentCommandResponseData>("document.updateObjectTransform", { object: updated }));
 }
@@ -227,9 +244,17 @@ function deleteObject(options: DocumentCommandExecutorOptions, request: Automati
   const state = options.getState();
   const object = findObject(state, objectId!, "document.deleteObject", request);
   if ("protocolVersion" in object) return object;
+  const selectedObjectId = state.selectedObjectId === object.id ? null : state.selectedObjectId;
+  if (isDryRun(args)) {
+    return wrap(request, okResponse<DocumentCommandResponseData>("document.deleteObject", {
+      dryRun: true,
+      changed: false,
+      selectedObjectId
+    }));
+  }
   options.dispatch({ type: "DELETE_OBJECT", payload: object.id });
   return wrap(request, okResponse<DocumentCommandResponseData>("document.deleteObject", {
-    selectedObjectId: state.selectedObjectId === object.id ? null : state.selectedObjectId
+    selectedObjectId
   }));
 }
 

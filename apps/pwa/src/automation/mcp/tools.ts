@@ -1,5 +1,5 @@
 import type { AutomationProtocolCommand, AutomationProtocolResponse } from "../protocol/types";
-import { postBrowserCommand as defaultPostBrowserCommand } from "../cli/browserBridgeServer";
+import { fetchBridgeStatus as defaultFetchBridgeStatus, postBrowserCommand as defaultPostBrowserCommand, type BrowserBridgeStatus } from "../cli/browserBridgeServer";
 
 type JsonSchema = {
   type: "object";
@@ -27,16 +27,27 @@ export type BrowserCommandPoster = (
   args: Record<string, unknown>
 ) => Promise<AutomationProtocolResponse>;
 
+export type BridgeStatusReader = (
+  bridgeUrl: string,
+  token: string
+) => Promise<BrowserBridgeStatus>;
+
 export type McpToolContext = {
   bridgeUrl: string;
   token: string;
   postBrowserCommand?: BrowserCommandPoster;
+  postBridgeStatus?: BridgeStatusReader;
 };
 
 const TOOL_DEFINITIONS: McpToolDefinition[] = [
   {
     name: "laseryx_status",
     description: "Report MCP bridge configuration without sending a browser command.",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false }
+  },
+  {
+    name: "laseryx_bridge_status",
+    description: "Report live local browser bridge lifecycle status.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false }
   },
   {
@@ -144,7 +155,8 @@ const TOOL_DEFINITIONS: McpToolDefinition[] = [
         y: { type: "number" },
         rotation: { type: "number" },
         scaleX: { type: "number" },
-        scaleY: { type: "number" }
+        scaleY: { type: "number" },
+        dryRun: { type: "boolean" }
       },
       required: ["object"],
       additionalProperties: false
@@ -155,7 +167,7 @@ const TOOL_DEFINITIONS: McpToolDefinition[] = [
     description: "Delete an object from the current Laseryx document.",
     inputSchema: {
       type: "object",
-      properties: { object: { type: "string" } },
+      properties: { object: { type: "string" }, dryRun: { type: "boolean" } },
       required: ["object"],
       additionalProperties: false
     }
@@ -171,7 +183,8 @@ const TOOL_DEFINITIONS: McpToolDefinition[] = [
         mode: { type: "string" },
         speed: { type: "number" },
         power: { type: "number" },
-        passes: { type: "number" }
+        passes: { type: "number" },
+        dryRun: { type: "boolean" }
       },
       required: ["operation"],
       additionalProperties: false
@@ -296,6 +309,15 @@ function protocolResult(response: AutomationProtocolResponse): McpToolResult {
   return { content, isError: !response.ok };
 }
 
+function structuredSummaryResult(summary: Record<string, unknown>, isError = false): McpToolResult {
+  const structuredContent = { summary };
+  return {
+    content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
+    structuredContent,
+    isError
+  };
+}
+
 function requireString(args: Record<string, unknown>, key: string): string {
   const value = args[key];
   if (typeof value !== "string" || value.trim() === "") {
@@ -307,6 +329,8 @@ function requireString(args: Record<string, unknown>, key: string): string {
 function commandForTool(name: string, args: Record<string, unknown>): { command: AutomationProtocolCommand; args: Record<string, unknown> } | null {
   switch (name) {
     case "laseryx_status":
+      return null;
+    case "laseryx_bridge_status":
       return null;
     case "laseryx_browser_run":
       return {
@@ -334,11 +358,20 @@ function commandForTool(name: string, args: Record<string, unknown>): { command:
     case "laseryx_document_update_transform":
       return { command: "document.updateObjectTransform", args };
     case "laseryx_document_delete_object":
-      return { command: "document.deleteObject", args: { object: requireString(args, "object") } };
+      return {
+        command: "document.deleteObject",
+        args: {
+          object: requireString(args, "object"),
+          ...(args.dryRun === true ? { dryRun: true } : {})
+        }
+      };
     case "laseryx_cam_set_operation":
       return { command: "cam.setOperation", args };
     case "laseryx_generate":
-      return { command: "generate", args };
+      return {
+        command: "generate",
+        args: args.includeGcode === false ? { ...args, gcodePath: null } : args
+      };
     default:
       throw new Error(`Unknown MCP tool: ${name}`);
   }
@@ -353,6 +386,11 @@ export async function callMcpTool(name: string, rawArgs: unknown, context: McpTo
     const args = asRecord(rawArgs);
     const mapped = commandForTool(name, args);
     if (!mapped) {
+      if (name === "laseryx_bridge_status") {
+        const postBridgeStatus = context.postBridgeStatus ?? defaultFetchBridgeStatus;
+        const status = await postBridgeStatus(context.bridgeUrl, context.token);
+        return structuredSummaryResult(status);
+      }
       return textResult({
         ok: true,
         bridgeUrl: context.bridgeUrl,

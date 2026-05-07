@@ -60,6 +60,39 @@ describe("liveCommands", () => {
     });
   });
 
+  it("previews CAM operation updates without mutating state", () => {
+    const { executor, getState, dispatch } = createHarness();
+
+    const response = executor.request({
+      protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+      requestId: "req-cam-dry",
+      command: "cam.setOperation",
+      args: {
+        operation: "op-1",
+        power: 65,
+        speed: 1200,
+        dryRun: true
+      }
+    });
+
+    expect(response.ok).toBe(true);
+    expect(response.data).toMatchObject({
+      dryRun: true,
+      changed: false,
+      operation: {
+        id: "op-1",
+        power: 65,
+        speed: 1200
+      }
+    });
+    expect(getState().camSettings.operations[0]).toMatchObject({
+      id: "op-1",
+      power: 80,
+      speed: 1000
+    });
+    expect(dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: "SET_CAM_SETTINGS" }));
+  });
+
   it("rejects invalid CAM values", () => {
     const { executor, getState } = createHarness();
 
@@ -219,6 +252,79 @@ describe("liveCommands", () => {
     });
   });
 
+  it("previews transform updates without mutating state", () => {
+    const state = structuredClone(INITIAL_STATE);
+    state.document.objects = [
+      {
+        kind: "shape",
+        id: "rect-1",
+        layerId: "layer-1",
+        transform: { a: 1, b: 0, c: 0, d: 1, e: 10, f: 20 },
+        shape: { type: "rect", width: 30, height: 40 }
+      }
+    ];
+    const { executor, getState, dispatch } = createHarness(state);
+
+    const response = executor.request({
+      protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+      requestId: "req-transform-dry",
+      command: "document.updateObjectTransform",
+      args: {
+        object: "rect-1",
+        x: 42,
+        y: 11,
+        dryRun: true
+      }
+    });
+
+    expect(response.ok).toBe(true);
+    expect(response.data).toMatchObject({
+      dryRun: true,
+      changed: false,
+      object: {
+        id: "rect-1",
+        transform: { a: 1, b: 0, c: 0, d: 1, e: 42, f: 11 }
+      }
+    });
+    expect(getState().document.objects[0].transform).toEqual({ a: 1, b: 0, c: 0, d: 1, e: 10, f: 20 });
+    expect(dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: "UPDATE_OBJECT" }));
+  });
+
+  it("returns a cloned object for transform dry-run previews", () => {
+    const state = structuredClone(INITIAL_STATE);
+    state.document.objects = [
+      {
+        kind: "shape",
+        id: "rect-1",
+        layerId: "layer-1",
+        transform: { a: 1, b: 0, c: 0, d: 1, e: 10, f: 20 },
+        shape: { type: "rect", width: 30, height: 40 }
+      }
+    ];
+    const { executor, getState } = createHarness(state);
+
+    const response = executor.request({
+      protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+      requestId: "req-transform-dry-clone",
+      command: "document.updateObjectTransform",
+      args: {
+        object: "rect-1",
+        x: 42,
+        dryRun: true
+      }
+    });
+
+    if (!response.ok || !response.data || !("object" in response.data) || response.data.object.kind !== "shape") {
+      throw new Error("Expected dry-run shape object response");
+    }
+    response.data.object.shape.width = 99;
+
+    const object = getState().document.objects[0];
+    expect(object.kind).toBe("shape");
+    if (object.kind !== "shape") throw new Error("Expected state shape object");
+    expect(object.shape.width).toBe(30);
+  });
+
   it("moves and deletes document objects", () => {
     const state = structuredClone(INITIAL_STATE);
     state.document.layers.push({ id: "layer-2", name: "Layer 2", visible: true, locked: false, operationId: "op-1" });
@@ -252,6 +358,38 @@ describe("liveCommands", () => {
     expect(deleteResponse.ok).toBe(true);
     expect(getState().document.objects).toEqual([]);
     expect(getState().selectedObjectId).toBeNull();
+  });
+
+  it("previews object deletion without mutating state", () => {
+    const state = structuredClone(INITIAL_STATE);
+    state.document.objects = [
+      {
+        kind: "shape",
+        id: "rect-1",
+        layerId: "layer-1",
+        transform: { a: 1, b: 0, c: 0, d: 1, e: 10, f: 20 },
+        shape: { type: "rect", width: 30, height: 40 }
+      }
+    ];
+    state.selectedObjectId = "rect-1";
+    const { executor, getState, dispatch } = createHarness(state);
+
+    const response = executor.request({
+      protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+      requestId: "req-delete-dry",
+      command: "document.deleteObject",
+      args: { object: "rect-1", dryRun: true }
+    });
+
+    expect(response.ok).toBe(true);
+    expect(response.data).toEqual({
+      dryRun: true,
+      changed: false,
+      selectedObjectId: null
+    });
+    expect(getState().document.objects).toHaveLength(1);
+    expect(getState().selectedObjectId).toBe("rect-1");
+    expect(dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: "DELETE_OBJECT" }));
   });
 
   it("rejects invalid document mutations", () => {
