@@ -274,6 +274,7 @@ export function App() {
   const [jobStats, setJobStats] = useState<{ estTimeS: number; travelMm: number; markMm: number; segments: number } | null>(null);
   const [generationState, setGenerationState] = useState<{ status: "idle" | "working" | "done" | "error"; message?: string }>({ status: "idle" });
   const [previewMode, setPreviewMode] = useState<"design" | "gcode">("design");
+  const [designPanel, setDesignPanel] = useState<"document" | "properties" | "layers">("document");
 
   const handleGenerateGcode = async () => {
     if (!clientRef.current) return;
@@ -364,7 +365,7 @@ export function App() {
         <div>
           <p className="app__eyebrow">Release {__APP_VERSION__}</p>
           <h1>Laseryx Workspace</h1>
-          <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+          <div className="app__commands" role="group" aria-label="Project actions">
             <button className="button" onClick={handleNewProject}>New</button>
             <button className="button" onClick={handleListProjects}>Open</button>
             <button className="button" onClick={handleSaveProject}>Save</button>
@@ -408,70 +409,107 @@ export function App() {
         <button className={`tab ${activeTab === "machine" ? "is-active" : ""}`} onClick={() => dispatch({ type: "SET_ACTIVE_TAB", payload: "machine" })}>Machine</button>
       </nav>
 
+      {activeTab === "design" && (
+        <nav className="app__panel-tabs" role="tablist" aria-label="Design panels">
+          <button
+            id="design-panel-tab-document"
+            className={`panel-tab ${designPanel === "document" ? "is-active" : ""}`}
+            role="tab"
+            aria-selected={designPanel === "document"}
+            aria-controls="design-panel-document"
+            onClick={() => setDesignPanel("document")}
+          >
+            Objects
+          </button>
+          <button
+            id="design-panel-tab-properties"
+            className={`panel-tab ${designPanel === "properties" ? "is-active" : ""}`}
+            role="tab"
+            aria-selected={designPanel === "properties"}
+            aria-controls="design-panel-properties"
+            onClick={() => setDesignPanel("properties")}
+          >
+            Properties
+          </button>
+          <button
+            id="design-panel-tab-layers"
+            className={`panel-tab ${designPanel === "layers" ? "is-active" : ""}`}
+            role="tab"
+            aria-selected={designPanel === "layers"}
+            aria-controls="design-panel-layers"
+            onClick={() => setDesignPanel("layers")}
+          >
+            Operations
+          </button>
+        </nav>
+      )}
+
       <main className="app__main">
         {activeTab === "design" ? (
           <>
-            <div className="app__sidebar">
-              <DocumentPanel />
-              <PropertiesPanel />
-              <LayersPanel
-                onGenerate={handleGenerateGcode}
-                onDownload={handleDownloadGcode}
-                onOpenMaterialManager={() => setShowMaterialManager(true)}
-                generationState={generationState}
-                hasGcode={!!generatedGcode}
-                isWorkerReady={workerStatus.ready}
-                jobStats={jobStats}
-              />
-            </div>
-            <div className="app__preview-area" style={{ position: "relative" }}>
-              <div style={{
-                position: "absolute",
-                top: "16px",
-                left: "50%",
-                transform: "translateX(-50%)",
-                zIndex: 10,
-                background: "#e2e8f0",
-                padding: "4px",
-                borderRadius: "8px",
-                display: "flex",
-                gap: "4px",
-                boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
-              }}>
+            <div className="app__preview-area">
+              <div className="preview-mode-switch" role="group" aria-label="Preview mode">
                 <button
-                  style={{
-                    border: "none",
-                    background: previewMode === "design" ? "#fff" : "transparent",
-                    padding: "4px 12px",
-                    borderRadius: "6px",
-                    fontSize: "12px",
-                    fontWeight: "600",
-                    color: previewMode === "design" ? "#0f172a" : "#64748b",
-                    boxShadow: previewMode === "design" ? "0 1px 2px rgba(0,0,0,0.05)" : "none",
-                    cursor: "pointer"
-                  }}
+                  className={`segmented-button ${previewMode === "design" ? "is-active" : ""}`}
                   onClick={() => setPreviewMode("design")}
-                >Design</button>
+                >
+                  Design
+                </button>
                 <button
-                  style={{
-                    border: "none",
-                    background: previewMode === "gcode" ? "#fff" : "transparent",
-                    padding: "4px 12px",
-                    borderRadius: "6px",
-                    fontSize: "12px",
-                    fontWeight: "600",
-                    color: previewMode === "gcode" ? "#0f172a" : "#64748b",
-                    boxShadow: previewMode === "gcode" ? "0 1px 2px rgba(0,0,0,0.05)" : "none",
-                    cursor: !generatedGcode ? "not-allowed" : "pointer",
-                    opacity: !generatedGcode ? 0.5 : 1
-                  }}
+                  className={`segmented-button ${previewMode === "gcode" ? "is-active" : ""}`}
+                  disabled={!generatedGcode}
                   onClick={() => generatedGcode && setPreviewMode("gcode")}
-                >Preview</button>
+                >
+                  Preview
+                </button>
               </div>
               <PreviewPanel
                 viewMode={previewMode}
                 gcode={generatedGcode || undefined}
               />
+            </div>
+            <div className="app__sidebar">
+              <div
+                id="design-panel-document"
+                className="app__panel-slot"
+                role="tabpanel"
+                aria-labelledby="design-panel-tab-document"
+                aria-hidden={designPanel !== "document"}
+                data-mobile-panel={designPanel === "document" ? "active" : "inactive"}
+                data-testid="design-panel-document"
+              >
+                <DocumentPanel />
+              </div>
+              <div
+                id="design-panel-properties"
+                className="app__panel-slot"
+                role="tabpanel"
+                aria-labelledby="design-panel-tab-properties"
+                aria-hidden={designPanel !== "properties"}
+                data-mobile-panel={designPanel === "properties" ? "active" : "inactive"}
+                data-testid="design-panel-properties"
+              >
+                <PropertiesPanel />
+              </div>
+              <div
+                id="design-panel-layers"
+                className="app__panel-slot"
+                role="tabpanel"
+                aria-labelledby="design-panel-tab-layers"
+                aria-hidden={designPanel !== "layers"}
+                data-mobile-panel={designPanel === "layers" ? "active" : "inactive"}
+                data-testid="design-panel-layers"
+              >
+                <LayersPanel
+                  onGenerate={handleGenerateGcode}
+                  onDownload={handleDownloadGcode}
+                  onOpenMaterialManager={() => setShowMaterialManager(true)}
+                  generationState={generationState}
+                  hasGcode={!!generatedGcode}
+                  isWorkerReady={workerStatus.ready}
+                  jobStats={jobStats}
+                />
+              </div>
             </div>
           </>
         ) : (
