@@ -1,0 +1,53 @@
+{
+  "document": {
+    "version": 1,
+    "units": "mm",
+    "layers": [
+      {
+        "id": "layer-1",
+        "name": "Layer 1",
+        "visible": true,
+        "locked": false,
+        "operationId": "op-1"
+      }
+    ],
+    "objects": [
+      {
+        "kind": "shape",
+        "id": "rect-1",
+        "layerId": "layer-1",
+        "transform": { "a": 1, "b": 0, "c": 0, "d": 1, "e": 10, "f": 10 },
+        "shape": { "type": "rect", "width": 20, "height": 10 }
+      }
+    ]
+  },
+  "camSettings": {
+    "operations": [
+      {
+        "id": "op-1",
+        "name": "Cut",
+        "mode": "line",
+        "speed": 1000,
+        "power": 80,
+        "passes": 1
+      }
+    ],
+    "optimizePaths": true
+  },
+  "machineProfile": {
+    "id": "default-machine",
+    "name": "Default Machine",
+    "bedMm": { "w": 400, "h": 400 },
+    "origin": "frontLeft",
+    "sRange": { "min": 0, "max": 1000 },
+    "laserMode": "M3",
+    "baudRate": 115200
+  },
+  "dialect": {
+    "newline": "\n",
+    "useG0ForTravel": true,
+    "powerCommand": "S",
+    "enableLaser": "M3",
+    "disableLaser": "M5"
+  }
+}
