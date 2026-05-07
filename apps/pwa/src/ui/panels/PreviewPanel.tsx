@@ -38,7 +38,7 @@ function AutoResizingCanvas({ moves, viewport }: { moves: GcodeMove[], viewport:
     }, []);
 
     return (
-        <div ref={containerRef} style={{ width: "100%", height: "100%" }}>
+        <div ref={containerRef} className="preview-canvas-host">
             {size.w > 0 && (
                 <CanvasGcodeView
                     moves={moves}
@@ -78,20 +78,8 @@ export function PreviewPanel({
 
     return (
         <div className={`panel panel--preview ${className || ""}`}>
-            <div className="preview-container" style={{ position: "relative", overflow: "hidden" }}>
-                <div className="preview-controls" style={{
-                    position: "absolute",
-                    bottom: "16px",
-                    right: "16px",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "4px",
-                    boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                    background: "#fff",
-                    borderRadius: "6px",
-                    padding: "4px",
-                    zIndex: 20
-                }}>
+            <div className="preview-container">
+                <div className="preview-controls">
                     <button className="icon-btn" onClick={actions.zoomIn} title="Zoom In">+</button>
                     <button className="icon-btn" onClick={actions.zoomOut} title="Zoom Out">-</button>
                     <button className="icon-btn" onClick={actions.resetView} title="Fit to Bed">[]</button>
@@ -103,7 +91,7 @@ export function PreviewPanel({
                     Only visible in G-code mode.
                 */}
                 {viewMode === "gcode" && (
-                    <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 12 }}>
+                    <div className="preview-gcode-layer">
                         <AutoResizingCanvas
                             moves={moves}
                             viewport={viewport}
@@ -124,7 +112,6 @@ export function PreviewPanel({
                     onPointerMove={handlers.onPointerMove}
                     onPointerUp={handlers.onPointerUp}
                     onPointerLeave={handlers.onPointerUp}
-                    style={{ touchAction: "none", position: "relative", zIndex: 10 }}
                 >
                     <BedBackground
                         width={machineProfile.bedMm.w}
@@ -145,50 +132,6 @@ export function PreviewPanel({
                         )}
                     </BedBackground>
                 </svg>
-
-                <style>{`
-                    .panel--preview {
-                        background: #fff;
-                        border-radius: 16px;
-                        border: 1px solid #e2e8f0;
-                        overflow: hidden;
-                        display: flex;
-                        flex-direction: column;
-                        height: 100%;
-                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-                    }
-                    .preview-container {
-                        flex: 1;
-                        flex: 1;
-                        padding: 8px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        background: #f1f5f9;
-                    }
-                    .preview-svg {
-                        background: transparent;
-                        max-width: 100%;
-                        max-height: 100%;
-                    }
-                    .icon-btn {
-                        width: 24px; 
-                        height: 24px; 
-                        display: flex; 
-                        align-items: center; 
-                        justify-content: center;
-                        border: 1px solid #e2e8f0;
-                        background: #f8fafc;
-                        border-radius: 4px;
-                        cursor: pointer;
-                        font-size: 14px;
-                        color: #475569;
-                    }
-                    .icon-btn:hover {
-                        background: #f1f5f9;
-                        color: #1e293b;
-                    }
-                `}</style>
             </div>
         </div>
     );
