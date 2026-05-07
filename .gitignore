@@ -3,6 +3,7 @@ dist/
 build/
 .vite/
 coverage/
+.worktrees/
 .superpowers/
 docs/superpowers/
 
