@@ -17,9 +17,9 @@ export type BrowserAutomationTarget = {
   laseryx?: BrowserAutomationApi;
 };
 
-export function createBrowserAutomation(getJob: () => AgentJobInput): BrowserAutomationApi {
+export function createBrowserAutomation(getJob: () => AgentJobInput, liveBridge?: InAppAutomationBridge): BrowserAutomationApi {
   return {
-    protocol: createInAppAutomationBridge(getJob),
+    protocol: createInAppAutomationBridge(getJob, liveBridge),
     inspect: () => runAgentCommand("inspect", getJob()),
     preflight: () => runAgentCommand("preflight", getJob()),
     generate: (options = {}) => runAgentCommand("generate", getJob(), options),
@@ -29,9 +29,10 @@ export function createBrowserAutomation(getJob: () => AgentJobInput): BrowserAut
 
 export function installBrowserAutomation(
   getJob: () => AgentJobInput,
-  target: BrowserAutomationTarget = window
+  target: BrowserAutomationTarget = window,
+  liveBridge?: InAppAutomationBridge
 ): () => void {
-  const api = createBrowserAutomation(getJob);
+  const api = createBrowserAutomation(getJob, liveBridge);
   target.laseryx = api;
   return () => {
     if (target.laseryx === api) {

@@ -6,6 +6,7 @@ import { useStore } from "../core/state/store";
 import { getDriver } from "../io/driverSingleton";
 import { createInAppAutomationBridge } from "../automation/browser/inAppBridge";
 import { installBrowserAutomation } from "../automation/browser/browserAutomation";
+import { createLiveCommandExecutor } from "../automation/browser/liveCommands";
 import { readLocalBridgeConfig, startLocalBridgeClient } from "../automation/browser/localBridgeClient";
 import { createWorkerClient } from "./workerClient";
 import { projectRepo, ProjectSummary } from "../io/projectRepo";
@@ -34,6 +35,11 @@ export function App() {
   const { ui, machineConnection, document: doc, camSettings, machineProfile } = state;
   const { activeTab } = ui;
   const toast = useToast();
+  const stateRef = useRef(state);
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   // Local state for things that don't need to be global yet (Project Loading, Worker init)
   // Worker could be global, but keeping it simple for now.
@@ -280,26 +286,41 @@ export function App() {
   const [designPanel, setDesignPanel] = useState<"document" | "properties" | "layers">("document");
 
   useEffect(() => {
+    const liveExecutor = createLiveCommandExecutor({
+      getState: () => stateRef.current,
+      dispatch,
+      setPreviewMode,
+      setDesignPanel
+    });
     return installBrowserAutomation(() => ({
-      document: state.document,
-      camSettings: state.camSettings,
-      machineProfile: state.machineProfile
-    }));
-  }, [state.document, state.camSettings, state.machineProfile]);
+      document: stateRef.current.document,
+      camSettings: stateRef.current.camSettings,
+      machineProfile: stateRef.current.machineProfile
+    }), window, liveExecutor);
+  }, [dispatch]);
 
   useEffect(() => {
     const config = readLocalBridgeConfig(window.location.search);
     if (!config) return;
+    const liveExecutor = createLiveCommandExecutor({
+      getState: () => stateRef.current,
+      dispatch,
+      setPreviewMode,
+      setDesignPanel
+    });
 
     return startLocalBridgeClient({
       ...config,
-      bridge: createInAppAutomationBridge(() => ({
-        document: state.document,
-        camSettings: state.camSettings,
-        machineProfile: state.machineProfile
-      }))
+      bridge: createInAppAutomationBridge(
+        () => ({
+          document: stateRef.current.document,
+          camSettings: stateRef.current.camSettings,
+          machineProfile: stateRef.current.machineProfile
+        }),
+        liveExecutor
+      )
     });
-  }, [state.document, state.camSettings, state.machineProfile]);
+  }, [dispatch]);
 
   const handleGenerateGcode = async () => {
     if (!clientRef.current) return;

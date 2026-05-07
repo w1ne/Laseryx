@@ -62,7 +62,37 @@ describe("parseCliArgs", () => {
       mode: "browser-run",
       command: "inspect",
       bridgeUrl: "http://127.0.0.1:17321",
-      token: "dev"
+      token: "dev",
+      args: {}
+    });
+  });
+
+  it("parses browser run command args", () => {
+    expect(parseCliArgs([
+      "browser",
+      "run",
+      "cam.setOperation",
+      "--bridge",
+      "http://127.0.0.1:17321",
+      "--token",
+      "dev",
+      "--operation",
+      "op-1",
+      "--power",
+      "65",
+      "--speed",
+      "1200"
+    ])).toEqual({
+      ok: true,
+      mode: "browser-run",
+      command: "cam.setOperation",
+      bridgeUrl: "http://127.0.0.1:17321",
+      token: "dev",
+      args: {
+        operation: "op-1",
+        power: 65,
+        speed: 1200
+      }
     });
   });
 });

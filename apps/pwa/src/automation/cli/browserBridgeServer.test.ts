@@ -35,4 +35,26 @@ describe("LocalBrowserBridgeServer", () => {
 
     await expect(bridge.takeNextCommand("wrong")).rejects.toThrow("Invalid bridge token");
   });
+
+  it("keeps command args on the queued protocol request", async () => {
+    const bridge = new LocalBrowserBridgeServer({ token: "dev" });
+    const pending = bridge.enqueueCommand("cam.setOperation", { operation: "op-1", power: 65 });
+    const next = await bridge.takeNextCommand("dev");
+
+    expect(next).toMatchObject({
+      command: "cam.setOperation",
+      args: { operation: "op-1", power: 65 }
+    });
+
+    bridge.acceptResponse("dev", {
+      protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+      requestId: next?.requestId ?? "",
+      ok: true,
+      command: "cam.setOperation",
+      data: { operation: { id: "op-1", power: 65 } },
+      warnings: [],
+      errors: []
+    });
+    await expect(pending).resolves.toMatchObject({ ok: true });
+  });
 });

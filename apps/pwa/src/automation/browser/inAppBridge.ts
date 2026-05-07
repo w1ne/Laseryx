@@ -1,13 +1,30 @@
 import type { AgentJobInput } from "../types";
 import { handleProtocolRequest } from "../protocol/handler";
-import type { AutomationProtocolRequest, AutomationProtocolResponse } from "../protocol/types";
+import type { AutomationProtocolRequest, AutomationProtocolResponse, LiveAutomationCommand } from "../protocol/types";
 
 export type InAppAutomationBridge = {
   request: (request: AutomationProtocolRequest) => AutomationProtocolResponse;
 };
 
-export function createInAppAutomationBridge(getJob: () => AgentJobInput): InAppAutomationBridge {
+const LIVE_COMMANDS = new Set<LiveAutomationCommand>([
+  "cam.setOperation",
+  "ui.setActiveTab",
+  "ui.setPreviewMode",
+  "ui.selectDesignPanel",
+  "document.listObjects",
+  "document.selectObject"
+]);
+
+export function createInAppAutomationBridge(
+  getJob: () => AgentJobInput,
+  liveBridge?: InAppAutomationBridge
+): InAppAutomationBridge {
   return {
-    request: (request) => handleProtocolRequest(request, getJob())
+    request: (request) => {
+      if (LIVE_COMMANDS.has(request.command as LiveAutomationCommand) && liveBridge) {
+        return liveBridge.request(request);
+      }
+      return handleProtocolRequest(request, getJob());
+    }
   };
 }

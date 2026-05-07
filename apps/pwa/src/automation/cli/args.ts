@@ -1,16 +1,52 @@
+import type { AutomationProtocolCommand } from "../protocol/types";
 import type { AgentCommand } from "../types";
 
 type ParsedArgs =
   | { ok: true; mode: "file"; command: AgentCommand; inputPath: string; gcodeOut?: string; includeGcode: boolean }
   | { ok: true; mode: "browser-serve"; host: string; port: number; token: string }
-  | { ok: true; mode: "browser-run"; command: AgentCommand; bridgeUrl: string; token: string }
+  | { ok: true; mode: "browser-run"; command: AutomationProtocolCommand; bridgeUrl: string; token: string; args: Record<string, unknown> }
   | { ok: false; message: string };
 
 const COMMANDS = new Set(["inspect", "preflight", "generate"]);
+const BROWSER_COMMANDS = new Set([
+  "inspect",
+  "preflight",
+  "generate",
+  "cam.setOperation",
+  "ui.setActiveTab",
+  "ui.setPreviewMode",
+  "ui.selectDesignPanel",
+  "document.listObjects",
+  "document.selectObject"
+]);
 
 function readOption(rest: string[], name: string): string | undefined {
   const index = rest.indexOf(name);
   return index >= 0 ? rest[index + 1] : undefined;
+}
+
+function parseValue(value: string): string | number | boolean {
+  if (value === "true") return true;
+  if (value === "false") return false;
+  const numeric = Number(value);
+  return value.trim() !== "" && Number.isFinite(numeric) ? numeric : value;
+}
+
+function parseCommandArgs(rest: string[]): Record<string, unknown> {
+  const args: Record<string, unknown> = {};
+  for (let index = 0; index < rest.length; index += 1) {
+    const item = rest[index];
+    if (!item.startsWith("--")) continue;
+    const key = item.slice(2);
+    const next = rest[index + 1];
+    if (!next || next.startsWith("--")) {
+      args[key] = true;
+    } else {
+      args[key] = parseValue(next);
+      index += 1;
+    }
+  }
+  return args;
 }
 
 function parseBrowserArgs(rest: string[]): ParsedArgs {
@@ -32,7 +68,7 @@ function parseBrowserArgs(rest: string[]): ParsedArgs {
 
   if (subcommand === "run") {
     const [command, ...runOptions] = options;
-    if (!COMMANDS.has(command)) {
+    if (!BROWSER_COMMANDS.has(command)) {
       return { ok: false, message: `Unknown browser command: ${command ?? ""}`.trim() };
     }
     const bridgeUrl = readOption(runOptions, "--bridge");
@@ -42,9 +78,13 @@ function parseBrowserArgs(rest: string[]): ParsedArgs {
     return {
       ok: true,
       mode: "browser-run",
-      command: command as AgentCommand,
+      command: command as AutomationProtocolCommand,
       bridgeUrl,
-      token: readOption(runOptions, "--token") ?? "dev"
+      token: readOption(runOptions, "--token") ?? "dev",
+      args: parseCommandArgs(runOptions.filter((item, index) => {
+        const previous = runOptions[index - 1];
+        return item !== "--bridge" && item !== "--token" && previous !== "--bridge" && previous !== "--token";
+      }))
     };
   }
 

@@ -1,7 +1,6 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { randomUUID } from "node:crypto";
-import type { AgentCommand } from "../types";
-import { AUTOMATION_PROTOCOL_VERSION, type AutomationProtocolRequest, type AutomationProtocolResponse } from "../protocol/types";
+import { AUTOMATION_PROTOCOL_VERSION, type AutomationProtocolCommand, type AutomationProtocolRequest, type AutomationProtocolResponse } from "../protocol/types";
 
 type PendingCommand = {
   request: AutomationProtocolRequest;
@@ -48,7 +47,7 @@ export class LocalBrowserBridgeServer {
     this.token = options.token;
   }
 
-  enqueueCommand(command: AgentCommand, args: Record<string, unknown> = {}): Promise<AutomationProtocolResponse> {
+  enqueueCommand(command: AutomationProtocolCommand, args: Record<string, unknown> = {}): Promise<AutomationProtocolResponse> {
     const request: AutomationProtocolRequest = {
       protocolVersion: AUTOMATION_PROTOCOL_VERSION,
       requestId: randomUUID(),
@@ -134,7 +133,7 @@ export class LocalBrowserBridgeServer {
         }
 
         if (request.method === "POST" && url.pathname === "/command") {
-          const body = await readJsonBody(request) as { command?: AgentCommand; args?: Record<string, unknown> };
+          const body = await readJsonBody(request) as { command?: AutomationProtocolCommand; args?: Record<string, unknown> };
           if (!body.command) {
             writeJson(response, 400, { ok: false, error: "Missing command" });
             return;
@@ -158,14 +157,15 @@ export class LocalBrowserBridgeServer {
 export async function postBrowserCommand(
   bridgeUrl: string,
   token: string,
-  command: AgentCommand
+  command: AutomationProtocolCommand,
+  args: Record<string, unknown> = {}
 ): Promise<AutomationProtocolResponse> {
   const url = new URL("/command", bridgeUrl);
   url.searchParams.set("token", token);
   const response = await fetch(url, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ command, args: {} })
+    body: JSON.stringify({ command, args })
   });
   if (!response.ok) {
     throw new Error(`Bridge command failed: ${response.status}`);

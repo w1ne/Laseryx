@@ -36,7 +36,7 @@ export async function runCli(argv: string[]): Promise<CliResult> {
 
   if (parsed.mode === "browser-run") {
     try {
-      const response = await postBrowserCommand(parsed.bridgeUrl, parsed.token, parsed.command);
+      const response = await postBrowserCommand(parsed.bridgeUrl, parsed.token, parsed.command, parsed.args);
       return {
         exitCode: response.ok ? 0 : 1,
         stdout: stringify(response)

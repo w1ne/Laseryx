@@ -5,7 +5,15 @@ export const AUTOMATION_PROTOCOL_VERSION = 1;
 
 export type AutomationProtocolVersion = typeof AUTOMATION_PROTOCOL_VERSION;
 
-export type AutomationProtocolCommand = AgentCommand;
+export type LiveAutomationCommand =
+  | "cam.setOperation"
+  | "ui.setActiveTab"
+  | "ui.setPreviewMode"
+  | "ui.selectDesignPanel"
+  | "document.listObjects"
+  | "document.selectObject";
+
+export type AutomationProtocolCommand = AgentCommand | LiveAutomationCommand;
 
 export type AutomationProtocolArgs = GenerateCommandOptions;
 

@@ -2,11 +2,22 @@ import { diagnostic } from "../responses";
 import type { AgentCommand } from "../types";
 import {
   AUTOMATION_PROTOCOL_VERSION,
+  type AutomationProtocolCommand,
   type AutomationProtocolRequest,
   type AutomationProtocolValidationResult
 } from "./types";
 
-const SUPPORTED_COMMANDS = new Set<AgentCommand>(["inspect", "preflight", "generate"]);
+const SUPPORTED_COMMANDS = new Set<AutomationProtocolCommand>([
+  "inspect",
+  "preflight",
+  "generate",
+  "cam.setOperation",
+  "ui.setActiveTab",
+  "ui.setPreviewMode",
+  "ui.selectDesignPanel",
+  "document.listObjects",
+  "document.selectObject"
+]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -35,7 +46,7 @@ export function validateProtocolRequest(input: unknown): AutomationProtocolValid
 
   if (typeof input.command !== "string" || input.command.length === 0) {
     errors.push(diagnostic("INVALID_PROTOCOL", "error", "Missing command"));
-  } else if (!SUPPORTED_COMMANDS.has(input.command as AgentCommand)) {
+  } else if (!SUPPORTED_COMMANDS.has(input.command as AutomationProtocolCommand)) {
     errors.push(diagnostic("UNKNOWN_COMMAND", "error", `Unknown command: ${input.command}`));
   }
 
@@ -48,7 +59,7 @@ export function validateProtocolRequest(input: unknown): AutomationProtocolValid
     request: {
       protocolVersion: AUTOMATION_PROTOCOL_VERSION,
       requestId: input.requestId as string,
-      command: input.command as AgentCommand,
+      command: input.command as AutomationProtocolCommand,
       args: isRecord(input.args) ? input.args : {}
     } as AutomationProtocolRequest,
     errors: []
