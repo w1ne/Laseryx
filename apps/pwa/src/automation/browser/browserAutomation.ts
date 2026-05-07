@@ -1,10 +1,12 @@
 import { runAgentCommand } from "../agentApi";
 import type { GenerateCommandOptions } from "../commands/generate";
+import { createInAppAutomationBridge, type InAppAutomationBridge } from "./inAppBridge";
 import type { AgentJobInput, AgentResponse, GenerateData, InspectData, PreflightData } from "../types";
 
 type BrowserResponse = AgentResponse<InspectData | PreflightData | GenerateData>;
 
 export type BrowserAutomationApi = {
+  protocol: InAppAutomationBridge;
   inspect: () => BrowserResponse;
   preflight: () => BrowserResponse;
   generate: (options?: GenerateCommandOptions) => BrowserResponse;
@@ -17,6 +19,7 @@ export type BrowserAutomationTarget = {
 
 export function createBrowserAutomation(getJob: () => AgentJobInput): BrowserAutomationApi {
   return {
+    protocol: createInAppAutomationBridge(getJob),
     inspect: () => runAgentCommand("inspect", getJob()),
     preflight: () => runAgentCommand("preflight", getJob()),
     generate: (options = {}) => runAgentCommand("generate", getJob(), options),
