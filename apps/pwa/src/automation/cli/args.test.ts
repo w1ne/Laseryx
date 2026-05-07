@@ -5,6 +5,7 @@ describe("parseCliArgs", () => {
   it("parses generate with output path", () => {
     expect(parseCliArgs(["generate", "--input", "job.json", "--gcode-out", "/tmp/job.gcode"])).toEqual({
       ok: true,
+      mode: "file",
       command: "generate",
       inputPath: "job.json",
       gcodeOut: "/tmp/job.gcode",
@@ -15,6 +16,7 @@ describe("parseCliArgs", () => {
   it("parses include-gcode", () => {
     expect(parseCliArgs(["generate", "--input", "job.json", "--gcode-out", "/tmp/job.gcode", "--include-gcode"])).toEqual({
       ok: true,
+      mode: "file",
       command: "generate",
       inputPath: "job.json",
       gcodeOut: "/tmp/job.gcode",
@@ -33,6 +35,34 @@ describe("parseCliArgs", () => {
     expect(parseCliArgs(["inspect"])).toEqual({
       ok: false,
       message: "Missing --input"
+    });
+  });
+
+  it("parses browser serve", () => {
+    expect(parseCliArgs(["browser", "serve", "--port", "17321", "--token", "dev"])).toEqual({
+      ok: true,
+      mode: "browser-serve",
+      port: 17321,
+      host: "127.0.0.1",
+      token: "dev"
+    });
+  });
+
+  it("parses browser run", () => {
+    expect(parseCliArgs([
+      "browser",
+      "run",
+      "inspect",
+      "--bridge",
+      "http://127.0.0.1:17321",
+      "--token",
+      "dev"
+    ])).toEqual({
+      ok: true,
+      mode: "browser-run",
+      command: "inspect",
+      bridgeUrl: "http://127.0.0.1:17321",
+      token: "dev"
     });
   });
 });

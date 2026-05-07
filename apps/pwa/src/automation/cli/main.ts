@@ -1,6 +1,7 @@
 import { runAgentCommand } from "../agentApi";
 import { diagnostic, errorResponse } from "../responses";
 import { parseCliArgs } from "./args";
+import { LocalBrowserBridgeServer, postBrowserCommand } from "./browserBridgeServer";
 import { readJsonFile, writeTextFile } from "./fileIo";
 
 export type CliResult = {
@@ -21,6 +22,33 @@ export async function runCli(argv: string[]): Promise<CliResult> {
         diagnostic("CLI_ERROR", "error", parsed.message)
       ]))
     };
+  }
+
+  if (parsed.mode === "browser-serve") {
+    const bridge = new LocalBrowserBridgeServer({ token: parsed.token });
+    const server = bridge.createHttpServer();
+    await new Promise<void>((resolve) => server.listen(parsed.port, parsed.host, resolve));
+    return {
+      exitCode: 0,
+      stdout: `Laseryx browser bridge listening on http://${parsed.host}:${parsed.port}\nOpen the app with ?laseryxBridge=http://${parsed.host}:${parsed.port}&laseryxToken=${encodeURIComponent(parsed.token)}\n`
+    };
+  }
+
+  if (parsed.mode === "browser-run") {
+    try {
+      const response = await postBrowserCommand(parsed.bridgeUrl, parsed.token, parsed.command);
+      return {
+        exitCode: response.ok ? 0 : 1,
+        stdout: stringify(response)
+      };
+    } catch (error) {
+      return {
+        exitCode: 1,
+        stdout: stringify(errorResponse("inspect", [
+          diagnostic("BRIDGE_COMMAND_FAILED", "error", error instanceof Error ? error.message : String(error))
+        ]))
+      };
+    }
   }
 
   let input: unknown;

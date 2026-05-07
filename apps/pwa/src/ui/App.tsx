@@ -4,7 +4,9 @@ import { randomId } from "../core/util";
 
 import { useStore } from "../core/state/store";
 import { getDriver } from "../io/driverSingleton";
+import { createInAppAutomationBridge } from "../automation/browser/inAppBridge";
 import { installBrowserAutomation } from "../automation/browser/browserAutomation";
+import { readLocalBridgeConfig, startLocalBridgeClient } from "../automation/browser/localBridgeClient";
 import { createWorkerClient } from "./workerClient";
 import { projectRepo, ProjectSummary } from "../io/projectRepo";
 import { machineRepo } from "../io/machineRepo";
@@ -283,6 +285,20 @@ export function App() {
       camSettings: state.camSettings,
       machineProfile: state.machineProfile
     }));
+  }, [state.document, state.camSettings, state.machineProfile]);
+
+  useEffect(() => {
+    const config = readLocalBridgeConfig(window.location.search);
+    if (!config) return;
+
+    return startLocalBridgeClient({
+      ...config,
+      bridge: createInAppAutomationBridge(() => ({
+        document: state.document,
+        camSettings: state.camSettings,
+        machineProfile: state.machineProfile
+      }))
+    });
   }, [state.document, state.camSettings, state.machineProfile]);
 
   const handleGenerateGcode = async () => {
