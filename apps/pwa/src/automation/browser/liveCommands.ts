@@ -206,6 +206,7 @@ export function createLiveCommandExecutor(options: LiveCommandExecutorOptions) {
         case "project.list":
         case "project.open":
         case "project.delete":
+        case "project.summary":
         case "project.exportJson":
         case "project.importJson":
           return executeProjectCommand(command, { ...options, repo: options.projectRepo }, request);

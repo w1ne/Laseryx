@@ -29,6 +29,7 @@ const BROWSER_COMMANDS = new Set([
   "project.list",
   "project.open",
   "project.delete",
+  "project.summary",
   "project.exportJson",
   "project.importJson"
 ]);

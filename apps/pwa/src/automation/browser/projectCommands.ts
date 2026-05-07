@@ -1,9 +1,9 @@
 import type { Action } from "../../core/state/actions";
 import { INITIAL_STATE, type AppState } from "../../core/state/types";
-import type { CamSettings, Document, ImageObj, MachineProfile } from "../../core/model";
+import type { Document, ImageObj } from "../../core/model";
 import { projectRepo, type LoadedProject, type ProjectSaveMetadata, type ProjectSummary } from "../../io/projectRepo";
 import { diagnostic, errorResponse, okResponse } from "../responses";
-import type { AgentDiagnostic, AgentJobInput } from "../types";
+import type { AgentDiagnostic, AgentJobInput, JobSummary } from "../types";
 import {
   AUTOMATION_PROTOCOL_VERSION,
   type AutomationProtocolRequest,
@@ -17,6 +17,7 @@ export type ProjectAutomationCommand =
   | "project.list"
   | "project.open"
   | "project.delete"
+  | "project.summary"
   | "project.exportJson"
   | "project.importJson";
 
@@ -44,6 +45,7 @@ export type ProjectCommandExecutorOptions = {
 type ProjectResponseData =
   | { project: ProjectSummary & { summary?: { objectCount: number; operationCount: number } } }
   | { projects: ProjectSummary[] }
+  | { jobSummary: JobSummary }
   | { job: AgentJobInput }
   | { deletedProjectId: string };
 
@@ -90,13 +92,15 @@ function applyJob(options: ProjectCommandExecutorOptions, job: AgentJobInput): v
   options.dispatch({ type: "SELECT_OBJECT", payload: null });
 }
 
-function isJobInput(value: unknown): value is AgentJobInput {
+function validateJobInput(value: unknown): { ok: true; job: AgentJobInput } | { ok: false; message: string } {
   const record = asRecord(value);
-  return asRecord(record.document).version === 1
-    && Array.isArray(asRecord(record.document).layers)
-    && Array.isArray(asRecord(record.document).objects)
-    && Array.isArray(asRecord(record.camSettings).operations)
-    && typeof asRecord(record.machineProfile).id === "string";
+  const document = asRecord(record.document);
+  if (document.version !== 1) return { ok: false, message: "job.document.version must be 1" };
+  if (!Array.isArray(document.layers)) return { ok: false, message: "job.document.layers must be an array" };
+  if (!Array.isArray(document.objects)) return { ok: false, message: "job.document.objects must be an array" };
+  if (!Array.isArray(asRecord(record.camSettings).operations)) return { ok: false, message: "job.camSettings.operations must be an array" };
+  if (typeof asRecord(record.machineProfile).id !== "string") return { ok: false, message: "job.machineProfile.id must be a string" };
+  return { ok: true, job: value as AgentJobInput };
 }
 
 async function collectAssets(document: Document, options: ProjectCommandExecutorOptions): Promise<{ document: Document; assets: Map<string, Blob> }> {
@@ -233,15 +237,20 @@ function exportJson(options: ProjectCommandExecutorOptions, request: AutomationP
   return wrap(request, okResponse<ProjectResponseData>("project.exportJson", { job: structuredClone(currentJob(options.getState())) }));
 }
 
+function projectSummary(options: ProjectCommandExecutorOptions, request: AutomationProtocolRequest): AutomationProtocolResponse {
+  return wrap(request, okResponse<ProjectResponseData>("project.summary", { jobSummary: summarizeJob(currentJob(options.getState())) }));
+}
+
 function importJson(options: ProjectCommandExecutorOptions, request: AutomationProtocolRequest): AutomationProtocolResponse {
   const args = asRecord(request.args);
-  if (!isJobInput(args.job)) {
+  const validation = validateJobInput(args.job);
+  if (!validation.ok) {
     return wrap(request, errorResponse<ProjectResponseData>("project.importJson", [
-      projectInputError("job must include document, camSettings, and machineProfile")
+      projectInputError(validation.message)
     ]));
   }
 
-  const job = structuredClone(args.job);
+  const job = structuredClone(validation.job);
   applyJob(options, job);
   return wrap(request, okResponse<ProjectResponseData>("project.importJson", { job }));
 }
@@ -263,6 +272,8 @@ export async function executeProjectCommand(
         return await openProject(options, request);
       case "project.delete":
         return await deleteProject(options, request);
+      case "project.summary":
+        return projectSummary(options, request);
       case "project.exportJson":
         return exportJson(options, request);
       case "project.importJson":

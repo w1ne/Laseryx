@@ -212,6 +212,7 @@ describe("parseCliArgs", () => {
       "project.list",
       "project.open",
       "project.delete",
+      "project.summary",
       "project.exportJson",
       "project.importJson"
     ]) {

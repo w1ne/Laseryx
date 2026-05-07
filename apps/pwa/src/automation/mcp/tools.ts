@@ -96,6 +96,11 @@ const TOOL_DEFINITIONS: McpToolDefinition[] = [
     }
   },
   {
+    name: "laseryx_project_summary",
+    description: "Summarize the current Laseryx browser project without exporting full JSON.",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false }
+  },
+  {
     name: "laseryx_project_export_json",
     description: "Export the current Laseryx browser project as JSON.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false }
@@ -284,6 +289,13 @@ function summarizeResponse(response: AutomationProtocolResponse): Record<string,
     };
   }
 
+  if ("jobSummary" in data) {
+    return {
+      ...base,
+      jobSummary: data.jobSummary
+    };
+  }
+
   if ("job" in data) {
     return {
       ...base,
@@ -345,10 +357,15 @@ function commandForTool(name: string, args: Record<string, unknown>): { command:
       return { command: "project.open", args: { id: requireString(args, "id") } };
     case "laseryx_project_save":
       return { command: "project.save", args };
+    case "laseryx_project_summary":
+      return { command: "project.summary", args: {} };
     case "laseryx_project_export_json":
       return { command: "project.exportJson", args: {} };
     case "laseryx_project_import_json":
-      return { command: "project.importJson", args: { job: asRecord(args.job) } };
+      if (!maybeRecord(args.job)) {
+        throw new Error("job must be a project JSON object");
+      }
+      return { command: "project.importJson", args: { job: args.job } };
     case "laseryx_project_delete":
       return { command: "project.delete", args: { id: requireString(args, "id") } };
     case "laseryx_document_add_rect":

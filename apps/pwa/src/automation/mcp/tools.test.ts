@@ -26,6 +26,7 @@ describe("mcp tools", () => {
       "laseryx_project_list",
       "laseryx_project_open",
       "laseryx_project_save",
+      "laseryx_project_summary",
       "laseryx_project_export_json",
       "laseryx_project_import_json",
       "laseryx_project_delete",
@@ -120,17 +121,32 @@ describe("mcp tools", () => {
 
   it("maps project lifecycle typed tools to automation commands", async () => {
     const poster = createPoster();
-    const job = { document: { version: 1, units: "mm", layers: [], objects: [] }, camSettings: { operations: [] } };
+    const job = { document: { version: 1, units: "mm", layers: [], objects: [] }, camSettings: { operations: [] }, machineProfile: { id: "default" } };
 
     await callMcpTool("laseryx_project_new", {}, { bridgeUrl: "http://127.0.0.1:17321", token: "dev", postBrowserCommand: poster });
+    await callMcpTool("laseryx_project_summary", {}, { bridgeUrl: "http://127.0.0.1:17321", token: "dev", postBrowserCommand: poster });
     await callMcpTool("laseryx_project_export_json", {}, { bridgeUrl: "http://127.0.0.1:17321", token: "dev", postBrowserCommand: poster });
     await callMcpTool("laseryx_project_import_json", { job }, { bridgeUrl: "http://127.0.0.1:17321", token: "dev", postBrowserCommand: poster });
     await callMcpTool("laseryx_project_delete", { id: "project-1" }, { bridgeUrl: "http://127.0.0.1:17321", token: "dev", postBrowserCommand: poster });
 
     expect(poster).toHaveBeenNthCalledWith(1, "http://127.0.0.1:17321", "dev", "project.new", {});
-    expect(poster).toHaveBeenNthCalledWith(2, "http://127.0.0.1:17321", "dev", "project.exportJson", {});
-    expect(poster).toHaveBeenNthCalledWith(3, "http://127.0.0.1:17321", "dev", "project.importJson", { job });
-    expect(poster).toHaveBeenNthCalledWith(4, "http://127.0.0.1:17321", "dev", "project.delete", { id: "project-1" });
+    expect(poster).toHaveBeenNthCalledWith(2, "http://127.0.0.1:17321", "dev", "project.summary", {});
+    expect(poster).toHaveBeenNthCalledWith(3, "http://127.0.0.1:17321", "dev", "project.exportJson", {});
+    expect(poster).toHaveBeenNthCalledWith(4, "http://127.0.0.1:17321", "dev", "project.importJson", { job });
+    expect(poster).toHaveBeenNthCalledWith(5, "http://127.0.0.1:17321", "dev", "project.delete", { id: "project-1" });
+  });
+
+  it("rejects malformed project imports at the MCP boundary", async () => {
+    const poster = createPoster();
+
+    const missing = await callMcpTool("laseryx_project_import_json", {}, { bridgeUrl: "http://127.0.0.1:17321", token: "dev", postBrowserCommand: poster });
+    const malformed = await callMcpTool("laseryx_project_import_json", { job: [] }, { bridgeUrl: "http://127.0.0.1:17321", token: "dev", postBrowserCommand: poster });
+
+    expect(missing.isError).toBe(true);
+    expect(missing.content[0].text).toContain("job must be a project JSON object");
+    expect(malformed.isError).toBe(true);
+    expect(malformed.content[0].text).toContain("job must be a project JSON object");
+    expect(poster).not.toHaveBeenCalled();
   });
 
   it("adds a compact summary content block for generation responses", async () => {
@@ -189,15 +205,18 @@ describe("mcp tools", () => {
       command,
       data: command === "document.listObjects"
         ? { objects: [{ id: "rect-1", kind: "shape", layerId: "layer-1" }], selectedObjectId: "rect-1" }
-        : command === "cam.setOperation"
-          ? { operation: { id: "op-1", speed: 1400, power: 62, passes: 2 } }
-          : { project: { id: "project-1", name: "Project 1", summary: { objectCount: 1, operationCount: 1 } } },
+          : command === "cam.setOperation"
+            ? { operation: { id: "op-1", speed: 1400, power: 62, passes: 2 } }
+            : command === "project.summary"
+              ? { jobSummary: { document: { objectCount: 1, layerCount: 1 }, cam: { operationCount: 1 }, machine: { id: "default" } } }
+              : { project: { id: "project-1", name: "Project 1", summary: { objectCount: 1, operationCount: 1 } } },
       warnings: [],
       errors: []
     }));
 
     const list = await callMcpTool("laseryx_document_list_objects", {}, { bridgeUrl: "http://127.0.0.1:17321", token: "dev", postBrowserCommand: poster });
     const cam = await callMcpTool("laseryx_cam_set_operation", { operation: "op-1", speed: 1400 }, { bridgeUrl: "http://127.0.0.1:17321", token: "dev", postBrowserCommand: poster });
+    const summaryResult = await callMcpTool("laseryx_project_summary", {}, { bridgeUrl: "http://127.0.0.1:17321", token: "dev", postBrowserCommand: poster });
     const save = await callMcpTool("laseryx_project_save", { id: "project-1", name: "Project 1" }, { bridgeUrl: "http://127.0.0.1:17321", token: "dev", postBrowserCommand: poster });
 
     expect(JSON.parse(list.content[1].text)).toEqual({
@@ -214,6 +233,17 @@ describe("mcp tools", () => {
         command: "cam.setOperation",
         ok: true,
         operation: { id: "op-1", speed: 1400, power: 62, passes: 2 }
+      }
+    });
+    expect(JSON.parse(summaryResult.content[1].text)).toEqual({
+      summary: {
+        command: "project.summary",
+        ok: true,
+        jobSummary: {
+          document: { objectCount: 1, layerCount: 1 },
+          cam: { operationCount: 1 },
+          machine: { id: "default" }
+        }
       }
     });
     expect(JSON.parse(save.content[1].text)).toEqual({

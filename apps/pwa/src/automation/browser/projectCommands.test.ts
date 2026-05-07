@@ -169,6 +169,51 @@ describe("projectCommands", () => {
     expect(getState().camSettings.operations[0].speed).toBe(222);
   });
 
+  it("summarizes the current project without exporting the full job", async () => {
+    const state = structuredClone(INITIAL_STATE);
+    state.document.objects = [{
+      kind: "shape",
+      id: "rect-1",
+      layerId: "layer-1",
+      transform: { a: 1, b: 0, c: 0, d: 1, e: 5, f: 6 },
+      shape: { type: "rect", width: 7, height: 8 }
+    }];
+    state.camSettings.operations[0].speed = 222;
+    const { request } = createHarness(state);
+
+    const response = await request("project.summary");
+
+    expect(response.ok).toBe(true);
+    expect(response.data).toEqual({
+      jobSummary: {
+        document: expect.objectContaining({
+          objectCount: 1,
+          layerCount: 1,
+          objectsByKind: { shape: 1, path: 0, image: 0 }
+        }),
+        cam: expect.objectContaining({
+          operationCount: 1,
+          operations: [expect.objectContaining({ id: "op-1", speed: 222 })]
+        }),
+        machine: expect.objectContaining({ id: "default-machine" })
+      }
+    });
+  });
+
+  it("keeps summary stable across export and import round trips", async () => {
+    const { request } = createHarness();
+    const before = await request("project.summary");
+    const exported = await request("project.exportJson");
+    const importedJob = structuredClone((exported.data as { job: AgentJobInput }).job);
+
+    await request("project.new");
+    const importResponse = await request("project.importJson", { job: importedJob });
+    const after = await request("project.summary");
+
+    expect(importResponse.ok).toBe(true);
+    expect(after.data).toEqual(before.data);
+  });
+
   it("deletes projects and rejects missing project ids", async () => {
     const { request } = createHarness();
     await request("project.save", { id: "saved", name: "Saved" });
@@ -206,7 +251,22 @@ describe("projectCommands", () => {
     expect(importResponse.ok).toBe(false);
     expect(importResponse.errors[0]).toMatchObject({
       code: "INVALID_PROJECT_INPUT",
-      message: "job must include document, camSettings, and machineProfile"
+      message: "job.document.version must be 1"
+    });
+  });
+
+  it("returns specific import validation errors for missing job sections", async () => {
+    const { request } = createHarness();
+    const exportResponse = await request("project.exportJson");
+    const job = structuredClone((exportResponse.data as { job: AgentJobInput }).job) as Record<string, unknown>;
+    delete job.machineProfile;
+
+    const response = await request("project.importJson", { job });
+
+    expect(response.ok).toBe(false);
+    expect(response.errors[0]).toMatchObject({
+      code: "INVALID_PROJECT_INPUT",
+      message: "job.machineProfile.id must be a string"
     });
   });
 });

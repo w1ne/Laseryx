@@ -1,5 +1,4 @@
 import { diagnostic } from "../responses";
-import type { AgentCommand } from "../types";
 import {
   AUTOMATION_PROTOCOL_VERSION,
   type AutomationProtocolCommand,
@@ -26,6 +25,7 @@ const SUPPORTED_COMMANDS = new Set<AutomationProtocolCommand>([
   "project.list",
   "project.open",
   "project.delete",
+  "project.summary",
   "project.exportJson",
   "project.importJson"
 ]);

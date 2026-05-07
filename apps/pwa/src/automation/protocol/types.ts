@@ -1,5 +1,5 @@
 import type { GenerateCommandOptions } from "../commands/generate";
-import type { AgentCommand, AgentDiagnostic, AgentJobInput, AgentResponse, GenerateData, InspectData, PreflightData } from "../types";
+import type { AgentCommand, AgentDiagnostic, AgentJobInput, AgentResponse, GenerateData, InspectData, JobSummary, PreflightData } from "../types";
 import type { ProjectSummary } from "../../io/projectRepo";
 
 export const AUTOMATION_PROTOCOL_VERSION = 1;
@@ -22,6 +22,7 @@ export type LiveAutomationCommand =
   | "project.list"
   | "project.open"
   | "project.delete"
+  | "project.summary"
   | "project.exportJson"
   | "project.importJson";
 
@@ -32,6 +33,7 @@ export type AutomationProtocolArgs = GenerateCommandOptions | Record<string, unk
 export type ProjectAutomationData =
   | { project: ProjectSummary & { summary?: { objectCount: number; operationCount: number } } }
   | { projects: ProjectSummary[] }
+  | { jobSummary: JobSummary }
   | { job: AgentJobInput }
   | { deletedProjectId: string };
 
