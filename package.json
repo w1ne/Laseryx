@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "npm --prefix apps/pwa run dev",
     "build": "npm --prefix apps/pwa run build",
+    "laseryx": "npm --prefix apps/pwa run laseryx --",
     "preview": "npm --prefix apps/pwa run preview",
     "test": "npm --prefix apps/pwa run test",
     "lint": "npm --prefix apps/pwa run lint",
