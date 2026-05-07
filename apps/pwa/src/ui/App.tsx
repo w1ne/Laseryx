@@ -361,25 +361,29 @@ export function App() {
 
   return (
     <div className="app">
-      <header className="app__header">
-        <div>
+      <header className="app__topbar">
+        <div className="app__brand">
           <p className="app__eyebrow">Release {__APP_VERSION__}</p>
           <h1>Laseryx Workspace</h1>
-          <div className="app__commands" role="group" aria-label="Project actions">
-            <button className="button" onClick={handleNewProject}>New</button>
-            <button className="button" onClick={handleListProjects}>Open</button>
-            <button className="button" onClick={handleSaveProject}>Save</button>
-            <button className="button" onClick={() => setShowAbout(true)}>About</button>
-            {installPrompt && (
-              <button
-                className="button button--accent"
-                onClick={handleInstallClick}
-              >
-                Install App
-              </button>
-            )}
-            <DonateButton />
-          </div>
+        </div>
+        <div className="app__mode-tabs" role="group" aria-label="Workspace mode">
+          <button className={`tab ${activeTab === "design" ? "is-active" : ""}`} onClick={() => dispatch({ type: "SET_ACTIVE_TAB", payload: "design" })}>Design</button>
+          <button className={`tab ${activeTab === "machine" ? "is-active" : ""}`} onClick={() => dispatch({ type: "SET_ACTIVE_TAB", payload: "machine" })}>Machine</button>
+        </div>
+        <div className="app__commands" role="group" aria-label="Project actions">
+          <button className="button" onClick={handleNewProject}>New</button>
+          <button className="button" onClick={handleListProjects}>Open</button>
+          <button className="button" onClick={handleSaveProject}>Save</button>
+          <button className="button" onClick={() => setShowAbout(true)}>About</button>
+          {installPrompt && (
+            <button
+              className="button button--accent"
+              onClick={handleInstallClick}
+            >
+              Install App
+            </button>
+          )}
+          <DonateButton />
         </div>
         <div className={`app__worker ${workerStatus.ready ? "is-ready" : ""}`}>
           {workerStatus.ready ? "Worker Ready" : "Loading..."}
@@ -403,11 +407,6 @@ export function App() {
           </div>
         </div>
       )}
-
-      <nav className="app__tabs">
-        <button className={`tab ${activeTab === "design" ? "is-active" : ""}`} onClick={() => dispatch({ type: "SET_ACTIVE_TAB", payload: "design" })}>Design</button>
-        <button className={`tab ${activeTab === "machine" ? "is-active" : ""}`} onClick={() => dispatch({ type: "SET_ACTIVE_TAB", payload: "machine" })}>Machine</button>
-      </nav>
 
       {activeTab === "design" && (
         <nav className="app__panel-tabs" role="tablist" aria-label="Design panels">
@@ -447,28 +446,11 @@ export function App() {
       <main className="app__main">
         {activeTab === "design" ? (
           <>
-            <div className="app__preview-area">
-              <div className="preview-mode-switch" role="group" aria-label="Preview mode">
-                <button
-                  className={`segmented-button ${previewMode === "design" ? "is-active" : ""}`}
-                  onClick={() => setPreviewMode("design")}
-                >
-                  Design
-                </button>
-                <button
-                  className={`segmented-button ${previewMode === "gcode" ? "is-active" : ""}`}
-                  disabled={!generatedGcode}
-                  onClick={() => generatedGcode && setPreviewMode("gcode")}
-                >
-                  Preview
-                </button>
-              </div>
-              <PreviewPanel
-                viewMode={previewMode}
-                gcode={generatedGcode || undefined}
-              />
-            </div>
-            <div className="app__sidebar">
+            <section
+              className="app__left-zone"
+              aria-label="Document navigation"
+              data-mobile-panel={designPanel === "document" ? "active" : "inactive"}
+            >
               <div
                 id="design-panel-document"
                 className="app__panel-slot"
@@ -479,6 +461,35 @@ export function App() {
               >
                 <DocumentPanel />
               </div>
+            </section>
+            <section className="app__canvas-zone" aria-label="Laser bed workspace" data-mobile-panel="canvas">
+              <div className="app__preview-area">
+                <div className="preview-mode-switch" role="group" aria-label="Preview mode">
+                  <button
+                    className={`segmented-button ${previewMode === "design" ? "is-active" : ""}`}
+                    onClick={() => setPreviewMode("design")}
+                  >
+                    Design
+                  </button>
+                  <button
+                    className={`segmented-button ${previewMode === "gcode" ? "is-active" : ""}`}
+                    disabled={!generatedGcode}
+                    onClick={() => generatedGcode && setPreviewMode("gcode")}
+                  >
+                    Preview
+                  </button>
+                </div>
+                <PreviewPanel
+                  viewMode={previewMode}
+                  gcode={generatedGcode || undefined}
+                />
+              </div>
+            </section>
+            <section
+              className="app__right-zone"
+              aria-label="Inspector and operations"
+              data-mobile-panel={designPanel === "document" ? "inactive" : "active"}
+            >
               <div
                 id="design-panel-properties"
                 className="app__panel-slot"
@@ -507,11 +518,11 @@ export function App() {
                   jobStats={jobStats}
                 />
               </div>
-            </div>
+            </section>
           </>
         ) : (
           <>
-            <div className="app__sidebar">
+            <section className="app__left-zone" aria-label="Machine controls" data-mobile-panel="active">
               <MachinePanel
                 onConnect={handleConnect}
                 onDisconnect={handleDisconnect}
@@ -521,15 +532,17 @@ export function App() {
                 onStreamAbort={handleStreamAbort}
                 isGcodeReady={!!generatedGcode}
               />
-            </div>
-            <div className="app__preview-area">
-              <PreviewPanel
-                showMachineHead={true}
-                machineStatus={state.machineStatus}
-                viewMode={previewMode}
-                gcode={generatedGcode || undefined}
-              />
-            </div>
+            </section>
+            <section className="app__canvas-zone app__canvas-zone--wide" aria-label="Laser bed workspace" data-mobile-panel="canvas">
+              <div className="app__preview-area">
+                <PreviewPanel
+                  showMachineHead={true}
+                  machineStatus={state.machineStatus}
+                  viewMode={previewMode}
+                  gcode={generatedGcode || undefined}
+                />
+              </div>
+            </section>
           </>
         )}
       </main>
