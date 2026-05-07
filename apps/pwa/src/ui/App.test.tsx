@@ -104,10 +104,11 @@ describe("App", () => {
         expect(layersPanel).toHaveAttribute("role", "tabpanel");
         expect(layersPanel).toHaveAttribute("id", "design-panel-layers");
         expect(layersPanel).toHaveAttribute("aria-labelledby", "design-panel-tab-layers");
-        expect(layersPanel).toHaveAttribute("aria-hidden", "true");
+        expect(layersPanel).not.toHaveAttribute("aria-hidden");
 
         fireEvent.click(operationsTab);
 
-        expect(layersPanel).toHaveAttribute("aria-hidden", "false");
+        expect(layersPanel).toHaveAttribute("data-mobile-panel", "active");
+        expect(layersPanel).not.toHaveAttribute("aria-hidden");
     });
 });

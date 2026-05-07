@@ -474,7 +474,6 @@ export function App() {
                 className="app__panel-slot"
                 role="tabpanel"
                 aria-labelledby="design-panel-tab-document"
-                aria-hidden={designPanel !== "document"}
                 data-mobile-panel={designPanel === "document" ? "active" : "inactive"}
                 data-testid="design-panel-document"
               >
@@ -485,7 +484,6 @@ export function App() {
                 className="app__panel-slot"
                 role="tabpanel"
                 aria-labelledby="design-panel-tab-properties"
-                aria-hidden={designPanel !== "properties"}
                 data-mobile-panel={designPanel === "properties" ? "active" : "inactive"}
                 data-testid="design-panel-properties"
               >
@@ -496,7 +494,6 @@ export function App() {
                 className="app__panel-slot"
                 role="tabpanel"
                 aria-labelledby="design-panel-tab-layers"
-                aria-hidden={designPanel !== "layers"}
                 data-mobile-panel={designPanel === "layers" ? "active" : "inactive"}
                 data-testid="design-panel-layers"
               >
