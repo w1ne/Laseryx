@@ -3,6 +3,8 @@ dist/
 build/
 .vite/
 coverage/
+.superpowers/
+docs/superpowers/
 
 .env
 .env.*.local
