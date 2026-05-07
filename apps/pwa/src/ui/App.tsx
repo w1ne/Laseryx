@@ -4,6 +4,7 @@ import { randomId } from "../core/util";
 
 import { useStore } from "../core/state/store";
 import { getDriver } from "../io/driverSingleton";
+import { installBrowserAutomation } from "../automation/browser/browserAutomation";
 import { createWorkerClient } from "./workerClient";
 import { projectRepo, ProjectSummary } from "../io/projectRepo";
 import { machineRepo } from "../io/machineRepo";
@@ -275,6 +276,14 @@ export function App() {
   const [generationState, setGenerationState] = useState<{ status: "idle" | "working" | "done" | "error"; message?: string }>({ status: "idle" });
   const [previewMode, setPreviewMode] = useState<"design" | "gcode">("design");
   const [designPanel, setDesignPanel] = useState<"document" | "properties" | "layers">("document");
+
+  useEffect(() => {
+    return installBrowserAutomation(() => ({
+      document: state.document,
+      camSettings: state.camSettings,
+      machineProfile: state.machineProfile
+    }));
+  }, [state.document, state.camSettings, state.machineProfile]);
 
   const handleGenerateGcode = async () => {
     if (!clientRef.current) return;
