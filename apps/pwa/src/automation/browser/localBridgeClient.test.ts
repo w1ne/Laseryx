@@ -43,6 +43,50 @@ describe("localBridgeClient", () => {
     });
   });
 
+  it("awaits async bridge responses before posting to the broker", async () => {
+    const posted: unknown[] = [];
+    const fetchImpl = async (url: string, init?: RequestInit) => {
+      if (url.includes("/next")) {
+        return new Response(JSON.stringify({
+          protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+          requestId: "req-async",
+          command: "project.list",
+          args: {}
+        }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      if (url.includes("/response")) {
+        posted.push(JSON.parse(String(init?.body)));
+        return new Response("{}", { status: 200 });
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    };
+
+    const didWork = await runLocalBridgePollOnce({
+      bridgeUrl: "http://127.0.0.1:17321",
+      token: "dev",
+      bridge: {
+        request: async (request) => ({
+          protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+          requestId: request.requestId,
+          ok: true,
+          command: "project.list",
+          data: { projects: [] },
+          warnings: [],
+          errors: []
+        })
+      },
+      fetchImpl
+    });
+
+    expect(didWork).toBe(true);
+    expect(posted[0]).toMatchObject({
+      requestId: "req-async",
+      ok: true,
+      command: "project.list",
+      data: { projects: [] }
+    });
+  });
+
   it("returns false when the broker has no pending command", async () => {
     const didWork = await runLocalBridgePollOnce({
       bridgeUrl: "http://127.0.0.1:17321",

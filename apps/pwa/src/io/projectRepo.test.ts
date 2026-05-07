@@ -49,6 +49,32 @@ describe('projectRepo', () => {
         expect(loaded?.document).toEqual(mockDoc);
     });
 
+    it('should save and load automation metadata', async () => {
+        const camSettings = {
+            operations: [
+                { id: "op-1", name: "Cut", mode: "line" as const, speed: 1200, power: 55, passes: 2 }
+            ]
+        };
+        const machineProfile = {
+            id: "machine-1",
+            name: "Machine 1",
+            bedMm: { w: 300, h: 200 },
+            origin: "frontLeft" as const,
+            sRange: { min: 0, max: 1000 },
+            laserMode: "M4" as const,
+            baudRate: 115200
+        };
+
+        const id = await projectRepo.save(mockDoc, new Map(), "Metadata Project", undefined, {
+            camSettings,
+            machineProfile
+        });
+        const loaded = await projectRepo.load(id);
+
+        expect(loaded?.camSettings).toEqual(camSettings);
+        expect(loaded?.machineProfile).toEqual(machineProfile);
+    });
+
     it('should save and load assets', async () => {
         const blob = new Blob(["fake-image-data"], { type: "text/plain" });
         const assetId = "asset-1";

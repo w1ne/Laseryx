@@ -20,7 +20,14 @@ const SUPPORTED_COMMANDS = new Set<AutomationProtocolCommand>([
   "document.addRect",
   "document.updateObjectTransform",
   "document.setObjectLayer",
-  "document.deleteObject"
+  "document.deleteObject",
+  "project.new",
+  "project.save",
+  "project.list",
+  "project.open",
+  "project.delete",
+  "project.exportJson",
+  "project.importJson"
 ]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {

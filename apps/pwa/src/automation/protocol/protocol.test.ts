@@ -20,6 +20,19 @@ describe("automation protocol", () => {
     expect(result.request?.command).toBe("inspect");
   });
 
+  it("accepts project lifecycle request envelopes", () => {
+    const result = validateProtocolRequest({
+      protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+      requestId: "req-project",
+      command: "project.save",
+      args: { name: "Agent Project" }
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.request?.command).toBe("project.save");
+    expect(result.request?.args).toEqual({ name: "Agent Project" });
+  });
+
   it("rejects unsupported protocol versions", () => {
     const result = validateProtocolRequest({
       protocolVersion: 999,

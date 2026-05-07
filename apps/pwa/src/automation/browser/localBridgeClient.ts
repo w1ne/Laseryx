@@ -45,7 +45,7 @@ export async function runLocalBridgePollOnce(options: LocalBridgeClientOptions):
   }
 
   const request = await nextResponse.json();
-  const protocolResponse = options.bridge.request(request);
+  const protocolResponse = await options.bridge.request(request);
 
   const postResponse = await fetchImpl(buildBridgeUrl(options.bridgeUrl, "/response", options.token), {
     method: "POST",

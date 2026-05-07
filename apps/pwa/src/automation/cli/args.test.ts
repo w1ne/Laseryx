@@ -158,4 +158,32 @@ describe("parseCliArgs", () => {
       });
     }
   });
+
+  it("accepts all project lifecycle browser commands", () => {
+    for (const command of [
+      "project.new",
+      "project.save",
+      "project.list",
+      "project.open",
+      "project.delete",
+      "project.exportJson",
+      "project.importJson"
+    ]) {
+      expect(parseCliArgs([
+        "browser",
+        "run",
+        command,
+        "--bridge",
+        "http://127.0.0.1:17321",
+        "--token",
+        "dev",
+        "--id",
+        "project-1"
+      ])).toMatchObject({
+        ok: true,
+        mode: "browser-run",
+        command
+      });
+    }
+  });
 });

@@ -3,7 +3,7 @@ import { handleProtocolRequest } from "../protocol/handler";
 import type { AutomationProtocolRequest, AutomationProtocolResponse, LiveAutomationCommand } from "../protocol/types";
 
 export type InAppAutomationBridge = {
-  request: (request: AutomationProtocolRequest) => AutomationProtocolResponse;
+  request: (request: AutomationProtocolRequest) => AutomationProtocolResponse | Promise<AutomationProtocolResponse>;
 };
 
 const LIVE_COMMANDS = new Set<LiveAutomationCommand>([
@@ -16,7 +16,14 @@ const LIVE_COMMANDS = new Set<LiveAutomationCommand>([
   "document.addRect",
   "document.updateObjectTransform",
   "document.setObjectLayer",
-  "document.deleteObject"
+  "document.deleteObject",
+  "project.new",
+  "project.save",
+  "project.list",
+  "project.open",
+  "project.delete",
+  "project.exportJson",
+  "project.importJson"
 ]);
 
 export function createInAppAutomationBridge(

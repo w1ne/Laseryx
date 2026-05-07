@@ -1,5 +1,5 @@
 import { getDb } from './db';
-import { Document } from '../core/model';
+import { CamSettings, Document, MachineProfile } from '../core/model';
 import { randomId } from '../core/util';
 
 export interface ProjectSummary {
@@ -12,6 +12,13 @@ export interface LoadedProject {
     document: Document;
     name: string;
     assets: Map<string, Blob>;
+    camSettings?: CamSettings;
+    machineProfile?: MachineProfile;
+}
+
+export interface ProjectSaveMetadata {
+    camSettings?: CamSettings;
+    machineProfile?: MachineProfile;
 }
 
 export const projectRepo = {
@@ -70,7 +77,9 @@ export const projectRepo = {
         return {
             document: proj.document,
             name: proj.name,
-            assets
+            assets,
+            camSettings: proj.camSettings,
+            machineProfile: proj.machineProfile
         };
     },
 
@@ -79,7 +88,7 @@ export const projectRepo = {
      * document: The document structure (where ImageObj.src MUST be assetId)
      * assets: Map of assetId -> Blob
      */
-    async save(document: Document, assets: Map<string, Blob>, name?: string, id?: string): Promise<string> {
+    async save(document: Document, assets: Map<string, Blob>, name?: string, id?: string, metadata: ProjectSaveMetadata = {}): Promise<string> {
         const db = await getDb();
         const projectId = id || randomId();
         const timestamp = Date.now();
@@ -108,6 +117,8 @@ export const projectRepo = {
             name: projectName,
             updatedAt: timestamp,
             document,
+            ...(metadata.camSettings ? { camSettings: metadata.camSettings } : {}),
+            ...(metadata.machineProfile ? { machineProfile: metadata.machineProfile } : {}),
             // thumbnail could be generated here if we had a canvas
         });
 

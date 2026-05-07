@@ -21,7 +21,14 @@ const BROWSER_COMMANDS = new Set([
   "document.addRect",
   "document.updateObjectTransform",
   "document.setObjectLayer",
-  "document.deleteObject"
+  "document.deleteObject",
+  "project.new",
+  "project.save",
+  "project.list",
+  "project.open",
+  "project.delete",
+  "project.exportJson",
+  "project.importJson"
 ]);
 
 function readOption(rest: string[], name: string): string | undefined {

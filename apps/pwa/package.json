@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "cli:build": "vite build --config vite.cli.config.ts",
-    "laseryx": "npm run cli:build --silent && node dist-cli/laseryx.mjs",
+    "laseryx": "node scripts/run-laseryx.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "lint": "eslint src --ext .ts,.tsx"

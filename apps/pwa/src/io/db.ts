@@ -1,11 +1,13 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
-import { Document } from '../core/model';
+import { CamSettings, Document, MachineProfile } from '../core/model';
 
 export interface ProjectRec {
     id: string;
     name: string;
     updatedAt: number;
     document: Document; // Note: ImageObj inside will contain asset IDs, not blob URLs (runtime only)
+    camSettings?: CamSettings;
+    machineProfile?: MachineProfile;
     thumbnail?: Blob;
 }
 

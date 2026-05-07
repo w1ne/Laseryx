@@ -4,8 +4,9 @@ import type { Action } from "../../core/state/actions";
 import { appReducer } from "../../core/state/reducer";
 import { AUTOMATION_PROTOCOL_VERSION } from "../protocol/types";
 import { createLiveCommandExecutor } from "./liveCommands";
+import type { ProjectCommandRepo } from "./projectCommands";
 
-function createHarness(initialState: AppState = structuredClone(INITIAL_STATE)) {
+function createHarness(initialState: AppState = structuredClone(INITIAL_STATE), projectRepo?: ProjectCommandRepo) {
   let state = initialState;
   const dispatch = vi.fn((action: Action) => {
     state = appReducer(state, action);
@@ -16,7 +17,8 @@ function createHarness(initialState: AppState = structuredClone(INITIAL_STATE)) 
     getState: () => state,
     dispatch,
     setPreviewMode,
-    setDesignPanel
+    setDesignPanel,
+    projectRepo
   });
   return { executor, dispatch, setPreviewMode, setDesignPanel, getState: () => state };
 }
@@ -434,5 +436,28 @@ describe("liveCommands", () => {
       message: "Object not found: missing-object"
     });
     expect(getState().document.objects).toHaveLength(1);
+  });
+
+  it("routes project lifecycle commands through the live executor", async () => {
+    const projectRepo: ProjectCommandRepo = {
+      list: async () => [{ id: "project-1", name: "Project 1", updatedAt: 123 }],
+      load: async () => null,
+      save: async () => "project-1",
+      delete: async () => undefined
+    };
+    const { executor } = createHarness(structuredClone(INITIAL_STATE), projectRepo);
+
+    const response = await executor.request({
+      protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+      requestId: "req-project-list",
+      command: "project.list",
+      args: {}
+    });
+
+    expect(response.ok).toBe(true);
+    expect(response.command).toBe("project.list");
+    expect(response.data).toEqual({
+      projects: [{ id: "project-1", name: "Project 1", updatedAt: 123 }]
+    });
   });
 });

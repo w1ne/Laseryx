@@ -11,6 +11,7 @@ import {
 } from "../protocol/types";
 import { validateProtocolRequest } from "../protocol/validate";
 import { executeDocumentCommand } from "./documentCommands";
+import { executeProjectCommand, type ProjectCommandRepo } from "./projectCommands";
 
 type PreviewMode = "design" | "gcode";
 type DesignPanel = "document" | "properties" | "layers";
@@ -20,6 +21,7 @@ export type LiveCommandExecutorOptions = {
   dispatch: (action: Action) => void;
   setPreviewMode: (mode: PreviewMode) => void;
   setDesignPanel: (panel: DesignPanel) => void;
+  projectRepo?: ProjectCommandRepo;
 };
 
 type LiveResponseData =
@@ -191,6 +193,14 @@ export function createLiveCommandExecutor(options: LiveCommandExecutorOptions) {
         case "document.setObjectLayer":
         case "document.deleteObject":
           return executeDocumentCommand(command, options, request);
+        case "project.new":
+        case "project.save":
+        case "project.list":
+        case "project.open":
+        case "project.delete":
+        case "project.exportJson":
+        case "project.importJson":
+          return executeProjectCommand(command, { ...options, repo: options.projectRepo }, request);
         default:
           return wrap(request, errorResponse<LiveResponseData>("inspect", [
             diagnostic("UNKNOWN_COMMAND", "error", `Unknown live command: ${request.command}`)

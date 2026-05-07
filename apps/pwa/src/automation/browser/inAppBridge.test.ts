@@ -119,4 +119,29 @@ describe("in-app automation bridge", () => {
       shape: { type: "rect", width: 18, height: 12 }
     });
   });
+
+  it("routes async project lifecycle commands through the live executor", async () => {
+    const bridge = createInAppAutomationBridge(() => job, {
+      request: async (request) => ({
+        protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+        requestId: request.requestId,
+        ok: true,
+        command: "project.list",
+        data: { projects: [] },
+        warnings: [],
+        errors: []
+      })
+    });
+
+    const response = await bridge.request({
+      protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+      requestId: "req-live-project",
+      command: "project.list",
+      args: {}
+    });
+
+    expect(response.ok).toBe(true);
+    expect(response.command).toBe("project.list");
+    expect(response.data).toEqual({ projects: [] });
+  });
 });
