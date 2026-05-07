@@ -17,7 +17,11 @@ const BROWSER_COMMANDS = new Set([
   "ui.setPreviewMode",
   "ui.selectDesignPanel",
   "document.listObjects",
-  "document.selectObject"
+  "document.selectObject",
+  "document.addRect",
+  "document.updateObjectTransform",
+  "document.setObjectLayer",
+  "document.deleteObject"
 ]);
 
 function readOption(rest: string[], name: string): string | undefined {

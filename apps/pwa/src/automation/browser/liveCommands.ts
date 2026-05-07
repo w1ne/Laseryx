@@ -10,6 +10,7 @@ import {
   type LiveAutomationCommand
 } from "../protocol/types";
 import { validateProtocolRequest } from "../protocol/validate";
+import { executeDocumentCommand } from "./documentCommands";
 
 type PreviewMode = "design" | "gcode";
 type DesignPanel = "document" | "properties" | "layers";
@@ -185,6 +186,11 @@ export function createLiveCommandExecutor(options: LiveCommandExecutorOptions) {
           options.dispatch({ type: "SELECT_OBJECT", payload: objectId });
           return wrap(request, okResponse<LiveResponseData>("document.selectObject", { selectedObjectId: objectId }));
         }
+        case "document.addRect":
+        case "document.updateObjectTransform":
+        case "document.setObjectLayer":
+        case "document.deleteObject":
+          return executeDocumentCommand(command, options, request);
         default:
           return wrap(request, errorResponse<LiveResponseData>("inspect", [
             diagnostic("UNKNOWN_COMMAND", "error", `Unknown live command: ${request.command}`)

@@ -95,4 +95,67 @@ describe("parseCliArgs", () => {
       }
     });
   });
+
+  it("parses browser run document mutation args", () => {
+    expect(parseCliArgs([
+      "browser",
+      "run",
+      "document.addRect",
+      "--bridge",
+      "http://127.0.0.1:17321",
+      "--token",
+      "dev",
+      "--object",
+      "rect-agent-1",
+      "--layer",
+      "layer-1",
+      "--x",
+      "10",
+      "--y",
+      "15",
+      "--width",
+      "40",
+      "--height",
+      "20"
+    ])).toEqual({
+      ok: true,
+      mode: "browser-run",
+      command: "document.addRect",
+      bridgeUrl: "http://127.0.0.1:17321",
+      token: "dev",
+      args: {
+        object: "rect-agent-1",
+        layer: "layer-1",
+        x: 10,
+        y: 15,
+        width: 40,
+        height: 20
+      }
+    });
+  });
+
+  it("accepts all document mutation browser commands", () => {
+    for (const command of [
+      "document.updateObjectTransform",
+      "document.setObjectLayer",
+      "document.deleteObject"
+    ]) {
+      expect(parseCliArgs([
+        "browser",
+        "run",
+        command,
+        "--bridge",
+        "http://127.0.0.1:17321",
+        "--token",
+        "dev",
+        "--object",
+        "rect-agent-1"
+      ])).toMatchObject({
+        ok: true,
+        mode: "browser-run",
+        command,
+        args: { object: "rect-agent-1" }
+      });
+    }
+  });
 });

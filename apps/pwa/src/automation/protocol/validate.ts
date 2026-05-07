@@ -16,7 +16,11 @@ const SUPPORTED_COMMANDS = new Set<AutomationProtocolCommand>([
   "ui.setPreviewMode",
   "ui.selectDesignPanel",
   "document.listObjects",
-  "document.selectObject"
+  "document.selectObject",
+  "document.addRect",
+  "document.updateObjectTransform",
+  "document.setObjectLayer",
+  "document.deleteObject"
 ]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {

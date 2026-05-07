@@ -92,4 +92,31 @@ describe("in-app automation bridge", () => {
     expect(response.ok).toBe(true);
     expect(state.camSettings.operations[0].power).toBe(55);
   });
+
+  it("routes document mutation commands through the live executor", () => {
+    let state: AppState = structuredClone(INITIAL_STATE);
+    const liveExecutor = createLiveCommandExecutor({
+      getState: () => state,
+      dispatch: (action: Action) => {
+        state = appReducer(state, action);
+      },
+      setPreviewMode: () => undefined,
+      setDesignPanel: () => undefined
+    });
+    const bridge = createInAppAutomationBridge(() => job, liveExecutor);
+
+    const response = bridge.request({
+      protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+      requestId: "req-live-doc",
+      command: "document.addRect",
+      args: { object: "bridge-rect", layer: "layer-1", width: 18, height: 12 }
+    });
+
+    expect(response.ok).toBe(true);
+    expect(state.document.objects[0]).toMatchObject({
+      id: "bridge-rect",
+      layerId: "layer-1",
+      shape: { type: "rect", width: 18, height: 12 }
+    });
+  });
 });

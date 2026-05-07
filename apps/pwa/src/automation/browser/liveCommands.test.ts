@@ -146,4 +146,293 @@ describe("liveCommands", () => {
     expect(selectResponse.ok).toBe(true);
     expect(getState().selectedObjectId).toBe("rect-1");
   });
+
+  it("adds a rectangle object to an existing layer", () => {
+    const { executor, getState } = createHarness();
+
+    const response = executor.request({
+      protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+      requestId: "req-add-rect",
+      command: "document.addRect",
+      args: {
+        object: "rect-agent-1",
+        layer: "layer-1",
+        x: 12,
+        y: 18,
+        width: 40,
+        height: 25
+      }
+    });
+
+    expect(response.ok).toBe(true);
+    expect(response.command).toBe("document.addRect");
+    expect(getState().selectedObjectId).toBe("rect-agent-1");
+    expect(getState().document.objects[0]).toEqual({
+      kind: "shape",
+      id: "rect-agent-1",
+      layerId: "layer-1",
+      transform: { a: 1, b: 0, c: 0, d: 1, e: 12, f: 18 },
+      shape: { type: "rect", width: 40, height: 25 }
+    });
+    expect(response.data).toMatchObject({
+      object: {
+        id: "rect-agent-1",
+        layerId: "layer-1",
+        shape: { type: "rect", width: 40, height: 25 }
+      }
+    });
+  });
+
+  it("updates transform fields without replacing the whole object", () => {
+    const state = structuredClone(INITIAL_STATE);
+    state.document.objects = [
+      {
+        kind: "shape",
+        id: "rect-1",
+        layerId: "layer-1",
+        transform: { a: 1, b: 0, c: 0, d: 1, e: 10, f: 20 },
+        shape: { type: "rect", width: 30, height: 40 }
+      }
+    ];
+    const { executor, getState } = createHarness(state);
+
+    const response = executor.request({
+      protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+      requestId: "req-transform",
+      command: "document.updateObjectTransform",
+      args: {
+        object: "rect-1",
+        x: 42,
+        y: 11,
+        scaleX: 2
+      }
+    });
+
+    expect(response.ok).toBe(true);
+    expect(getState().document.objects[0]).toMatchObject({
+      id: "rect-1",
+      layerId: "layer-1",
+      transform: { a: 2, b: 0, c: 0, d: 1, e: 42, f: 11 },
+      shape: { type: "rect", width: 30, height: 40 }
+    });
+  });
+
+  it("moves and deletes document objects", () => {
+    const state = structuredClone(INITIAL_STATE);
+    state.document.layers.push({ id: "layer-2", name: "Layer 2", visible: true, locked: false, operationId: "op-1" });
+    state.document.objects = [
+      {
+        kind: "shape",
+        id: "rect-1",
+        layerId: "layer-1",
+        transform: { a: 1, b: 0, c: 0, d: 1, e: 10, f: 20 },
+        shape: { type: "rect", width: 30, height: 40 }
+      }
+    ];
+    state.selectedObjectId = "rect-1";
+    const { executor, getState } = createHarness(state);
+
+    const moveResponse = executor.request({
+      protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+      requestId: "req-layer",
+      command: "document.setObjectLayer",
+      args: { object: "rect-1", layer: "layer-2" }
+    });
+    const deleteResponse = executor.request({
+      protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+      requestId: "req-delete",
+      command: "document.deleteObject",
+      args: { object: "rect-1" }
+    });
+
+    expect(moveResponse.ok).toBe(true);
+    expect(moveResponse.data).toMatchObject({ object: { id: "rect-1", layerId: "layer-2" } });
+    expect(deleteResponse.ok).toBe(true);
+    expect(getState().document.objects).toEqual([]);
+    expect(getState().selectedObjectId).toBeNull();
+  });
+
+  it("rejects invalid document mutations", () => {
+    const { executor, getState } = createHarness();
+
+    const response = executor.request({
+      protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+      requestId: "req-bad-rect",
+      command: "document.addRect",
+      args: {
+        object: "bad-rect",
+        layer: "layer-1",
+        width: 0,
+        height: 25
+      }
+    });
+
+    expect(response.ok).toBe(false);
+    expect(response.errors[0]).toMatchObject({
+      code: "INVALID_DOCUMENT_MUTATION",
+      message: "width must be greater than 0"
+    });
+    expect(getState().document.objects).toEqual([]);
+  });
+
+  it("requires rectangle dimensions for document mutations", () => {
+    const { executor, getState } = createHarness();
+
+    const response = executor.request({
+      protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+      requestId: "req-missing-width",
+      command: "document.addRect",
+      args: {
+        object: "bad-rect",
+        layer: "layer-1",
+        height: 25
+      }
+    });
+
+    expect(response.ok).toBe(false);
+    expect(response.errors[0]).toMatchObject({
+      code: "INVALID_DOCUMENT_MUTATION",
+      message: "Missing width"
+    });
+    expect(getState().document.objects).toEqual([]);
+  });
+
+  it("rejects duplicate object ids and missing layers", () => {
+    const state = structuredClone(INITIAL_STATE);
+    state.document.objects = [
+      {
+        kind: "shape",
+        id: "rect-1",
+        layerId: "layer-1",
+        transform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 },
+        shape: { type: "rect", width: 10, height: 10 }
+      }
+    ];
+    const { executor, getState } = createHarness(state);
+
+    const duplicateResponse = executor.request({
+      protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+      requestId: "req-duplicate",
+      command: "document.addRect",
+      args: { object: "rect-1", layer: "layer-1", width: 20, height: 20 }
+    });
+    const missingLayerResponse = executor.request({
+      protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+      requestId: "req-missing-layer",
+      command: "document.addRect",
+      args: { object: "rect-2", layer: "missing-layer", width: 20, height: 20 }
+    });
+
+    expect(duplicateResponse.ok).toBe(false);
+    expect(duplicateResponse.errors[0]).toMatchObject({
+      code: "ALREADY_EXISTS",
+      message: "Object already exists: rect-1"
+    });
+    expect(missingLayerResponse.ok).toBe(false);
+    expect(missingLayerResponse.errors[0]).toMatchObject({
+      code: "NOT_FOUND",
+      message: "Layer not found: missing-layer"
+    });
+    expect(getState().document.objects).toHaveLength(1);
+  });
+
+  it("rejects transform updates for missing objects, invalid numbers, and empty patches", () => {
+    const state = structuredClone(INITIAL_STATE);
+    state.document.objects = [
+      {
+        kind: "shape",
+        id: "rect-1",
+        layerId: "layer-1",
+        transform: { a: 1, b: 0, c: 0, d: 1, e: 10, f: 20 },
+        shape: { type: "rect", width: 30, height: 40 }
+      }
+    ];
+    const { executor, getState } = createHarness(state);
+
+    const missingResponse = executor.request({
+      protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+      requestId: "req-missing-object",
+      command: "document.updateObjectTransform",
+      args: { object: "missing-object", x: 12 }
+    });
+    const invalidNumberResponse = executor.request({
+      protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+      requestId: "req-invalid-transform",
+      command: "document.updateObjectTransform",
+      args: { object: "rect-1", x: "not-a-number" }
+    });
+    const emptyPatchResponse = executor.request({
+      protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+      requestId: "req-empty-transform",
+      command: "document.updateObjectTransform",
+      args: { object: "rect-1" }
+    });
+
+    expect(missingResponse.ok).toBe(false);
+    expect(missingResponse.errors[0]).toMatchObject({
+      code: "NOT_FOUND",
+      message: "Object not found: missing-object"
+    });
+    expect(invalidNumberResponse.ok).toBe(false);
+    expect(invalidNumberResponse.errors[0]).toMatchObject({
+      code: "INVALID_DOCUMENT_MUTATION",
+      message: "x must be a number"
+    });
+    expect(emptyPatchResponse.ok).toBe(false);
+    expect(emptyPatchResponse.errors[0]).toMatchObject({
+      code: "INVALID_DOCUMENT_MUTATION",
+      message: "At least one transform field is required"
+    });
+    expect(getState().document.objects[0].transform).toEqual({ a: 1, b: 0, c: 0, d: 1, e: 10, f: 20 });
+  });
+
+  it("rejects layer moves and deletes for missing objects or layers", () => {
+    const state = structuredClone(INITIAL_STATE);
+    state.document.objects = [
+      {
+        kind: "shape",
+        id: "rect-1",
+        layerId: "layer-1",
+        transform: { a: 1, b: 0, c: 0, d: 1, e: 10, f: 20 },
+        shape: { type: "rect", width: 30, height: 40 }
+      }
+    ];
+    const { executor, getState } = createHarness(state);
+
+    const missingLayerResponse = executor.request({
+      protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+      requestId: "req-move-missing-layer",
+      command: "document.setObjectLayer",
+      args: { object: "rect-1", layer: "missing-layer" }
+    });
+    const missingMoveObjectResponse = executor.request({
+      protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+      requestId: "req-move-missing-object",
+      command: "document.setObjectLayer",
+      args: { object: "missing-object", layer: "layer-1" }
+    });
+    const missingDeleteObjectResponse = executor.request({
+      protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+      requestId: "req-delete-missing-object",
+      command: "document.deleteObject",
+      args: { object: "missing-object" }
+    });
+
+    expect(missingLayerResponse.ok).toBe(false);
+    expect(missingLayerResponse.errors[0]).toMatchObject({
+      code: "NOT_FOUND",
+      message: "Layer not found: missing-layer"
+    });
+    expect(missingMoveObjectResponse.ok).toBe(false);
+    expect(missingMoveObjectResponse.errors[0]).toMatchObject({
+      code: "NOT_FOUND",
+      message: "Object not found: missing-object"
+    });
+    expect(missingDeleteObjectResponse.ok).toBe(false);
+    expect(missingDeleteObjectResponse.errors[0]).toMatchObject({
+      code: "NOT_FOUND",
+      message: "Object not found: missing-object"
+    });
+    expect(getState().document.objects).toHaveLength(1);
+  });
 });
