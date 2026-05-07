@@ -20,41 +20,36 @@ body {
 }
 
 .app {
-  width: min(100%, 1200px);
-  max-width: 1200px;
+  width: min(100%, 1440px);
+  max-width: 1440px;
   margin: 0 auto;
-  padding: 40px 24px 72px;
+  padding: 24px 24px 48px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
-.app__title-block {
-  min-width: 0;
-}
-
-.app__header {
-  display: flex;
+.app__topbar {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto minmax(260px, auto) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  padding: 28px 32px;
-  border-radius: 20px;
+  gap: 16px;
+  padding: 12px 16px;
+  border-radius: 14px;
   background: linear-gradient(120deg, rgba(15, 23, 42, 0.95), rgba(30, 64, 175, 0.9));
   color: #f8fafc;
-  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.35);
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.22);
   animation: riseIn 0.5s ease both;
 }
 
-.app__header h1 {
-  margin: 6px 0 4px;
-  font-size: 32px;
-  letter-spacing: -0.02em;
+.app__topbar h1 {
+  margin: 2px 0 0;
+  font-size: 20px;
+  line-height: 1.1;
 }
 
-.app__subtitle {
-  margin: 0;
-  color: rgba(248, 250, 252, 0.8);
+.app__brand {
+  min-width: 0;
 }
 
 .app__eyebrow {
@@ -65,13 +60,20 @@ body {
   color: rgba(248, 250, 252, 0.6);
 }
 
+.app__mode-tabs {
+  display: flex;
+  gap: 8px;
+}
+
 .app__worker {
-  padding: 10px 16px;
+  justify-self: end;
+  padding: 8px 12px;
   border-radius: 999px;
   background: rgba(148, 163, 184, 0.2);
-  font-size: 13px;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+  white-space: nowrap;
 }
 
 .app__worker.is-ready {
@@ -83,12 +85,18 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 10px;
+  justify-content: flex-end;
+  min-width: 0;
 }
 
-.app__tabs {
-  display: flex;
-  gap: 12px;
+.app__commands .button {
+  padding: 8px 14px;
+}
+
+.app__commands .donate-button {
+  margin-left: 0 !important;
+  padding: 8px 12px !important;
+  white-space: nowrap;
 }
 
 .app__panel-tabs {
@@ -119,19 +127,25 @@ body {
 
 .app__main {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 24px;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr) minmax(280px, 360px);
+  align-items: start;
+  gap: 16px;
 }
 
-.app__main--single {
-  grid-template-columns: 1fr;
-}
-
-.app__sidebar {
-  grid-column: span 1;
+.app__left-zone,
+.app__right-zone {
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
+}
+
+.app__canvas-zone {
+  min-width: 0;
+}
+
+.app__canvas-zone--wide {
+  grid-column: span 2;
 }
 
 .app__panel-slot {
@@ -140,9 +154,14 @@ body {
 
 .app__preview-area {
   position: relative;
-  grid-column: span 2;
   display: flex;
   flex-direction: column;
+  min-height: calc(100vh - 160px);
+}
+
+.app__preview-area > .panel--preview {
+  flex: 1;
+  min-height: inherit;
 }
 
 .panel {
@@ -157,7 +176,7 @@ body {
 
 .panel--preview {
   grid-column: span 2;
-  min-height: 520px;
+  min-height: calc(100vh - 160px);
   background: #fff;
   border-radius: 16px;
   border: 1px solid #e2e8f0;
@@ -721,17 +740,33 @@ select {
 }
 
 @media (max-width: 1000px) {
+  .app__topbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .app__mode-tabs,
+  .app__commands {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+
   .app__main {
     grid-template-columns: 1fr;
   }
 
-  .app__sidebar,
-  .app__preview-area {
-    grid-column: span 1;
+  .app__left-zone,
+  .app__canvas-zone,
+  .app__right-zone,
+  .app__canvas-zone--wide {
+    grid-column: 1;
   }
 
-  .app__preview-area {
+  .app__canvas-zone {
     order: -1;
+  }
+
+  .app__preview-area,
+  .panel--preview {
     min-height: 420px;
   }
 
@@ -742,46 +777,55 @@ select {
 
 @media (max-width: 640px) {
   .app {
-    padding: 28px 16px 48px;
-    gap: 14px;
+    padding: 16px 16px 40px;
+    gap: 12px;
   }
 
-  .app__header {
-    flex-direction: column;
+  .app__topbar {
+    grid-template-columns: 1fr;
     align-items: flex-start;
-    gap: 18px;
-    padding: 24px 32px;
+    gap: 12px;
+    padding: 16px;
     overflow: hidden;
   }
 
-  .app__header h1 {
-    font-size: 28px;
+  .app__topbar h1 {
+    font-size: 24px;
     line-height: 1.15;
+  }
+
+  .app__mode-tabs {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    width: 100%;
+    padding: 4px 0;
+    overflow-x: auto;
+    background: rgba(226, 232, 240, 0.88);
+    backdrop-filter: blur(12px);
   }
 
   .app__commands {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
     width: 100%;
+    justify-content: stretch;
   }
 
   .app__commands .button {
     min-width: 0;
-    min-height: 64px;
+    min-height: 56px;
     padding: 10px 8px;
+  }
+
+  .app__commands .donate-button {
+    grid-column: span 2;
+    min-height: 56px;
   }
 
   .app__worker {
     max-width: 100%;
-  }
-
-  .app__tabs {
-    position: sticky;
-    top: 0;
-    z-index: 30;
-    padding: 4px 0;
-    background: rgba(226, 232, 240, 0.88);
-    backdrop-filter: blur(12px);
+    width: fit-content;
   }
 
   .app__panel-tabs {
@@ -816,10 +860,7 @@ select {
     gap: 14px;
   }
 
-  .app__preview-area {
-    min-height: 360px;
-  }
-
+  .app__preview-area,
   .panel--preview {
     min-height: 360px;
   }
