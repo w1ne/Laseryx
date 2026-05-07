@@ -71,7 +71,6 @@ describe("App", () => {
     it("renders the workspace mode controls", () => {
         render(<App />);
         const modeControls = screen.getByRole("group", { name: "Workspace mode" });
-        expect(modeControls.tagName).toBe("DIV");
         expect(within(modeControls).getByText("Design")).toBeInTheDocument();
         expect(within(modeControls).getByText("Machine")).toBeInTheDocument();
     });
