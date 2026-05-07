@@ -8,6 +8,10 @@ import { createInAppAutomationBridge } from "../automation/browser/inAppBridge";
 import { installBrowserAutomation } from "../automation/browser/browserAutomation";
 import { createLiveCommandExecutor } from "../automation/browser/liveCommands";
 import { readLocalBridgeConfig, startLocalBridgeClient } from "../automation/browser/localBridgeClient";
+import {
+  DEFAULT_HOSTED_AGENT_PERMISSIONS,
+  emptyAgentSessionSnapshot
+} from "../automation/session/types";
 import { createWorkerClient } from "./workerClient";
 import { projectRepo, ProjectSummary } from "../io/projectRepo";
 import { machineRepo } from "../io/machineRepo";
@@ -21,6 +25,7 @@ import { DonateButton } from "./DonateButton";
 import { AboutDialog } from "./AboutDialog";
 import { MaterialManagerDialog } from "./dialogs/MaterialManagerDialog";
 import { useToast } from "./hooks/useToast";
+import { AgentControlPanel } from "./components/AgentControlPanel";
 import { ToastContainer } from "./components/Toast";
 import "./app.css";
 
@@ -53,6 +58,7 @@ export function App() {
   const [showAbout, setShowAbout] = useState(false);
   const [showMaterialManager, setShowMaterialManager] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [agentSession, setAgentSession] = useState(() => emptyAgentSessionSnapshot());
 
   // --- Worker Init ---
   useEffect(() => {
@@ -109,6 +115,25 @@ export function App() {
         setInstallPrompt(null);
       }
     });
+  };
+
+  const handleEnableAgentControl = () => {
+    setAgentSession({
+      sessionId: `local-${Date.now().toString(36)}`,
+      state: "waiting",
+      permissions: [...DEFAULT_HOSTED_AGENT_PERMISSIONS],
+      expiresAt: null,
+      connectedAgentName: null,
+      lastCommand: null
+    });
+  };
+
+  const handleDisconnectAgentControl = () => {
+    setAgentSession((current) => ({
+      ...current,
+      state: "revoked",
+      connectedAgentName: null
+    }));
   };
 
   // --- Machine Profile Init ---
@@ -429,6 +454,11 @@ export function App() {
               Install App
             </button>
           )}
+          <AgentControlPanel
+            session={agentSession}
+            onEnable={handleEnableAgentControl}
+            onDisconnect={handleDisconnectAgentControl}
+          />
           <DonateButton />
         </div>
         <div className={`app__worker ${workerStatus.ready ? "is-ready" : ""}`}>

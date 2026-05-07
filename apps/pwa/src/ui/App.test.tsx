@@ -94,6 +94,16 @@ describe("App", () => {
         expect(screen.getByText(/Release/i)).toBeInTheDocument();
     });
 
+    it("opens agent control from the top bar", () => {
+        render(<App />);
+
+        fireEvent.click(screen.getByRole("button", { name: "Agent Control: Off" }));
+        expect(screen.getByRole("dialog", { name: "Agent Control" })).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole("button", { name: "Enable Agent Control" }));
+        expect(screen.getByRole("button", { name: "Agent Control: Waiting" })).toBeInTheDocument();
+    });
+
     it("renders desktop workbench zones for design mode", () => {
         render(<App />);
 

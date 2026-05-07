@@ -99,6 +99,149 @@ body {
   white-space: nowrap;
 }
 
+.agent-control {
+  position: relative;
+  display: inline-flex;
+}
+
+.agent-control__trigger {
+  white-space: nowrap;
+}
+
+.agent-control__panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 80;
+  width: min(320px, calc(100vw - 32px));
+  padding: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.28);
+}
+
+.agent-control__panel .button {
+  min-height: 0;
+  padding: 8px 12px;
+}
+
+.agent-control__header,
+.agent-control__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.agent-control__label,
+.agent-control__copy-status {
+  min-height: 18px;
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.agent-control__close,
+.agent-control__transport-toggle {
+  border: 0;
+  background: transparent;
+  color: #475569;
+  cursor: pointer;
+}
+
+.agent-control__close {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  font-size: 16px;
+}
+
+.agent-control__close:hover,
+.agent-control__transport-toggle:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.agent-control__full-button {
+  width: 100%;
+  margin-top: 12px;
+  min-height: 48px;
+}
+
+.agent-control__details {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.agent-control__details div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.agent-control__details dt {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.agent-control__details dd {
+  margin: 0;
+  max-width: 170px;
+  overflow-wrap: anywhere;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.agent-control__permissions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.agent-control__permission,
+.agent-control__empty {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.agent-control__empty {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.agent-control__transport-toggle {
+  width: 100%;
+  padding: 8px 0 0;
+  text-align: left;
+  font-size: 12px;
+}
+
+.agent-control__transport {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: 6px;
+  background: #f8fafc;
+  font-size: 12px;
+}
+
+.agent-control__transport code {
+  overflow-wrap: anywhere;
+}
+
 .app__panel-tabs {
   display: none;
 }
@@ -329,6 +472,15 @@ body {
 .button--primary:hover:not(:disabled) {
   background: linear-gradient(135deg, #fb923c 0%, #f97316 100%);
   box-shadow: 0 8px 20px rgba(234, 88, 12, 0.3);
+}
+
+.button--danger {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.button--danger:hover:not(:disabled) {
+  background: #fecaca;
 }
 
 .button--accent {
@@ -816,6 +968,32 @@ select {
     min-width: 0;
     min-height: 56px;
     padding: 10px 8px;
+  }
+
+  .agent-control {
+    grid-column: span 2;
+    width: 100%;
+  }
+
+  .agent-control__trigger {
+    width: 100%;
+  }
+
+  .agent-control__panel {
+    position: fixed;
+    inset: auto 16px 16px;
+    width: auto;
+    max-height: min(440px, calc(100vh - 32px));
+    overflow: auto;
+  }
+
+  .app__commands .agent-control__panel .button {
+    min-height: 0;
+    padding: 8px 12px;
+  }
+
+  .app__commands .agent-control__panel .agent-control__full-button {
+    min-height: 48px;
   }
 
   .app__commands .donate-button {
