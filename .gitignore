@@ -1,6 +1,7 @@
 node_modules/
 dist/
 dist-cli/
+dist-mcp/
 build/
 .vite/
 coverage/
