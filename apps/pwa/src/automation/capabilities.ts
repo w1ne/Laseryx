@@ -1,3 +1,5 @@
+import type { AgentPermission } from "./session/types";
+
 export type AutomationCapabilityCategory = "core" | "automation" | "cam" | "ui" | "document" | "project";
 export type AutomationCapabilityTransport = "protocol" | "cli" | "mcp";
 
@@ -6,6 +8,7 @@ export type AutomationCapability = {
   category: AutomationCapabilityCategory;
   mutates: boolean;
   supportsDryRun: boolean;
+  requiredPermission: AgentPermission;
   transports: AutomationCapabilityTransport[];
   description: string;
 };
@@ -16,6 +19,7 @@ export const AUTOMATION_CAPABILITIES = [
     category: "core",
     mutates: false,
     supportsDryRun: false,
+    requiredPermission: "read",
     transports: ["protocol", "cli", "mcp"],
     description: "Summarize a Laseryx job without generating G-code."
   },
@@ -24,6 +28,7 @@ export const AUTOMATION_CAPABILITIES = [
     category: "core",
     mutates: false,
     supportsDryRun: false,
+    requiredPermission: "read",
     transports: ["protocol", "cli", "mcp"],
     description: "Validate whether a Laseryx job is ready to generate."
   },
@@ -32,6 +37,7 @@ export const AUTOMATION_CAPABILITIES = [
     category: "core",
     mutates: true,
     supportsDryRun: false,
+    requiredPermission: "generate",
     transports: ["protocol", "cli", "mcp"],
     description: "Generate preview data, stats, and optional G-code."
   },
@@ -40,6 +46,7 @@ export const AUTOMATION_CAPABILITIES = [
     category: "automation",
     mutates: false,
     supportsDryRun: false,
+    requiredPermission: "read",
     transports: ["protocol", "cli", "mcp"],
     description: "List the supported automation commands and their metadata."
   },
@@ -48,6 +55,7 @@ export const AUTOMATION_CAPABILITIES = [
     category: "cam",
     mutates: true,
     supportsDryRun: true,
+    requiredPermission: "edit",
     transports: ["protocol", "cli", "mcp"],
     description: "Update a CAM operation on the active job."
   },
@@ -56,6 +64,7 @@ export const AUTOMATION_CAPABILITIES = [
     category: "ui",
     mutates: true,
     supportsDryRun: false,
+    requiredPermission: "edit",
     transports: ["protocol", "cli"],
     description: "Switch the active Laseryx UI tab."
   },
@@ -64,6 +73,7 @@ export const AUTOMATION_CAPABILITIES = [
     category: "ui",
     mutates: true,
     supportsDryRun: false,
+    requiredPermission: "edit",
     transports: ["protocol", "cli"],
     description: "Switch the active preview mode."
   },
@@ -72,6 +82,7 @@ export const AUTOMATION_CAPABILITIES = [
     category: "ui",
     mutates: true,
     supportsDryRun: false,
+    requiredPermission: "edit",
     transports: ["protocol", "cli"],
     description: "Select the active design-side panel."
   },
@@ -80,6 +91,7 @@ export const AUTOMATION_CAPABILITIES = [
     category: "document",
     mutates: false,
     supportsDryRun: false,
+    requiredPermission: "read",
     transports: ["protocol", "cli", "mcp"],
     description: "List document objects and the current selection."
   },
@@ -88,6 +100,7 @@ export const AUTOMATION_CAPABILITIES = [
     category: "document",
     mutates: true,
     supportsDryRun: false,
+    requiredPermission: "edit",
     transports: ["protocol", "cli"],
     description: "Select a document object."
   },
@@ -96,6 +109,7 @@ export const AUTOMATION_CAPABILITIES = [
     category: "document",
     mutates: true,
     supportsDryRun: false,
+    requiredPermission: "edit",
     transports: ["protocol", "cli", "mcp"],
     description: "Add a rectangle object to a document layer."
   },
@@ -104,6 +118,7 @@ export const AUTOMATION_CAPABILITIES = [
     category: "document",
     mutates: true,
     supportsDryRun: true,
+    requiredPermission: "edit",
     transports: ["protocol", "cli", "mcp"],
     description: "Update object transform fields without replacing the object."
   },
@@ -112,6 +127,7 @@ export const AUTOMATION_CAPABILITIES = [
     category: "document",
     mutates: true,
     supportsDryRun: false,
+    requiredPermission: "edit",
     transports: ["protocol", "cli"],
     description: "Move an object to another layer."
   },
@@ -120,6 +136,7 @@ export const AUTOMATION_CAPABILITIES = [
     category: "document",
     mutates: true,
     supportsDryRun: true,
+    requiredPermission: "edit",
     transports: ["protocol", "cli", "mcp"],
     description: "Delete a document object."
   },
@@ -128,6 +145,7 @@ export const AUTOMATION_CAPABILITIES = [
     category: "project",
     mutates: true,
     supportsDryRun: false,
+    requiredPermission: "project-storage",
     transports: ["protocol", "cli", "mcp"],
     description: "Reset the active browser project to a new default job."
   },
@@ -136,6 +154,7 @@ export const AUTOMATION_CAPABILITIES = [
     category: "project",
     mutates: true,
     supportsDryRun: false,
+    requiredPermission: "project-storage",
     transports: ["protocol", "cli", "mcp"],
     description: "Save the active browser project."
   },
@@ -144,6 +163,7 @@ export const AUTOMATION_CAPABILITIES = [
     category: "project",
     mutates: false,
     supportsDryRun: false,
+    requiredPermission: "read",
     transports: ["protocol", "cli", "mcp"],
     description: "List saved browser projects."
   },
@@ -152,6 +172,7 @@ export const AUTOMATION_CAPABILITIES = [
     category: "project",
     mutates: true,
     supportsDryRun: false,
+    requiredPermission: "project-storage",
     transports: ["protocol", "cli", "mcp"],
     description: "Open a saved browser project."
   },
@@ -160,6 +181,7 @@ export const AUTOMATION_CAPABILITIES = [
     category: "project",
     mutates: true,
     supportsDryRun: false,
+    requiredPermission: "project-storage",
     transports: ["protocol", "cli", "mcp"],
     description: "Delete a saved browser project."
   },
@@ -168,6 +190,7 @@ export const AUTOMATION_CAPABILITIES = [
     category: "project",
     mutates: false,
     supportsDryRun: false,
+    requiredPermission: "read",
     transports: ["protocol", "cli", "mcp"],
     description: "Summarize the active browser project without exporting full JSON."
   },
@@ -176,6 +199,7 @@ export const AUTOMATION_CAPABILITIES = [
     category: "project",
     mutates: false,
     supportsDryRun: false,
+    requiredPermission: "read",
     transports: ["protocol", "cli", "mcp"],
     description: "Export the active browser project as JSON."
   },
@@ -184,6 +208,7 @@ export const AUTOMATION_CAPABILITIES = [
     category: "project",
     mutates: true,
     supportsDryRun: false,
+    requiredPermission: "project-storage",
     transports: ["protocol", "cli", "mcp"],
     description: "Import a Laseryx project JSON object into the browser."
   }
@@ -224,4 +249,8 @@ export function mutableAutomationCapabilities(): AutomationCapability[] {
 
 export function isAutomationCommand(command: string): command is AutomationCapabilityCommand {
   return AUTOMATION_CAPABILITIES.some((capability) => capability.command === command);
+}
+
+export function permissionForCapability(capability: AutomationCapability): AgentPermission {
+  return capability.requiredPermission;
 }
