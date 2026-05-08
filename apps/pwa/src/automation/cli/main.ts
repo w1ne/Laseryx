@@ -1,5 +1,10 @@
 import { runAgentCommand } from "../agentApi";
-import { BLOCKED_LINK_COMMANDS, encodeLinkCommandCapsule } from "../browser/linkCommands";
+import {
+  BLOCKED_LINK_COMMANDS,
+  encodeLinkCommandCapsule,
+  readLinkCommandCapsuleFromHash,
+  type LinkCommandCapsule
+} from "../browser/linkCommands";
 import { diagnostic, errorResponse } from "../responses";
 import { parseCliArgs } from "./args";
 import { fetchBridgeStatus, LocalBrowserBridgeServer, postBrowserCommand } from "./browserBridgeServer";
@@ -23,18 +28,34 @@ function buildAttachUrl(appUrl: string, bridgeUrl: string, token: string): strin
 
 function buildLinkCommandUrl(
   appUrl: string,
-  input: { title?: string; command: Parameters<typeof encodeLinkCommandCapsule>[0]["commands"][number]["command"]; args: Record<string, unknown> }
+  capsule: LinkCommandCapsule
 ): string {
   const url = new URL(appUrl);
-  url.hash = encodeLinkCommandCapsule({
-    version: 1,
-    ...(input.title ? { title: input.title } : {}),
-    commands: [{
-      command: input.command,
-      args: input.args
-    }]
-  }).slice(1);
+  url.hash = encodeLinkCommandCapsule(capsule).slice(1);
   return url.toString();
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function linkValidationError(capsule: LinkCommandCapsule): string | null {
+  const parsed = readLinkCommandCapsuleFromHash(encodeLinkCommandCapsule(capsule));
+  return parsed.ok ? null : parsed.error;
+}
+
+function capsuleFromFile(value: unknown, titleOverride?: string): LinkCommandCapsule | string {
+  if (!isRecord(value)) {
+    return "Link command input must be an object";
+  }
+  if (!Array.isArray(value.commands)) {
+    return "Link command input must include commands";
+  }
+  return {
+    version: 1,
+    ...(typeof titleOverride === "string" ? { title: titleOverride } : typeof value.title === "string" ? { title: value.title } : {}),
+    commands: value.commands as LinkCommandCapsule["commands"]
+  };
 }
 
 export async function runCli(argv: string[]): Promise<CliResult> {
@@ -100,17 +121,56 @@ export async function runCli(argv: string[]): Promise<CliResult> {
   }
 
   if (parsed.mode === "browser-link") {
-    if (BLOCKED_LINK_COMMANDS.has(parsed.command)) {
+    const capsule: LinkCommandCapsule = {
+      version: 1,
+      ...(parsed.title ? { title: parsed.title } : {}),
+      commands: [{
+        command: parsed.command,
+        args: parsed.args
+      }]
+    };
+    const validationError = BLOCKED_LINK_COMMANDS.has(parsed.command)
+      ? `Command not allowed in links: ${parsed.command}`
+      : linkValidationError(capsule);
+    if (validationError) {
       return {
         exitCode: 1,
         stdout: stringify(errorResponse("inspect", [
-          diagnostic("LINK_COMMAND_NOT_ALLOWED", "error", `Command not allowed in links: ${parsed.command}`)
+          diagnostic("LINK_COMMAND_INVALID", "error", validationError)
         ]))
       };
     }
     return {
       exitCode: 0,
-      stdout: `${buildLinkCommandUrl(parsed.appUrl, parsed)}\n`
+      stdout: `${buildLinkCommandUrl(parsed.appUrl, capsule)}\n`
+    };
+  }
+
+  if (parsed.mode === "browser-link-file") {
+    let input: unknown;
+    try {
+      input = await readJsonFile(parsed.inputPath);
+    } catch (error) {
+      return {
+        exitCode: 1,
+        stdout: stringify(errorResponse("inspect", [
+          diagnostic("FILE_READ_FAILED", "error", error instanceof Error ? error.message : String(error))
+        ]))
+      };
+    }
+    const capsule = capsuleFromFile(input, parsed.title);
+    const validationError = typeof capsule === "string" ? capsule : linkValidationError(capsule);
+    if (validationError) {
+      return {
+        exitCode: 1,
+        stdout: stringify(errorResponse("inspect", [
+          diagnostic("LINK_COMMAND_INVALID", "error", validationError)
+        ]))
+      };
+    }
+    return {
+      exitCode: 0,
+      stdout: `${buildLinkCommandUrl(parsed.appUrl, capsule)}\n`
     };
   }
 

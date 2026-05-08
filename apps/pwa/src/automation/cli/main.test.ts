@@ -201,4 +201,72 @@ describe("runCli", () => {
     expect(result.exitCode).toBe(1);
     expect(parsed.errors[0].message).toBe("Command not allowed in links: project.delete");
   });
+
+  it("prints a batch browser link command URL from an input file", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "laseryx-link-cli-"));
+    const inputPath = join(dir, "commands.json");
+    await writeFile(inputPath, JSON.stringify({
+      title: "Batch rectangle",
+      commands: [
+        { command: "document.addRect", args: { object: "rect-link-1", layer: "layer-1", width: 40, height: 20 } },
+        { command: "ui.setActiveTab", args: { tab: "machine" } }
+      ]
+    }), "utf8");
+
+    const result = await runCli([
+      "browser",
+      "link",
+      "--input",
+      inputPath,
+      "--app",
+      "https://laseryx.com/"
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    const url = new URL(result.stdout.trim());
+    const encoded = new URLSearchParams(url.hash.slice(1)).get("lx");
+    expect(encoded).toBeTruthy();
+    const capsule = JSON.parse(Buffer.from(encoded!, "base64url").toString("utf8"));
+    expect(capsule).toEqual({
+      version: 1,
+      title: "Batch rectangle",
+      commands: [
+        { command: "document.addRect", args: { object: "rect-link-1", layer: "layer-1", width: 40, height: 20 } },
+        { command: "ui.setActiveTab", args: { tab: "machine" } }
+      ]
+    });
+  });
+
+  it("rejects blocked commands in a batch browser link input file", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "laseryx-link-cli-"));
+    const inputPath = join(dir, "commands.json");
+    await writeFile(inputPath, JSON.stringify({
+      commands: [
+        { command: "document.addRect", args: { object: "rect-link-1", layer: "layer-1", width: 40, height: 20 } },
+        { command: "project.delete", args: { id: "project-1" } }
+      ]
+    }), "utf8");
+
+    const result = await runCli(["browser", "link", "--input", inputPath]);
+    const parsed = JSON.parse(result.stdout);
+
+    expect(result.exitCode).toBe(1);
+    expect(parsed.errors[0].message).toBe("Command not allowed in links: project.delete");
+  });
+
+  it("rejects oversized batch browser link input files", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "laseryx-link-cli-"));
+    const inputPath = join(dir, "commands.json");
+    await writeFile(inputPath, JSON.stringify({
+      commands: [
+        { command: "document.addRect", args: { object: "rect-link-1", layer: "layer-1", width: 40, height: 20, note: "x".repeat(40_000) } }
+      ]
+    }), "utf8");
+
+    const result = await runCli(["browser", "link", "--input", inputPath]);
+    const parsed = JSON.parse(result.stdout);
+
+    expect(result.exitCode).toBe(1);
+    expect(parsed.errors[0].message).toBe("Link command is too large");
+  });
 });

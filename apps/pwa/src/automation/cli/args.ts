@@ -9,6 +9,7 @@ type ParsedArgs =
   | { ok: true; mode: "browser-status"; bridgeUrl: string; token: string }
   | { ok: true; mode: "browser-attach-url"; appUrl: string; bridgeUrl: string; token: string }
   | { ok: true; mode: "browser-link"; appUrl: string; title?: string; command: AutomationProtocolCommand; args: Record<string, unknown> }
+  | { ok: true; mode: "browser-link-file"; appUrl: string; title?: string; inputPath: string }
   | { ok: false; message: string };
 
 const COMMANDS = new Set(["inspect", "preflight", "generate"]);
@@ -110,6 +111,16 @@ function parseBrowserArgs(rest: string[]): ParsedArgs {
   }
 
   if (subcommand === "link") {
+    const inputPath = readOption(options, "--input");
+    if (inputPath) {
+      return {
+        ok: true,
+        mode: "browser-link-file",
+        appUrl: readOption(options, "--app") ?? "https://laseryx.com/",
+        title: readOption(options, "--title"),
+        inputPath
+      };
+    }
     const [command, ...linkOptions] = options;
     if (!BROWSER_COMMANDS.has(command)) {
       return { ok: false, message: `Unknown browser command: ${command ?? ""}`.trim() };

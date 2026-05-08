@@ -153,6 +153,25 @@ describe("parseCliArgs", () => {
     });
   });
 
+  it("parses browser link from an input file", () => {
+    expect(parseCliArgs([
+      "browser",
+      "link",
+      "--input",
+      "commands.json",
+      "--app",
+      "https://laseryx.com/",
+      "--title",
+      "Batch job"
+    ])).toEqual({
+      ok: true,
+      mode: "browser-link-file",
+      appUrl: "https://laseryx.com/",
+      inputPath: "commands.json",
+      title: "Batch job"
+    });
+  });
+
   it("requires bridge URL for browser status and attach-url", () => {
     expect(parseCliArgs(["browser", "status"])).toEqual({
       ok: false,
