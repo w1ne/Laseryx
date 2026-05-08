@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, within, fireEvent } from "@testing-library/react";
+import { render, screen, within, fireEvent, waitFor } from "@testing-library/react";
 import { App } from "./App";
 import { useStore } from "../core/state/store";
 import { INITIAL_STATE } from "../core/state/types";
+import { encodeLinkCommandCapsule } from "../automation/browser/linkCommands";
 
 // Mock the store
 vi.mock("../core/state/store", () => ({
@@ -123,6 +124,57 @@ describe("App", () => {
         fireEvent.click(screen.getByRole("button", { name: "Enable Agent Control" }));
         expect(screen.getByRole("dialog", { name: "Agent Control" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Agent Control: Waiting" })).toBeInTheDocument();
+    });
+
+    it("asks before applying link commands", () => {
+        const hash = encodeLinkCommandCapsule({
+            version: 1,
+            title: "Linked rectangle",
+            commands: [
+                {
+                    command: "document.addRect",
+                    args: { object: "rect-link-1", layer: "layer-1", width: 10, height: 10 }
+                }
+            ]
+        });
+        window.history.pushState({}, "", `/${hash}`);
+
+        render(<App />);
+
+        expect(screen.getByRole("dialog", { name: "Apply Link Commands" })).toBeInTheDocument();
+        expect(screen.getByText("Linked rectangle")).toBeInTheDocument();
+        expect(screen.getByText("document.addRect")).toBeInTheDocument();
+    });
+
+    it("applies link commands only after confirmation", async () => {
+        const dispatch = vi.fn();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (useStore as any).mockReturnValue({
+            state: INITIAL_STATE,
+            dispatch,
+        });
+        const hash = encodeLinkCommandCapsule({
+            version: 1,
+            commands: [
+                {
+                    command: "document.addRect",
+                    args: { object: "rect-link-1", layer: "layer-1", width: 10, height: 10 }
+                }
+            ]
+        });
+        window.history.pushState({}, "", `/${hash}`);
+
+        render(<App />);
+
+        expect(dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: "ADD_OBJECT" }));
+        fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+
+        await waitFor(() => {
+            expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({
+                type: "ADD_OBJECT",
+                payload: expect.objectContaining({ id: "rect-link-1" })
+            }));
+        });
     });
 
     it("renders desktop workbench zones for design mode", () => {

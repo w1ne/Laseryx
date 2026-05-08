@@ -7,6 +7,7 @@ import { getDriver } from "../io/driverSingleton";
 import { createInAppAutomationBridge } from "../automation/browser/inAppBridge";
 import { installBrowserAutomation } from "../automation/browser/browserAutomation";
 import { createLiveCommandExecutor } from "../automation/browser/liveCommands";
+import { executeLinkCommandCapsule, readLinkCommandCapsuleFromHash, type LinkCommandCapsule } from "../automation/browser/linkCommands";
 import { readLocalBridgeConfig, startLocalBridgeClient } from "../automation/browser/localBridgeClient";
 import { createWorkerClient } from "./workerClient";
 import { projectRepo, ProjectSummary } from "../io/projectRepo";
@@ -58,6 +59,11 @@ export function App() {
   const agentSession = useAgentSessionController();
   const localBridgeConfigRef = useRef(readLocalBridgeConfig(window.location.search));
   const isLocalAgentRuntime = localBridgeConfigRef.current !== null;
+  const initialLinkCommandRef = useRef(readLinkCommandCapsuleFromHash(window.location.hash));
+  const [pendingLinkCommand, setPendingLinkCommand] = useState<LinkCommandCapsule | null>(() =>
+    initialLinkCommandRef.current.ok ? initialLinkCommandRef.current.capsule : null
+  );
+  const [linkCommandState, setLinkCommandState] = useState<{ status: "idle" | "applying" | "error"; message?: string }>({ status: "idle" });
 
   // --- Worker Init ---
   useEffect(() => {
@@ -290,6 +296,61 @@ export function App() {
   const [previewMode, setPreviewMode] = useState<"design" | "gcode">("design");
   const [designPanel, setDesignPanel] = useState<"document" | "properties" | "layers">("document");
 
+  const clearLinkCommandHash = () => {
+    if (window.location.hash.includes("lx=")) {
+      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+    }
+  };
+
+  const createCurrentAutomationBridge = () => {
+    const liveExecutor = createLiveCommandExecutor({
+      getState: () => stateRef.current,
+      dispatch,
+      setPreviewMode,
+      setDesignPanel
+    });
+    return createInAppAutomationBridge(
+      () => ({
+        document: stateRef.current.document,
+        camSettings: stateRef.current.camSettings,
+        machineProfile: stateRef.current.machineProfile
+      }),
+      liveExecutor
+    );
+  };
+
+  const handleDismissLinkCommand = () => {
+    setPendingLinkCommand(null);
+    setLinkCommandState({ status: "idle" });
+    clearLinkCommandHash();
+  };
+
+  const handleApplyLinkCommand = async () => {
+    if (!pendingLinkCommand) return;
+    setLinkCommandState({ status: "applying" });
+    const responses = await executeLinkCommandCapsule(pendingLinkCommand, createCurrentAutomationBridge());
+    const failed = responses.find((response) => !response.ok);
+    if (failed) {
+      setLinkCommandState({
+        status: "error",
+        message: failed.errors[0]?.message ?? `Link command failed: ${failed.command}`
+      });
+      return;
+    }
+    setPendingLinkCommand(null);
+    setLinkCommandState({ status: "idle" });
+    clearLinkCommandHash();
+    toast.success(`Applied ${responses.length} link command${responses.length === 1 ? "" : "s"}`);
+  };
+
+  useEffect(() => {
+    const parsed = initialLinkCommandRef.current;
+    if (!parsed.ok && parsed.error !== "No link command found" && window.location.hash.includes("lx=")) {
+      toast.error(parsed.error);
+      clearLinkCommandHash();
+    }
+  }, []);
+
   useEffect(() => {
     const liveExecutor = createLiveCommandExecutor({
       getState: () => stateRef.current,
@@ -465,6 +526,41 @@ export function App() {
               ))}
             </div>
             <button style={{ marginTop: "10px" }} onClick={() => setShowLoadDialog(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {pendingLinkCommand && (
+        <div className="link-command-overlay">
+          <div className="link-command-dialog" role="dialog" aria-label="Apply Link Commands" aria-modal="true">
+            <div className="link-command-dialog__header">
+              <div>
+                <p className="link-command-dialog__eyebrow">Link Commands</p>
+                <h2>Apply Link Commands</h2>
+              </div>
+              <button type="button" className="link-command-dialog__close" aria-label="Ignore Link Commands" onClick={handleDismissLinkCommand}>
+                x
+              </button>
+            </div>
+            <p className="link-command-dialog__title">{pendingLinkCommand.title ?? "Untitled link command"}</p>
+            <ul className="link-command-dialog__commands" aria-label="Commands to apply">
+              {pendingLinkCommand.commands.map((command, index) => (
+                <li key={`${command.command}-${index}`}>
+                  <code>{command.command}</code>
+                </li>
+              ))}
+            </ul>
+            {linkCommandState.status === "error" && (
+              <p className="link-command-dialog__error" role="alert">{linkCommandState.message}</p>
+            )}
+            <div className="link-command-dialog__actions">
+              <button type="button" className="button" onClick={handleDismissLinkCommand} disabled={linkCommandState.status === "applying"}>
+                Ignore
+              </button>
+              <button type="button" className="button button--primary" onClick={handleApplyLinkCommand} disabled={linkCommandState.status === "applying"}>
+                {linkCommandState.status === "applying" ? "Applying..." : "Apply"}
+              </button>
+            </div>
           </div>
         </div>
       )}

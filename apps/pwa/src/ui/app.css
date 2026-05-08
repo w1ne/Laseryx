@@ -101,6 +101,95 @@ body {
   white-space: nowrap;
 }
 
+.link-command-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.link-command-dialog {
+  width: min(460px, 100%);
+  padding: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.32);
+}
+
+.link-command-dialog__header,
+.link-command-dialog__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.link-command-dialog__header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.link-command-dialog__eyebrow {
+  margin: 0 0 4px;
+  font-size: 12px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.link-command-dialog__close {
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #334155;
+  cursor: pointer;
+}
+
+.link-command-dialog__title {
+  margin: 16px 0 10px;
+  font-weight: 600;
+}
+
+.link-command-dialog__commands {
+  display: grid;
+  gap: 8px;
+  max-height: 180px;
+  margin: 0 0 16px;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.link-command-dialog__commands li {
+  padding: 8px 10px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 6px;
+  background: #f8fafc;
+}
+
+.link-command-dialog__commands code {
+  font-size: 12px;
+  color: #334155;
+}
+
+.link-command-dialog__error {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 13px;
+}
+
 .agent-control {
   position: relative;
   display: inline-flex;
