@@ -43,6 +43,15 @@ jobs:
           GITHUB_SHA: ${{ github.sha }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
 
+      - name: Build CLI
+        run: npm --prefix apps/pwa run cli:build
+
+      - name: Build local MCP
+        run: npm --prefix apps/pwa run mcp:build
+
+      - name: Build hosted MCP
+        run: npm --prefix apps/pwa run hosted-mcp:build
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:

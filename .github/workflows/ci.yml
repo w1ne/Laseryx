@@ -34,3 +34,12 @@ jobs:
 
     - name: Build
       run: npm run build
+
+    - name: Build CLI
+      run: npm --prefix apps/pwa run cli:build
+
+    - name: Build local MCP
+      run: npm --prefix apps/pwa run mcp:build
+
+    - name: Build hosted MCP
+      run: npm --prefix apps/pwa run hosted-mcp:build

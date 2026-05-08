@@ -7,7 +7,18 @@ This document outlines the step-by-step process for releasing a new version of L
 - [ ] Your local branch is up to date: `git pull origin develop`
 - [ ] **Run pre-release verification**: `npm run pre-release`
   - This will run all tests, build, and lint checks
+  - This also builds CLI, local MCP, and hosted MCP bundles
   - Must pass before proceeding with release
+
+## GitHub Pages Deployment
+
+Production deploys the static PWA to GitHub Pages through `.github/workflows/deploy.yml`.
+
+- Static build command: `npm run build`
+- Static build output directory: `apps/pwa/dist`
+- Custom domain source: `apps/pwa/public/CNAME`
+
+GitHub Pages cannot host dynamic MCP or agent-session endpoints. Release verification still builds the CLI, local MCP, and hosted MCP bundles so they stay deployable, but live `POST /mcp` and `POST /agent/session` need a separate dynamic runtime or proxy before they can be verified on `https://laseryx.com/`.
 
 ## Release Checklist
 

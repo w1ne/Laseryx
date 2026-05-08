@@ -21,6 +21,9 @@ npm ci
 npm run lint
 npm test
 npm run build
+npm --prefix apps/pwa run cli:build
+npm --prefix apps/pwa run mcp:build
+npm --prefix apps/pwa run hosted-mcp:build
 
 
 # 3. Merge to Master

@@ -16,12 +16,12 @@ NC='\033[0m' # No Color
 # Track overall status
 FAILED=0
 
-echo "📦 Step 1/5: Installing dependencies..."
+echo "📦 Step 1/8: Installing dependencies..."
 npm install
 echo -e "${GREEN}✓ Dependencies installed${NC}"
 echo ""
 
-echo "🧪 Step 2/5: Running tests..."
+echo "🧪 Step 2/8: Running tests..."
 if npm --prefix apps/pwa run test; then
     echo -e "${GREEN}✓ All tests passed${NC}"
 else
@@ -30,7 +30,7 @@ else
 fi
 echo ""
 
-echo "🔨 Step 3/5: Building production bundle..."
+echo "🔨 Step 3/8: Building production bundle..."
 if npm --prefix apps/pwa run build; then
     echo -e "${GREEN}✓ Build successful${NC}"
 else
@@ -39,7 +39,34 @@ else
 fi
 echo ""
 
-echo "🔍 Step 4/5: Running linter..."
+echo "🔨 Step 4/8: Building CLI bundle..."
+if npm --prefix apps/pwa run cli:build; then
+    echo -e "${GREEN}✓ CLI build successful${NC}"
+else
+    echo -e "${RED}✗ CLI build failed${NC}"
+    FAILED=1
+fi
+echo ""
+
+echo "🔨 Step 5/8: Building local MCP bundle..."
+if npm --prefix apps/pwa run mcp:build; then
+    echo -e "${GREEN}✓ MCP build successful${NC}"
+else
+    echo -e "${RED}✗ MCP build failed${NC}"
+    FAILED=1
+fi
+echo ""
+
+echo "🔨 Step 6/8: Building hosted MCP bundle..."
+if npm --prefix apps/pwa run hosted-mcp:build; then
+    echo -e "${GREEN}✓ Hosted MCP build successful${NC}"
+else
+    echo -e "${RED}✗ Hosted MCP build failed${NC}"
+    FAILED=1
+fi
+echo ""
+
+echo "🔍 Step 7/8: Running linter..."
 if npm --prefix apps/pwa run lint; then
     echo -e "${GREEN}✓ Linter passed (0 errors)${NC}"
 else
@@ -53,7 +80,7 @@ else
 fi
 echo ""
 
-echo "📝 Step 5/5: Checking version consistency..."
+echo "📝 Step 8/8: Checking version consistency..."
 PWA_VERSION=$(node -p "require('./apps/pwa/package.json').version")
 ROOT_VERSION=$(node -p "require('./package.json').version")
 
