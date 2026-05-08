@@ -121,6 +121,38 @@ describe("parseCliArgs", () => {
     });
   });
 
+  it("parses browser link", () => {
+    expect(parseCliArgs([
+      "browser",
+      "link",
+      "document.addRect",
+      "--app",
+      "https://laseryx.com/workbench",
+      "--title",
+      "Linked rectangle",
+      "--object",
+      "rect-link-1",
+      "--layer",
+      "layer-1",
+      "--width",
+      "40",
+      "--height",
+      "20"
+    ])).toEqual({
+      ok: true,
+      mode: "browser-link",
+      appUrl: "https://laseryx.com/workbench",
+      title: "Linked rectangle",
+      command: "document.addRect",
+      args: {
+        object: "rect-link-1",
+        layer: "layer-1",
+        width: 40,
+        height: 20
+      }
+    });
+  });
+
   it("requires bridge URL for browser status and attach-url", () => {
     expect(parseCliArgs(["browser", "status"])).toEqual({
       ok: false,

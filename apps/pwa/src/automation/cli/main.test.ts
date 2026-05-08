@@ -147,4 +147,58 @@ describe("runCli", () => {
     expect(result.exitCode).toBe(0);
     expect(result.stdout.trim()).toBe("http://localhost:5173/workbench?laseryxBridge=http%3A%2F%2F127.0.0.1%3A17321&laseryxToken=dev+token");
   });
+
+  it("prints a browser link command URL", async () => {
+    const result = await runCli([
+      "browser",
+      "link",
+      "document.addRect",
+      "--app",
+      "https://laseryx.com/workbench",
+      "--title",
+      "Linked rectangle",
+      "--object",
+      "rect-link-1",
+      "--layer",
+      "layer-1",
+      "--width",
+      "40",
+      "--height",
+      "20"
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    const url = new URL(result.stdout.trim());
+    expect(url.origin + url.pathname).toBe("https://laseryx.com/workbench");
+    const encoded = new URLSearchParams(url.hash.slice(1)).get("lx");
+    expect(encoded).toBeTruthy();
+    const capsule = JSON.parse(Buffer.from(encoded!, "base64url").toString("utf8"));
+    expect(capsule).toEqual({
+      version: 1,
+      title: "Linked rectangle",
+      commands: [{
+        command: "document.addRect",
+        args: {
+          object: "rect-link-1",
+          layer: "layer-1",
+          width: 40,
+          height: 20
+        }
+      }]
+    });
+  });
+
+  it("rejects browser link commands that are not link-safe", async () => {
+    const result = await runCli([
+      "browser",
+      "link",
+      "project.delete",
+      "--id",
+      "project-1"
+    ]);
+    const parsed = JSON.parse(result.stdout);
+
+    expect(result.exitCode).toBe(1);
+    expect(parsed.errors[0].message).toBe("Command not allowed in links: project.delete");
+  });
 });

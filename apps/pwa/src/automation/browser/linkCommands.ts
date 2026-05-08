@@ -11,7 +11,7 @@ import type { InAppAutomationBridge } from "./inAppBridge";
 const LINK_PARAM = "lx";
 const MAX_LINK_COMMAND_BYTES = 32_768;
 const MAX_LINK_COMMANDS = 25;
-const BLOCKED_LINK_COMMANDS = new Set<string>([
+export const BLOCKED_LINK_COMMANDS = new Set<string>([
   "project.save",
   "project.list",
   "project.open",

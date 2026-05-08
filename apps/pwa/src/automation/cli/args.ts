@@ -8,6 +8,7 @@ type ParsedArgs =
   | { ok: true; mode: "browser-run"; command: AutomationProtocolCommand; bridgeUrl: string; token: string; args: Record<string, unknown> }
   | { ok: true; mode: "browser-status"; bridgeUrl: string; token: string }
   | { ok: true; mode: "browser-attach-url"; appUrl: string; bridgeUrl: string; token: string }
+  | { ok: true; mode: "browser-link"; appUrl: string; title?: string; command: AutomationProtocolCommand; args: Record<string, unknown> }
   | { ok: false; message: string };
 
 const COMMANDS = new Set(["inspect", "preflight", "generate"]);
@@ -105,6 +106,24 @@ function parseBrowserArgs(rest: string[]): ParsedArgs {
       appUrl: readOption(options, "--app") ?? "http://localhost:5173",
       bridgeUrl,
       token: readOption(options, "--token") ?? "dev"
+    };
+  }
+
+  if (subcommand === "link") {
+    const [command, ...linkOptions] = options;
+    if (!BROWSER_COMMANDS.has(command)) {
+      return { ok: false, message: `Unknown browser command: ${command ?? ""}`.trim() };
+    }
+    return {
+      ok: true,
+      mode: "browser-link",
+      appUrl: readOption(linkOptions, "--app") ?? "https://laseryx.com/",
+      title: readOption(linkOptions, "--title"),
+      command: command as AutomationProtocolCommand,
+      args: parseCommandArgs(linkOptions.filter((item, index) => {
+        const previous = linkOptions[index - 1];
+        return item !== "--app" && item !== "--title" && previous !== "--app" && previous !== "--title";
+      }))
     };
   }
 

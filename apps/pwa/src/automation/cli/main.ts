@@ -1,4 +1,5 @@
 import { runAgentCommand } from "../agentApi";
+import { BLOCKED_LINK_COMMANDS, encodeLinkCommandCapsule } from "../browser/linkCommands";
 import { diagnostic, errorResponse } from "../responses";
 import { parseCliArgs } from "./args";
 import { fetchBridgeStatus, LocalBrowserBridgeServer, postBrowserCommand } from "./browserBridgeServer";
@@ -17,6 +18,22 @@ function buildAttachUrl(appUrl: string, bridgeUrl: string, token: string): strin
   const url = new URL(appUrl);
   url.searchParams.set("laseryxBridge", bridgeUrl);
   url.searchParams.set("laseryxToken", token);
+  return url.toString();
+}
+
+function buildLinkCommandUrl(
+  appUrl: string,
+  input: { title?: string; command: Parameters<typeof encodeLinkCommandCapsule>[0]["commands"][number]["command"]; args: Record<string, unknown> }
+): string {
+  const url = new URL(appUrl);
+  url.hash = encodeLinkCommandCapsule({
+    version: 1,
+    ...(input.title ? { title: input.title } : {}),
+    commands: [{
+      command: input.command,
+      args: input.args
+    }]
+  }).slice(1);
   return url.toString();
 }
 
@@ -79,6 +96,21 @@ export async function runCli(argv: string[]): Promise<CliResult> {
     return {
       exitCode: 0,
       stdout: `${buildAttachUrl(parsed.appUrl, parsed.bridgeUrl, parsed.token)}\n`
+    };
+  }
+
+  if (parsed.mode === "browser-link") {
+    if (BLOCKED_LINK_COMMANDS.has(parsed.command)) {
+      return {
+        exitCode: 1,
+        stdout: stringify(errorResponse("inspect", [
+          diagnostic("LINK_COMMAND_NOT_ALLOWED", "error", `Command not allowed in links: ${parsed.command}`)
+        ]))
+      };
+    }
+    return {
+      exitCode: 0,
+      stdout: `${buildLinkCommandUrl(parsed.appUrl, parsed)}\n`
     };
   }
 
