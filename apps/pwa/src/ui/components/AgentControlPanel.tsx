@@ -41,6 +41,17 @@ export function AgentControlPanel({
   const [transportOpen, setTransportOpen] = useState(false);
   const statusLabel = STATE_LABELS[session.state];
   const canDisconnect = session.state !== "off" && session.state !== "revoked";
+  const canEnable = session.state === "off" || session.state === "revoked" || session.state === "expired";
+
+  const handleTriggerClick = () => {
+    if (canEnable) {
+      onEnable();
+      setIsOpen(true);
+      return;
+    }
+
+    setIsOpen((open) => !open);
+  };
 
   return (
     <div className={`agent-control agent-control--${session.state}`}>
@@ -48,9 +59,9 @@ export function AgentControlPanel({
         type="button"
         className="button agent-control__trigger"
         aria-expanded={isOpen}
-        onClick={() => setIsOpen((open) => !open)}
+        onClick={handleTriggerClick}
       >
-        Agent Control: {statusLabel}
+        {canEnable ? "Enable Agent Control" : `Agent Control: ${statusLabel}`}
       </button>
 
       {isOpen && (
@@ -65,7 +76,7 @@ export function AgentControlPanel({
             </button>
           </div>
 
-          {session.state === "off" || session.state === "revoked" || session.state === "expired" ? (
+          {canEnable ? (
             <button type="button" className="button button--primary agent-control__full-button" onClick={onEnable}>
               Enable Agent Control
             </button>

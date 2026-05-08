@@ -938,7 +938,7 @@ select {
     align-items: flex-start;
     gap: 12px;
     padding: 16px;
-    overflow: hidden;
+    overflow: visible;
   }
 
   .app__topbar h1 {
@@ -985,6 +985,7 @@ select {
     width: auto;
     max-height: min(440px, calc(100vh - 32px));
     overflow: auto;
+    z-index: 1000;
   }
 
   .app__commands .agent-control__panel .button {

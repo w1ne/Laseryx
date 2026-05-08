@@ -46,10 +46,10 @@ function renderPanel(
 }
 
 describe("AgentControlPanel", () => {
-  it("renders a compact off-state control", () => {
+  it("renders a compact off-state enable control", () => {
     renderPanel(offSession);
 
-    const button = screen.getByRole("button", { name: "Agent Control: Off" });
+    const button = screen.getByRole("button", { name: "Enable Agent Control" });
     expect(button).toBeInTheDocument();
   });
 
@@ -74,10 +74,17 @@ describe("AgentControlPanel", () => {
     const onEnable = vi.fn();
     renderPanel(offSession, { onEnable });
 
-    fireEvent.click(screen.getByRole("button", { name: "Agent Control: Off" }));
     fireEvent.click(screen.getByRole("button", { name: "Enable Agent Control" }));
 
     expect(onEnable).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens the panel immediately after enabling from off state", () => {
+    renderPanel(offSession);
+
+    fireEvent.click(screen.getByRole("button", { name: "Enable Agent Control" }));
+
+    expect(screen.getByRole("dialog", { name: "Agent Control" })).toBeInTheDocument();
   });
 
   it("copies the same-origin connection link for active sessions", async () => {
