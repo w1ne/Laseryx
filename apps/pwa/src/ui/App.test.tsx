@@ -126,7 +126,13 @@ describe("App", () => {
         expect(screen.getByRole("button", { name: "Agent Control: Waiting" })).toBeInTheDocument();
     });
 
-    it("asks before applying link commands", () => {
+    it("applies link commands automatically without a confirmation dialog", async () => {
+        const dispatch = vi.fn();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (useStore as any).mockReturnValue({
+            state: INITIAL_STATE,
+            dispatch,
+        });
         const hash = encodeLinkCommandCapsule({
             version: 1,
             title: "Linked rectangle",
@@ -141,12 +147,17 @@ describe("App", () => {
 
         render(<App />);
 
-        expect(screen.getByRole("dialog", { name: "Apply Link Commands" })).toBeInTheDocument();
-        expect(screen.getByText("Linked rectangle")).toBeInTheDocument();
-        expect(screen.getByText("document.addRect")).toBeInTheDocument();
+        expect(screen.queryByRole("dialog", { name: "Apply Link Commands" })).not.toBeInTheDocument();
+        await waitFor(() => {
+            expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({
+                type: "ADD_OBJECT",
+                payload: expect.objectContaining({ id: "rect-link-1" })
+            }));
+        });
+        expect(window.location.hash).toBe("");
     });
 
-    it("applies link commands only after confirmation", async () => {
+    it("rejects blocked link commands without dispatching a mutation", async () => {
         const dispatch = vi.fn();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (useStore as any).mockReturnValue({
@@ -155,26 +166,17 @@ describe("App", () => {
         });
         const hash = encodeLinkCommandCapsule({
             version: 1,
-            commands: [
-                {
-                    command: "document.addRect",
-                    args: { object: "rect-link-1", layer: "layer-1", width: 10, height: 10 }
-                }
-            ]
+            commands: [{ command: "project.delete", args: { id: "local-project" } }]
         });
         window.history.pushState({}, "", `/${hash}`);
 
         render(<App />);
 
-        expect(dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: "ADD_OBJECT" }));
-        fireEvent.click(screen.getByRole("button", { name: "Apply" }));
-
         await waitFor(() => {
-            expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({
-                type: "ADD_OBJECT",
-                payload: expect.objectContaining({ id: "rect-link-1" })
-            }));
+            expect(window.location.hash).toBe("");
         });
+        expect(dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: "DELETE_OBJECT" }));
+        expect(dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: "SET_DOCUMENT" }));
     });
 
     it("renders desktop workbench zones for design mode", () => {
