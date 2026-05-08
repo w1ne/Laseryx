@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { AgentSessionSnapshot } from "../../automation/session/types";
 import { AgentControlPanel } from "./AgentControlPanel";
@@ -27,9 +28,26 @@ const connectedSession: AgentSessionSnapshot = {
   }
 };
 
+function renderPanel(
+  session: AgentSessionSnapshot,
+  props: Partial<ComponentProps<typeof AgentControlPanel>> = {}
+) {
+  return render(
+    <AgentControlPanel
+      session={session}
+      connectionLink={session.sessionId ? `${window.location.origin}/agent/session#${session.sessionId}` : ""}
+      copyState="idle"
+      onEnable={vi.fn()}
+      onDisconnect={vi.fn()}
+      onCopyConnection={vi.fn()}
+      {...props}
+    />
+  );
+}
+
 describe("AgentControlPanel", () => {
   it("renders a compact off-state control", () => {
-    render(<AgentControlPanel session={offSession} onEnable={vi.fn()} onDisconnect={vi.fn()} />);
+    renderPanel(offSession);
 
     const button = screen.getByRole("button", { name: "Agent Control: Off" });
     expect(button).toBeInTheDocument();
@@ -37,7 +55,7 @@ describe("AgentControlPanel", () => {
 
   it("shows permissions, connected agent, last command, and disconnect", () => {
     const onDisconnect = vi.fn();
-    render(<AgentControlPanel session={connectedSession} onEnable={vi.fn()} onDisconnect={onDisconnect} />);
+    renderPanel(connectedSession, { onDisconnect });
 
     fireEvent.click(screen.getByRole("button", { name: "Agent Control: Connected" }));
 
@@ -54,7 +72,7 @@ describe("AgentControlPanel", () => {
 
   it("enables a waiting session from the panel", () => {
     const onEnable = vi.fn();
-    render(<AgentControlPanel session={offSession} onEnable={onEnable} onDisconnect={vi.fn()} />);
+    renderPanel(offSession, { onEnable });
 
     fireEvent.click(screen.getByRole("button", { name: "Agent Control: Off" }));
     fireEvent.click(screen.getByRole("button", { name: "Enable Agent Control" }));
@@ -64,16 +82,12 @@ describe("AgentControlPanel", () => {
 
   it("copies the same-origin connection link for active sessions", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: { writeText }
-    });
-    render(<AgentControlPanel session={connectedSession} onEnable={vi.fn()} onDisconnect={vi.fn()} />);
+    renderPanel(connectedSession, { copyState: "copied", onCopyConnection: writeText });
 
     fireEvent.click(screen.getByRole("button", { name: "Agent Control: Connected" }));
     fireEvent.click(screen.getByRole("button", { name: "Copy Link" }));
 
-    expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/agent/session#session-1`);
+    expect(writeText).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(screen.getByText("Copied")).toBeInTheDocument());
   });
 });

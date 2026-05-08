@@ -1,10 +1,14 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import type { AgentPermission, AgentSessionSnapshot } from "../../automation/session/types";
+import type { AgentSessionCopyState } from "../hooks/useAgentSessionController";
 
 type AgentControlPanelProps = {
   session: AgentSessionSnapshot;
+  connectionLink: string;
+  copyState: AgentSessionCopyState;
   onEnable: () => void;
   onDisconnect: () => void;
+  onCopyConnection: () => Promise<void> | void;
 };
 
 const STATE_LABELS: Record<AgentSessionSnapshot["state"], string> = {
@@ -25,35 +29,18 @@ const PERMISSION_LABELS: Record<AgentPermission, string> = {
   "machine-control": "Machine Control"
 };
 
-function getConnectionLink(sessionId: string | null): string {
-  if (!sessionId || typeof window === "undefined") {
-    return "";
-  }
-
-  return `${window.location.origin}/agent/session#${encodeURIComponent(sessionId)}`;
-}
-
-export function AgentControlPanel({ session, onEnable, onDisconnect }: AgentControlPanelProps) {
+export function AgentControlPanel({
+  session,
+  connectionLink,
+  copyState,
+  onEnable,
+  onDisconnect,
+  onCopyConnection
+}: AgentControlPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [transportOpen, setTransportOpen] = useState(false);
-  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const statusLabel = STATE_LABELS[session.state];
-  const connectionLink = useMemo(() => getConnectionLink(session.sessionId), [session.sessionId]);
   const canDisconnect = session.state !== "off" && session.state !== "revoked";
-
-  const handleCopyConnection = async () => {
-    if (!connectionLink) {
-      setCopyState("failed");
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(connectionLink);
-      setCopyState("copied");
-    } catch {
-      setCopyState("failed");
-    }
-  };
 
   return (
     <div className={`agent-control agent-control--${session.state}`}>
@@ -108,7 +95,7 @@ export function AgentControlPanel({ session, onEnable, onDisconnect }: AgentCont
           </div>
 
           <div className="agent-control__actions">
-            <button type="button" className="button" onClick={handleCopyConnection} disabled={!connectionLink}>
+            <button type="button" className="button" onClick={onCopyConnection} disabled={!connectionLink}>
               Copy Link
             </button>
             {canDisconnect ? (
