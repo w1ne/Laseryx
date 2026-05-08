@@ -10,6 +10,7 @@
     "cli:build": "vite build --config vite.cli.config.ts",
     "laseryx": "node scripts/run-laseryx.mjs",
     "mcp:build": "vite build --config vite.mcp.config.ts",
+    "hosted-mcp:build": "vite build --config vite.hosted-mcp.config.ts",
     "laseryx:mcp": "node scripts/run-laseryx-mcp.mjs",
     "preview": "vite preview",
     "test": "vitest run",
