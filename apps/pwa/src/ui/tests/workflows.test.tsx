@@ -101,6 +101,9 @@ describe("E2E Workflows", () => {
         // 3. Generate G-code (Design Tab)
         const generateBtn = await screen.findByText("Generate");
         fireEvent.click(generateBtn);
+        await waitFor(() => {
+            expect(screen.getByText("Download")).not.toBeDisabled();
+        });
 
         // 4. Switch to Machine Tab
         const machineTab = screen.getByText("Machine");
@@ -153,6 +156,9 @@ describe("E2E Workflows", () => {
         // 3. Generate G-code (Design Tab)
         const generateBtn = await screen.findByText("Generate");
         fireEvent.click(generateBtn);
+        await waitFor(() => {
+            expect(screen.getByText("Download")).not.toBeDisabled();
+        });
 
         // 4. Switch to Machine Tab
         const machineTab = screen.getByText("Machine");
