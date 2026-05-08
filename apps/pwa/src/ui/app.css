@@ -30,6 +30,8 @@ body {
 }
 
 .app__topbar {
+  position: relative;
+  z-index: 100;
   display: grid;
   grid-template-columns: minmax(180px, 1fr) auto minmax(260px, auto) auto;
   align-items: center;
