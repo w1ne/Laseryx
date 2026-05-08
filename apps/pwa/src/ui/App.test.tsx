@@ -46,6 +46,16 @@ vi.mock("../io/machineRepo", () => ({
     },
 }));
 
+vi.mock("../automation/browser/localBridgeClient", async () => {
+    const actual = await vi.importActual<typeof import("../automation/browser/localBridgeClient")>(
+        "../automation/browser/localBridgeClient"
+    );
+    return {
+        ...actual,
+        startLocalBridgeClient: vi.fn(() => vi.fn()),
+    };
+});
+
 // Mock Worker
 global.Worker = vi.fn().mockImplementation(() => ({
     postMessage: vi.fn(),
@@ -56,6 +66,7 @@ global.Worker = vi.fn().mockImplementation(() => ({
 
 describe("App", () => {
     beforeEach(() => {
+        window.history.pushState({}, "", "/");
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (useStore as any).mockReturnValue({
             state: INITIAL_STATE,
@@ -94,7 +105,19 @@ describe("App", () => {
         expect(screen.getByText(/Release/i)).toBeInTheDocument();
     });
 
-    it("opens agent control from the top bar", () => {
+    it("hides agent control when no local bridge is attached", () => {
+        render(<App />);
+
+        expect(screen.queryByRole("button", { name: "Enable Agent Control" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /Agent Control/i })).not.toBeInTheDocument();
+    });
+
+    it("opens agent control when launched with a local bridge link", () => {
+        window.history.pushState(
+            {},
+            "",
+            "/?laseryxBridge=http%3A%2F%2F127.0.0.1%3A17321&laseryxToken=dev"
+        );
         render(<App />);
 
         fireEvent.click(screen.getByRole("button", { name: "Enable Agent Control" }));

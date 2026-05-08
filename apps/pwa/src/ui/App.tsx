@@ -56,6 +56,8 @@ export function App() {
   const [showMaterialManager, setShowMaterialManager] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const agentSession = useAgentSessionController();
+  const localBridgeConfigRef = useRef(readLocalBridgeConfig(window.location.search));
+  const isLocalAgentRuntime = localBridgeConfigRef.current !== null;
 
   // --- Worker Init ---
   useEffect(() => {
@@ -303,7 +305,7 @@ export function App() {
   }, [dispatch]);
 
   useEffect(() => {
-    const config = readLocalBridgeConfig(window.location.search);
+    const config = localBridgeConfigRef.current;
     if (!config) return;
     const liveExecutor = createLiveCommandExecutor({
       getState: () => stateRef.current,
@@ -432,14 +434,16 @@ export function App() {
               Install App
             </button>
           )}
-          <AgentControlPanel
-            session={agentSession.session}
-            connectionLink={agentSession.connectionLink}
-            copyState={agentSession.copyState}
-            onEnable={agentSession.enableAgentControl}
-            onDisconnect={agentSession.disconnectAgentControl}
-            onCopyConnection={agentSession.copyConnectionLink}
-          />
+          {isLocalAgentRuntime && (
+            <AgentControlPanel
+              session={agentSession.session}
+              connectionLink={agentSession.connectionLink}
+              copyState={agentSession.copyState}
+              onEnable={agentSession.enableAgentControl}
+              onDisconnect={agentSession.disconnectAgentControl}
+              onCopyConnection={agentSession.copyConnectionLink}
+            />
+          )}
           <DonateButton />
         </div>
         <div className={`app__worker ${workerStatus.ready ? "is-ready" : ""}`}>
