@@ -12,6 +12,7 @@ import {
 import { validateProtocolRequest } from "../protocol/validate";
 import { executeDocumentCommand } from "./documentCommands";
 import { executeProjectCommand, type ProjectCommandRepo } from "./projectCommands";
+import { executeLayerCommand, type LayerAutomationCommand } from "./layerCommands";
 
 type PreviewMode = "design" | "gcode";
 type DesignPanel = "document" | "properties" | "layers";
@@ -201,6 +202,14 @@ export function createLiveCommandExecutor(options: LiveCommandExecutorOptions) {
         case "document.setObjectLayer":
         case "document.deleteObject":
           return executeDocumentCommand(command, options, request);
+        case "layer.list":
+        case "layer.create":
+        case "layer.rename":
+        case "layer.delete":
+        case "layer.setVisibility":
+        case "layer.setLock":
+        case "layer.get":
+          return executeLayerCommand(command as LayerAutomationCommand, options, request);
         case "project.new":
         case "project.save":
         case "project.list":
