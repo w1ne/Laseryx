@@ -59,3 +59,30 @@ describe("layer.list", () => {
     });
   });
 });
+
+describe("layer.create", () => {
+  it("dispatches ADD_LAYER and ADD_OPERATION and returns the new ids", () => {
+    const state = buildState();
+    const actions: any[] = [];
+    const dispatch = (a: any) => actions.push(a);
+    const response = executeLayerCommand("layer.create", { getState: () => state, dispatch }, req("layer.create", { name: "Score" }));
+    expect(response.ok).toBe(true);
+    if (!response.ok) return;
+    const addLayer = actions.find((a) => a.type === "ADD_LAYER");
+    const addOp = actions.find((a) => a.type === "ADD_OPERATION");
+    expect(addLayer).toBeDefined();
+    expect(addOp).toBeDefined();
+    expect(addLayer.payload.name).toBe("Score");
+    expect(addLayer.payload.operationId).toBe(addOp.payload.id);
+    expect(response.data).toEqual({ id: addLayer.payload.id, operationId: addOp.payload.id });
+  });
+
+  it("defaults the name to Layer N when name is omitted", () => {
+    const state = buildState(); // 3 existing layers
+    const actions: any[] = [];
+    const response = executeLayerCommand("layer.create", { getState: () => state, dispatch: (a) => actions.push(a) }, req("layer.create"));
+    expect(response.ok).toBe(true);
+    const addLayer = actions.find((a) => a.type === "ADD_LAYER");
+    expect(addLayer.payload.name).toBe("Layer 4");
+  });
+});

@@ -96,6 +96,10 @@ function summarize(state: AppState, layer: Layer): LayerSummary {
   };
 }
 
+function uniqueSuffix(): string {
+  return `${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+}
+
 export function executeLayerCommand(
   command: LayerAutomationCommand,
   options: LayerCommandExecutorOptions,
@@ -109,6 +113,21 @@ export function executeLayerCommand(
       return wrap(request, okResponse<LayerCommandResponseData>("layer.list" as never, {
         layers: state.document.layers.map((l) => summarize(state, l))
       }));
+    case "layer.create": {
+      const suffix = uniqueSuffix();
+      const layerId = `layer-${suffix}`;
+      const operationId = `op-${suffix}`;
+      const requestedName = typeof args.name === "string" && args.name.trim() !== "" ? args.name : `Layer ${state.document.layers.length + 1}`;
+      options.dispatch({
+        type: "ADD_LAYER",
+        payload: { id: layerId, name: requestedName, visible: true, locked: false, operationId }
+      });
+      options.dispatch({
+        type: "ADD_OPERATION",
+        payload: { id: operationId, name: "Cut", mode: "line", speed: 1000, power: 50, passes: 1, order: "insideOut" }
+      });
+      return wrap(request, okResponse<LayerCommandResponseData>("layer.create" as never, { id: layerId, operationId }));
+    }
     default:
       return wrap(request, errorResponse<LayerCommandResponseData>(command as never, [
         diagnostic("UNKNOWN_COMMAND", "error", `Unsupported layer command: ${command}`)
