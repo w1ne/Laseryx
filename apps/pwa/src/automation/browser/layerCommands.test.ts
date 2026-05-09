@@ -86,3 +86,34 @@ describe("layer.create", () => {
     expect(addLayer.payload.name).toBe("Layer 4");
   });
 });
+
+describe("layer.rename", () => {
+  it("renames the resolved layer by id", () => {
+    const state = buildState();
+    const actions: any[] = [];
+    const response = executeLayerCommand("layer.rename", { getState: () => state, dispatch: (a) => actions.push(a) }, req("layer.rename", { layer: "layer-b", name: "EngraveDeep" }));
+    expect(response.ok).toBe(true);
+    if (!response.ok) return;
+    expect(response.data).toEqual({ id: "layer-b", name: "EngraveDeep" });
+    const setDoc = actions.find((a) => a.type === "SET_DOCUMENT");
+    expect(setDoc).toBeDefined();
+    const renamed = setDoc.payload.layers.find((l: any) => l.id === "layer-b");
+    expect(renamed.name).toBe("EngraveDeep");
+  });
+
+  it("returns LAYER_AMBIGUOUS when name matches multiple layers", () => {
+    const state = buildState();
+    const response = executeLayerCommand("layer.rename", { getState: () => state, dispatch: () => {} }, req("layer.rename", { layer: "Cut", name: "X" }));
+    expect(response.ok).toBe(false);
+    if (response.ok) return;
+    expect(response.errors[0].code).toBe("LAYER_AMBIGUOUS");
+  });
+
+  it("returns LAYER_NOT_FOUND when no layer matches", () => {
+    const state = buildState();
+    const response = executeLayerCommand("layer.rename", { getState: () => state, dispatch: () => {} }, req("layer.rename", { layer: "ghost", name: "X" }));
+    expect(response.ok).toBe(false);
+    if (response.ok) return;
+    expect(response.errors[0].code).toBe("LAYER_NOT_FOUND");
+  });
+});

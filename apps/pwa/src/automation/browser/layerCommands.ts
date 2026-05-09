@@ -128,6 +128,26 @@ export function executeLayerCommand(
       });
       return wrap(request, okResponse<LayerCommandResponseData>("layer.create" as never, { id: layerId, operationId }));
     }
+    case "layer.rename": {
+      const resolved = resolveLayer(state, args.layer);
+      if (!resolved.ok) {
+        return wrap(request, errorResponse<LayerCommandResponseData>("layer.rename", [resolved.diagnostic]));
+      }
+      const newName = typeof args.name === "string" && args.name.trim() !== "" ? args.name : null;
+      if (newName === null) {
+        return wrap(request, errorResponse<LayerCommandResponseData>("layer.rename", [
+          diagnostic("INVALID_INPUT", "error", "Missing name")
+        ]));
+      }
+      options.dispatch({
+        type: "SET_DOCUMENT",
+        payload: {
+          ...state.document,
+          layers: state.document.layers.map((l) => l.id === resolved.value.id ? { ...l, name: newName } : l)
+        }
+      });
+      return wrap(request, okResponse<LayerCommandResponseData>("layer.rename", { id: resolved.value.id, name: newName }));
+    }
     default:
       return wrap(request, errorResponse<LayerCommandResponseData>(command as never, [
         diagnostic("UNKNOWN_COMMAND", "error", `Unsupported layer command: ${command}`)
