@@ -88,6 +88,10 @@ function resolveLayer(state: AppState, address: unknown): ResolveOk<Layer> | Res
   return { ok: false, diagnostic: diagnostic("LAYER_NOT_FOUND", "error", `Layer not found: ${address}`) };
 }
 
+function uniqueSuffix(): string {
+  return `${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+}
+
 export function executeMaterialCommand(
   command: MaterialAutomationCommand,
   options: MaterialCommandExecutorOptions,
@@ -101,6 +105,88 @@ export function executeMaterialCommand(
       return wrap(request, okResponse<MaterialCommandResponseData>("material.list" as never, {
         materials: state.materialPresets.map(summarizeMaterial)
       }));
+    case "material.applyToLayer": {
+      const m = resolveMaterial(state, args.material);
+      if (!m.ok) {
+        return wrap(request, errorResponse<MaterialCommandResponseData>("material.applyToLayer", [m.diagnostic]));
+      }
+      const l = resolveLayer(state, args.layer);
+      if (!l.ok) {
+        return wrap(request, errorResponse<MaterialCommandResponseData>("material.applyToLayer", [l.diagnostic]));
+      }
+      const preset = m.value;
+      const layer = l.value;
+
+      const appliedFields: Partial<Operation> = {
+        mode: preset.mode,
+        speed: preset.speed,
+        power: preset.power,
+        passes: preset.passes,
+        ...(preset.lineInterval !== undefined ? { lineInterval: preset.lineInterval } : {}),
+        ...(preset.angle !== undefined ? { angle: preset.angle } : {})
+      };
+
+      if (!layer.operationId) {
+        const operationId = `op-${uniqueSuffix()}`;
+        const newOp: Operation = {
+          id: operationId,
+          name: preset.name,
+          mode: preset.mode,
+          speed: preset.speed,
+          power: preset.power,
+          passes: preset.passes,
+          ...(preset.lineInterval !== undefined ? { lineInterval: preset.lineInterval } : {}),
+          ...(preset.angle !== undefined ? { angle: preset.angle } : {})
+        };
+        options.dispatch({ type: "ADD_OPERATION", payload: newOp });
+        options.dispatch({
+          type: "SET_DOCUMENT",
+          payload: {
+            ...state.document,
+            layers: state.document.layers.map((x) => x.id === layer.id ? { ...x, operationId } : x)
+          }
+        });
+        return wrap(request, okResponse<MaterialCommandResponseData>("material.applyToLayer", {
+          layerId: layer.id, operationId, applied: appliedFields
+        } as never));
+      }
+
+      const operations = state.camSettings.operations;
+      const target = operations.find((o) => o.id === layer.operationId);
+      if (!target) {
+        // Defensive: operationId points to nonexistent op. Treat as missing.
+        const operationId = `op-${uniqueSuffix()}`;
+        const newOp: Operation = {
+          id: operationId, name: preset.name, mode: preset.mode, speed: preset.speed,
+          power: preset.power, passes: preset.passes,
+          ...(preset.lineInterval !== undefined ? { lineInterval: preset.lineInterval } : {}),
+          ...(preset.angle !== undefined ? { angle: preset.angle } : {})
+        };
+        options.dispatch({ type: "ADD_OPERATION", payload: newOp });
+        options.dispatch({
+          type: "SET_DOCUMENT",
+          payload: {
+            ...state.document,
+            layers: state.document.layers.map((x) => x.id === layer.id ? { ...x, operationId } : x)
+          }
+        });
+        return wrap(request, okResponse<MaterialCommandResponseData>("material.applyToLayer", {
+          layerId: layer.id, operationId, applied: appliedFields
+        } as never));
+      }
+
+      const updated: Operation = { ...target, ...appliedFields };
+      options.dispatch({
+        type: "SET_CAM_SETTINGS",
+        payload: {
+          ...state.camSettings,
+          operations: operations.map((o) => o.id === target.id ? updated : o)
+        }
+      });
+      return wrap(request, okResponse<MaterialCommandResponseData>("material.applyToLayer", {
+        layerId: layer.id, operationId: target.id, applied: appliedFields
+      } as never));
+    }
     default:
       return wrap(request, errorResponse<MaterialCommandResponseData>(command as never, [
         diagnostic("UNKNOWN_COMMAND", "error", `Unsupported material command: ${command}`)
