@@ -613,4 +613,17 @@ describe("liveCommands", () => {
       expect(response.ok).toBe(true);
     });
   });
+
+  it("routes material.list through the live executor", () => {
+    const { executor } = createHarness();
+
+    const response = executor.request({
+      protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+      requestId: "test-mat-list",
+      command: "material.list",
+      args: {}
+    });
+
+    expect(response.ok).toBe(true);
+  });
 });
