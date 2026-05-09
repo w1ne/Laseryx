@@ -148,6 +148,25 @@ export function executeLayerCommand(
       });
       return wrap(request, okResponse<LayerCommandResponseData>("layer.rename", { id: resolved.value.id, name: newName }));
     }
+    case "layer.delete": {
+      const resolved = resolveLayer(state, args.layer);
+      if (!resolved.ok) {
+        return wrap(request, errorResponse<LayerCommandResponseData>("layer.delete", [resolved.diagnostic]));
+      }
+      if (state.document.layers.length <= 1) {
+        return wrap(request, errorResponse<LayerCommandResponseData>("layer.delete", [
+          diagnostic("LAYER_LAST", "error", "Cannot delete the last layer")
+        ]));
+      }
+      const objectIds = state.document.objects.filter((o) => o.layerId === resolved.value.id).map((o) => o.id);
+      if (objectIds.length > 0) {
+        return wrap(request, errorResponse<LayerCommandResponseData>("layer.delete", [
+          diagnostic("LAYER_HAS_OBJECTS", "error", `Layer "${resolved.value.name}" still contains objects`)
+        ]));
+      }
+      options.dispatch({ type: "DELETE_LAYER", payload: resolved.value.id });
+      return wrap(request, okResponse<LayerCommandResponseData>("layer.delete", { id: resolved.value.id, name: resolved.value.name } as never));
+    }
     default:
       return wrap(request, errorResponse<LayerCommandResponseData>(command as never, [
         diagnostic("UNKNOWN_COMMAND", "error", `Unsupported layer command: ${command}`)

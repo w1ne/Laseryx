@@ -117,3 +117,33 @@ describe("layer.rename", () => {
     expect(response.errors[0].code).toBe("LAYER_NOT_FOUND");
   });
 });
+
+describe("layer.delete", () => {
+  it("deletes a free layer", () => {
+    const state = buildState();
+    const actions: any[] = [];
+    const response = executeLayerCommand("layer.delete", { getState: () => state, dispatch: (a) => actions.push(a) }, req("layer.delete", { layer: "layer-b" }));
+    expect(response.ok).toBe(true);
+    expect(actions).toContainEqual({ type: "DELETE_LAYER", payload: "layer-b" });
+  });
+
+  it("returns LAYER_HAS_OBJECTS when layer holds objects", () => {
+    const state = buildState();
+    state.document.objects = [
+      { kind: "shape", id: "obj-1", layerId: "layer-b", transform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }, shape: { type: "rect", width: 10, height: 10 } } as never
+    ];
+    const response = executeLayerCommand("layer.delete", { getState: () => state, dispatch: () => {} }, req("layer.delete", { layer: "layer-b" }));
+    expect(response.ok).toBe(false);
+    if (response.ok) return;
+    expect(response.errors[0].code).toBe("LAYER_HAS_OBJECTS");
+  });
+
+  it("returns LAYER_LAST when only one layer exists", () => {
+    const state = buildState();
+    state.document.layers = [state.document.layers[0]];
+    const response = executeLayerCommand("layer.delete", { getState: () => state, dispatch: () => {} }, req("layer.delete", { layer: "layer-a" }));
+    expect(response.ok).toBe(false);
+    if (response.ok) return;
+    expect(response.errors[0].code).toBe("LAYER_LAST");
+  });
+});
