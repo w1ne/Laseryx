@@ -161,7 +161,7 @@ export function executeLayerCommand(
       const objectIds = state.document.objects.filter((o) => o.layerId === resolved.value.id).map((o) => o.id);
       if (objectIds.length > 0) {
         return wrap(request, errorResponse<LayerCommandResponseData>("layer.delete", [
-          diagnostic("LAYER_HAS_OBJECTS", "error", `Layer "${resolved.value.name}" still contains objects`)
+          diagnostic("LAYER_HAS_OBJECTS", "error", `Layer "${resolved.value.name}" still contains objects (ids: ${objectIds.join(", ")})`)
         ]));
       }
       options.dispatch({ type: "DELETE_LAYER", payload: resolved.value.id });

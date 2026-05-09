@@ -68,7 +68,8 @@ function resolveMaterial(state: AppState, address: unknown): ResolveOk<MaterialP
   const byName = presets.filter((p) => p.name === address);
   if (byName.length === 1) return { ok: true, value: byName[0] };
   if (byName.length > 1) {
-    return { ok: false, diagnostic: diagnostic("MATERIAL_AMBIGUOUS", "error", `Multiple materials named "${address}"`) };
+    const ids = byName.map((p) => p.id).join(", ");
+    return { ok: false, diagnostic: diagnostic("MATERIAL_AMBIGUOUS", "error", `Multiple materials named "${address}" (ids: ${ids})`) };
   }
   return { ok: false, diagnostic: diagnostic("MATERIAL_NOT_FOUND", "error", `Material not found: ${address}`) };
 }
@@ -83,7 +84,8 @@ function resolveLayer(state: AppState, address: unknown): ResolveOk<Layer> | Res
   const byName = layers.filter((l) => l.name === address);
   if (byName.length === 1) return { ok: true, value: byName[0] };
   if (byName.length > 1) {
-    return { ok: false, diagnostic: diagnostic("LAYER_AMBIGUOUS", "error", `Multiple layers named "${address}"`) };
+    const ids = byName.map((l) => l.id).join(", ");
+    return { ok: false, diagnostic: diagnostic("LAYER_AMBIGUOUS", "error", `Multiple layers named "${address}" (ids: ${ids})`) };
   }
   return { ok: false, diagnostic: diagnostic("LAYER_NOT_FOUND", "error", `Layer not found: ${address}`) };
 }

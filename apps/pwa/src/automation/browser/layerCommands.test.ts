@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { executeLayerCommand } from "./layerCommands";
+import type { Action } from "../../core/state/actions";
 import type { AppState } from "../../core/state/types";
 import type { AutomationProtocolRequest } from "../protocol/types";
 import { AUTOMATION_PROTOCOL_VERSION } from "../protocol/types";
