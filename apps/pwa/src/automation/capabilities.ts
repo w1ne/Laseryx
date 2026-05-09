@@ -211,6 +211,87 @@ export const AUTOMATION_CAPABILITIES = [
     requiredPermission: "project-storage",
     transports: ["protocol", "cli", "mcp"],
     description: "Import a Laseryx project JSON object into the browser."
+  },
+  {
+    command: "layer.list",
+    category: "document",
+    mutates: false,
+    supportsDryRun: false,
+    requiredPermission: "read",
+    transports: ["protocol", "cli"],
+    description: "List document layers with id, name, visibility, lock, op id, and object count."
+  },
+  {
+    command: "layer.create",
+    category: "document",
+    mutates: true,
+    supportsDryRun: false,
+    requiredPermission: "edit",
+    transports: ["protocol", "cli"],
+    description: "Create a new layer with a default Cut operation."
+  },
+  {
+    command: "layer.rename",
+    category: "document",
+    mutates: true,
+    supportsDryRun: false,
+    requiredPermission: "edit",
+    transports: ["protocol", "cli"],
+    description: "Rename a layer addressed by id or name."
+  },
+  {
+    command: "layer.delete",
+    category: "document",
+    mutates: true,
+    supportsDryRun: false,
+    requiredPermission: "edit",
+    transports: ["protocol", "cli"],
+    description: "Delete a layer; refuses if it is the last layer or contains objects."
+  },
+  {
+    command: "layer.setVisibility",
+    category: "document",
+    mutates: true,
+    supportsDryRun: false,
+    requiredPermission: "edit",
+    transports: ["protocol", "cli"],
+    description: "Set a layer's visibility flag."
+  },
+  {
+    command: "layer.setLock",
+    category: "document",
+    mutates: true,
+    supportsDryRun: false,
+    requiredPermission: "edit",
+    transports: ["protocol", "cli"],
+    description: "Set a layer's locked flag."
+  },
+  {
+    command: "layer.get",
+    category: "document",
+    mutates: false,
+    supportsDryRun: false,
+    requiredPermission: "read",
+    transports: ["protocol", "cli"],
+    description: "Return a full snapshot of a layer including its linked operation fields."
+  },
+  {
+    command: "material.list",
+    category: "cam",
+    mutates: false,
+    supportsDryRun: false,
+    requiredPermission: "read",
+    transports: ["protocol", "cli"],
+    description: "List material presets."
+  },
+  {
+    command: "material.applyToLayer",
+    category: "cam",
+    mutates: true,
+    supportsDryRun: false,
+    requiredPermission: "edit",
+    transports: ["protocol", "cli"],
+    description: "Copy a material preset's fields onto a layer's linked operation; auto-creates the operation if missing."
   }
 ] as const satisfies readonly AutomationCapability[];
 

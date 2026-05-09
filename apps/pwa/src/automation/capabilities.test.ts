@@ -27,7 +27,16 @@ describe("automation capabilities", () => {
       "project.delete",
       "project.summary",
       "project.exportJson",
-      "project.importJson"
+      "project.importJson",
+      "layer.list",
+      "layer.create",
+      "layer.rename",
+      "layer.delete",
+      "layer.setVisibility",
+      "layer.setLock",
+      "layer.get",
+      "material.list",
+      "material.applyToLayer"
     ]);
   });
 
@@ -61,12 +70,48 @@ describe("automation capabilities", () => {
       { command: "project.save", supportsDryRun: false },
       { command: "project.open", supportsDryRun: false },
       { command: "project.delete", supportsDryRun: false },
-      { command: "project.importJson", supportsDryRun: false }
+      { command: "project.importJson", supportsDryRun: false },
+      { command: "layer.create", supportsDryRun: false },
+      { command: "layer.rename", supportsDryRun: false },
+      { command: "layer.delete", supportsDryRun: false },
+      { command: "layer.setVisibility", supportsDryRun: false },
+      { command: "layer.setLock", supportsDryRun: false },
+      { command: "material.applyToLayer", supportsDryRun: false }
     ]);
   });
 
   it("keeps command entries unique", () => {
     const names = AUTOMATION_CAPABILITIES.map((capability) => capability.command);
     expect(new Set(names).size).toBe(names.length);
+  });
+});
+
+describe("layer + material capabilities", () => {
+  const expected: Array<[string, "read" | "edit", boolean]> = [
+    ["layer.list", "read", false],
+    ["layer.create", "edit", true],
+    ["layer.rename", "edit", true],
+    ["layer.delete", "edit", true],
+    ["layer.setVisibility", "edit", true],
+    ["layer.setLock", "edit", true],
+    ["layer.get", "read", false],
+    ["material.list", "read", false],
+    ["material.applyToLayer", "edit", true]
+  ];
+
+  it.each(expected)("declares %s with permission %s and mutates=%s", (command, perm, mutates) => {
+    const cap = AUTOMATION_CAPABILITIES.find((c) => c.command === command);
+    expect(cap).toBeDefined();
+    expect(cap!.requiredPermission).toBe(perm);
+    expect(cap!.mutates).toBe(mutates);
+    expect(cap!.transports).toEqual(["protocol", "cli"]);
+  });
+
+  it("does not declare an mcp transport for any new layer/material command", () => {
+    const newCommands = expected.map(([c]) => c);
+    for (const command of newCommands) {
+      const cap = AUTOMATION_CAPABILITIES.find((c) => c.command === command);
+      expect(cap!.transports).not.toContain("mcp");
+    }
   });
 });
