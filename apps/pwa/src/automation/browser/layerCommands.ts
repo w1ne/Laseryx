@@ -192,6 +192,29 @@ export function executeLayerCommand(
         : { id: resolved.value.id, locked: value };
       return wrap(request, okResponse<LayerCommandResponseData>(command as never, data as never));
     }
+    case "layer.get": {
+      const resolved = resolveLayer(state, args.layer);
+      if (!resolved.ok) {
+        return wrap(request, errorResponse<LayerCommandResponseData>("layer.get", [resolved.diagnostic]));
+      }
+      const summary = summarize(state, resolved.value);
+      const op = resolved.value.operationId
+        ? state.camSettings.operations.find((o) => o.id === resolved.value.operationId)
+        : undefined;
+      const operation = op
+        ? {
+            mode: op.mode,
+            speed: op.speed,
+            power: op.power,
+            passes: op.passes,
+            ...(op.lineInterval !== undefined ? { lineInterval: op.lineInterval } : {}),
+            ...(op.angle !== undefined ? { angle: op.angle } : {})
+          }
+        : undefined;
+      return wrap(request, okResponse<LayerCommandResponseData>("layer.get", {
+        layer: { ...summary, ...(operation ? { operation } : {}) }
+      } as never));
+    }
     default:
       return wrap(request, errorResponse<LayerCommandResponseData>(command as never, [
         diagnostic("UNKNOWN_COMMAND", "error", `Unsupported layer command: ${command}`)

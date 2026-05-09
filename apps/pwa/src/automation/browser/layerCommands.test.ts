@@ -177,3 +177,32 @@ describe("layer.setVisibility / setLock", () => {
     expect(response.errors[0].code).toBe("INVALID_INPUT");
   });
 });
+
+describe("layer.get", () => {
+  it("returns the layer summary plus its linked operation fields", () => {
+    const state = buildState();
+    const response = executeLayerCommand("layer.get", { getState: () => state, dispatch: () => {} }, req("layer.get", { layer: "layer-a" }));
+    expect(response.ok).toBe(true);
+    if (!response.ok) return;
+    expect(response.data).toEqual({
+      layer: {
+        id: "layer-a",
+        name: "Cut",
+        visible: true,
+        locked: false,
+        operationId: "op-a",
+        objectCount: 0,
+        operation: { mode: "line", speed: 1000, power: 50, passes: 1 }
+      }
+    });
+  });
+
+  it("omits the operation block when the layer has no operationId", () => {
+    const state = buildState();
+    state.document.layers[0] = { ...state.document.layers[0], operationId: undefined };
+    const response = executeLayerCommand("layer.get", { getState: () => state, dispatch: () => {} }, req("layer.get", { layer: "layer-a" }));
+    expect(response.ok).toBe(true);
+    if (!response.ok) return;
+    expect((response.data as any).layer.operation).toBeUndefined();
+  });
+});
