@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import minimalJob from "../fixtures/minimal-job.json";
 import { AUTOMATION_PROTOCOL_VERSION } from "../protocol/types";
 import type { AgentJobInput } from "../types";
@@ -180,5 +180,28 @@ describe("in-app automation bridge", () => {
         machine: { id: "default-machine" }
       }
     });
+  });
+
+  it("delegates layer.create and material.applyToLayer to the live bridge", () => {
+    const liveExecutor = {
+      request: vi.fn(() => ({
+        protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+        requestId: "x",
+        ok: true,
+        command: "layer.create",
+        data: { id: "layer-x", operationId: "op-x" },
+        errors: [],
+        warnings: []
+      } as never))
+    };
+    const bridge = createInAppAutomationBridge(() => job, liveExecutor);
+    const response = bridge.request({
+      protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+      requestId: "x",
+      command: "layer.create",
+      args: {}
+    });
+    expect(liveExecutor.request).toHaveBeenCalled();
+    expect(response.ok).toBe(true);
   });
 });
