@@ -1,5 +1,6 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { executeMaterialCommand } from "./materialCommands";
+import type { Action } from "../../core/state/actions";
 import type { AppState } from "../../core/state/types";
 import type { AutomationProtocolRequest } from "../protocol/types";
 import { AUTOMATION_PROTOCOL_VERSION } from "../protocol/types";
@@ -57,38 +58,38 @@ describe("material.list", () => {
 describe("material.applyToLayer", () => {
   it("copies preset fields onto the layer's linked operation, including mode", () => {
     const state = buildState();
-    const actions: any[] = [];
+    const actions: Action[] = [];
     const response = executeMaterialCommand("material.applyToLayer", {
       getState: () => state,
-      dispatch: (a) => actions.push(a)
+      dispatch: (a: Action) => actions.push(a)
     }, req("material.applyToLayer", { material: "mat-2", layer: "layer-a" }));
     expect(response.ok).toBe(true);
     if (!response.ok) return;
-    const data = response.data as any;
+    const data = response.data as Record<string, unknown>;
     expect(data.layerId).toBe("layer-a");
     expect(data.operationId).toBe("op-a");
     expect(data.applied).toEqual({
       mode: "fill", speed: 2000, power: 30, passes: 2, lineInterval: 0.1, angle: 0
     });
     const setCam = actions.find((a) => a.type === "SET_CAM_SETTINGS");
-    expect(setCam.payload.operations.find((o: any) => o.id === "op-a").mode).toBe("fill");
+    expect(setCam.payload.operations.find((o) => o.id === "op-a").mode).toBe("fill");
   });
 
   it("auto-creates an Operation when the layer has no operationId", () => {
     const state = buildState();
-    const actions: any[] = [];
+    const actions: Action[] = [];
     const response = executeMaterialCommand("material.applyToLayer", {
       getState: () => state,
-      dispatch: (a) => actions.push(a)
+      dispatch: (a: Action) => actions.push(a)
     }, req("material.applyToLayer", { material: "mat-1", layer: "layer-b" }));
     expect(response.ok).toBe(true);
     if (!response.ok) return;
-    const data = response.data as any;
+    const data = response.data as Record<string, unknown>;
     expect(data.layerId).toBe("layer-b");
     expect(typeof data.operationId).toBe("string");
     // SET_DOCUMENT links the layer to the new op id
     const setDoc = actions.find((a) => a.type === "SET_DOCUMENT");
-    expect(setDoc.payload.layers.find((l: any) => l.id === "layer-b").operationId).toBe(data.operationId);
+    expect(setDoc.payload.layers.find((l) => l.id === "layer-b").operationId).toBe(data.operationId);
     // ADD_OPERATION populates from preset
     const addOp = actions.find((a) => a.type === "ADD_OPERATION");
     expect(addOp.payload.id).toBe(data.operationId);
@@ -106,8 +107,8 @@ describe("material.applyToLayer", () => {
 
   it("does NOT touch activeMaterialPresetId", () => {
     const state = buildState();
-    const actions: any[] = [];
-    executeMaterialCommand("material.applyToLayer", { getState: () => state, dispatch: (a) => actions.push(a) }, req("material.applyToLayer", { material: "mat-1", layer: "layer-a" }));
+    const actions: Action[] = [];
+    executeMaterialCommand("material.applyToLayer", { getState: () => state, dispatch: (a: Action) => actions.push(a) }, req("material.applyToLayer", { material: "mat-1", layer: "layer-a" }));
     expect(actions.some((a) => a.type === "SET_ACTIVE_MATERIAL_PRESET")).toBe(false);
   });
 });

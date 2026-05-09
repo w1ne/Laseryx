@@ -63,8 +63,8 @@ describe("layer.list", () => {
 describe("layer.create", () => {
   it("dispatches ADD_LAYER and ADD_OPERATION and returns the new ids", () => {
     const state = buildState();
-    const actions: any[] = [];
-    const dispatch = (a: any) => actions.push(a);
+    const actions: Action[] = [];
+    const dispatch = (a: Action) => actions.push(a);
     const response = executeLayerCommand("layer.create", { getState: () => state, dispatch }, req("layer.create", { name: "Score" }));
     expect(response.ok).toBe(true);
     if (!response.ok) return;
@@ -79,8 +79,8 @@ describe("layer.create", () => {
 
   it("defaults the name to Layer N when name is omitted", () => {
     const state = buildState(); // 3 existing layers
-    const actions: any[] = [];
-    const response = executeLayerCommand("layer.create", { getState: () => state, dispatch: (a) => actions.push(a) }, req("layer.create"));
+    const actions: Action[] = [];
+    const response = executeLayerCommand("layer.create", { getState: () => state, dispatch: (a: Action) => actions.push(a) }, req("layer.create"));
     expect(response.ok).toBe(true);
     const addLayer = actions.find((a) => a.type === "ADD_LAYER");
     expect(addLayer.payload.name).toBe("Layer 4");
@@ -90,14 +90,14 @@ describe("layer.create", () => {
 describe("layer.rename", () => {
   it("renames the resolved layer by id", () => {
     const state = buildState();
-    const actions: any[] = [];
-    const response = executeLayerCommand("layer.rename", { getState: () => state, dispatch: (a) => actions.push(a) }, req("layer.rename", { layer: "layer-b", name: "EngraveDeep" }));
+    const actions: Action[] = [];
+    const response = executeLayerCommand("layer.rename", { getState: () => state, dispatch: (a: Action) => actions.push(a) }, req("layer.rename", { layer: "layer-b", name: "EngraveDeep" }));
     expect(response.ok).toBe(true);
     if (!response.ok) return;
     expect(response.data).toEqual({ id: "layer-b", name: "EngraveDeep" });
     const setDoc = actions.find((a) => a.type === "SET_DOCUMENT");
     expect(setDoc).toBeDefined();
-    const renamed = setDoc.payload.layers.find((l: any) => l.id === "layer-b");
+    const renamed = setDoc.payload.layers.find((l) => l.id === "layer-b");
     expect(renamed.name).toBe("EngraveDeep");
   });
 
@@ -121,8 +121,8 @@ describe("layer.rename", () => {
 describe("layer.delete", () => {
   it("deletes a free layer", () => {
     const state = buildState();
-    const actions: any[] = [];
-    const response = executeLayerCommand("layer.delete", { getState: () => state, dispatch: (a) => actions.push(a) }, req("layer.delete", { layer: "layer-b" }));
+    const actions: Action[] = [];
+    const response = executeLayerCommand("layer.delete", { getState: () => state, dispatch: (a: Action) => actions.push(a) }, req("layer.delete", { layer: "layer-b" }));
     expect(response.ok).toBe(true);
     expect(actions).toContainEqual({ type: "DELETE_LAYER", payload: "layer-b" });
   });
@@ -151,19 +151,19 @@ describe("layer.delete", () => {
 describe("layer.setVisibility / setLock", () => {
   it("sets visibility to false", () => {
     const state = buildState();
-    const actions: any[] = [];
-    const response = executeLayerCommand("layer.setVisibility", { getState: () => state, dispatch: (a) => actions.push(a) }, req("layer.setVisibility", { layer: "layer-a", visible: false }));
+    const actions: Action[] = [];
+    const response = executeLayerCommand("layer.setVisibility", { getState: () => state, dispatch: (a: Action) => actions.push(a) }, req("layer.setVisibility", { layer: "layer-a", visible: false }));
     expect(response.ok).toBe(true);
     if (!response.ok) return;
     expect(response.data).toEqual({ id: "layer-a", visible: false });
     const setDoc = actions.find((a) => a.type === "SET_DOCUMENT");
-    expect(setDoc.payload.layers.find((l: any) => l.id === "layer-a").visible).toBe(false);
+    expect(setDoc.payload.layers.find((l) => l.id === "layer-a").visible).toBe(false);
   });
 
   it("sets lock to true", () => {
     const state = buildState();
-    const actions: any[] = [];
-    const response = executeLayerCommand("layer.setLock", { getState: () => state, dispatch: (a) => actions.push(a) }, req("layer.setLock", { layer: "layer-a", locked: true }));
+    const actions: Action[] = [];
+    const response = executeLayerCommand("layer.setLock", { getState: () => state, dispatch: (a: Action) => actions.push(a) }, req("layer.setLock", { layer: "layer-a", locked: true }));
     expect(response.ok).toBe(true);
     if (!response.ok) return;
     expect(response.data).toEqual({ id: "layer-a", locked: true });
@@ -203,6 +203,6 @@ describe("layer.get", () => {
     const response = executeLayerCommand("layer.get", { getState: () => state, dispatch: () => {} }, req("layer.get", { layer: "layer-a" }));
     expect(response.ok).toBe(true);
     if (!response.ok) return;
-    expect((response.data as any).layer.operation).toBeUndefined();
+    expect((response.data as Record<string, unknown>).layer.operation).toBeUndefined();
   });
 });
