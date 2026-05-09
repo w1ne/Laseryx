@@ -147,3 +147,33 @@ describe("layer.delete", () => {
     expect(response.errors[0].code).toBe("LAYER_LAST");
   });
 });
+
+describe("layer.setVisibility / setLock", () => {
+  it("sets visibility to false", () => {
+    const state = buildState();
+    const actions: any[] = [];
+    const response = executeLayerCommand("layer.setVisibility", { getState: () => state, dispatch: (a) => actions.push(a) }, req("layer.setVisibility", { layer: "layer-a", visible: false }));
+    expect(response.ok).toBe(true);
+    if (!response.ok) return;
+    expect(response.data).toEqual({ id: "layer-a", visible: false });
+    const setDoc = actions.find((a) => a.type === "SET_DOCUMENT");
+    expect(setDoc.payload.layers.find((l: any) => l.id === "layer-a").visible).toBe(false);
+  });
+
+  it("sets lock to true", () => {
+    const state = buildState();
+    const actions: any[] = [];
+    const response = executeLayerCommand("layer.setLock", { getState: () => state, dispatch: (a) => actions.push(a) }, req("layer.setLock", { layer: "layer-a", locked: true }));
+    expect(response.ok).toBe(true);
+    if (!response.ok) return;
+    expect(response.data).toEqual({ id: "layer-a", locked: true });
+  });
+
+  it("rejects non-boolean visible", () => {
+    const state = buildState();
+    const response = executeLayerCommand("layer.setVisibility", { getState: () => state, dispatch: () => {} }, req("layer.setVisibility", { layer: "layer-a", visible: "yes" }));
+    expect(response.ok).toBe(false);
+    if (response.ok) return;
+    expect(response.errors[0].code).toBe("INVALID_INPUT");
+  });
+});

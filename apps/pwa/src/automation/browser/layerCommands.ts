@@ -167,6 +167,31 @@ export function executeLayerCommand(
       options.dispatch({ type: "DELETE_LAYER", payload: resolved.value.id });
       return wrap(request, okResponse<LayerCommandResponseData>("layer.delete", { id: resolved.value.id, name: resolved.value.name } as never));
     }
+    case "layer.setVisibility":
+    case "layer.setLock": {
+      const resolved = resolveLayer(state, args.layer);
+      if (!resolved.ok) {
+        return wrap(request, errorResponse<LayerCommandResponseData>(command, [resolved.diagnostic]));
+      }
+      const flagKey = command === "layer.setVisibility" ? "visible" : "locked";
+      const value = args[flagKey];
+      if (typeof value !== "boolean") {
+        return wrap(request, errorResponse<LayerCommandResponseData>(command, [
+          diagnostic("INVALID_INPUT", "error", `${flagKey} must be a boolean`)
+        ]));
+      }
+      options.dispatch({
+        type: "SET_DOCUMENT",
+        payload: {
+          ...state.document,
+          layers: state.document.layers.map((l) => l.id === resolved.value.id ? { ...l, [flagKey]: value } : l)
+        }
+      });
+      const data = command === "layer.setVisibility"
+        ? { id: resolved.value.id, visible: value }
+        : { id: resolved.value.id, locked: value };
+      return wrap(request, okResponse<LayerCommandResponseData>(command as never, data as never));
+    }
     default:
       return wrap(request, errorResponse<LayerCommandResponseData>(command as never, [
         diagnostic("UNKNOWN_COMMAND", "error", `Unsupported layer command: ${command}`)
