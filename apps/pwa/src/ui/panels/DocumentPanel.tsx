@@ -38,7 +38,7 @@ export function DocumentPanel() {
   };
 
   return (
-    <div className="side" data-testid="design-panel-document">
+    <div className="side">
       <div className="side__tools" role="toolbar" aria-label="Draw" data-testid="template-library">
         {TEMPLATE_LIBRARY.map((t) => (
           <button
