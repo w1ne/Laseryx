@@ -122,17 +122,6 @@ export function setObjectSize(obj: Obj, w: number, h: number): Partial<Obj> | nu
         params: { ...obj.params, diameterMm: d }
       });
     }
-    if (obj.defId === "panel" || obj.defId === "screen") {
-      return roundPatch({
-        transform: { ...obj.transform, e: b.minX, f: b.minY },
-        params: {
-          ...obj.params,
-          widthMm: w,
-          heightMm: h,
-          ...(obj.defId === "screen" ? { preset: "custom" } : {})
-        }
-      });
-    }
   }
   if (obj.kind === "path") {
     const curW = b.maxX - b.minX || 1;
@@ -297,17 +286,6 @@ export function rotate90(obj: Obj, dir: 1 | -1 = 1): Partial<Obj> | null {
   if (obj.kind === "macro") {
     if (obj.defId === "mount-hole" || obj.defId === "button") {
       return roundPatch({ transform: { ...obj.transform, e: cx, f: cy } });
-    }
-    if (obj.defId === "panel" || obj.defId === "screen") {
-      return roundPatch({
-        transform: { ...obj.transform, e: newMinX, f: newMinY },
-        params: {
-          ...obj.params,
-          widthMm: newW,
-          heightMm: newH,
-          ...(obj.defId === "screen" ? { preset: "custom" } : {})
-        }
-      });
     }
   }
   if (obj.kind === "path") {

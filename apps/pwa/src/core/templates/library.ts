@@ -1,7 +1,8 @@
 import type { TemplateEntry } from "./types";
 
 /**
- * One of each figure. Place → set size in Properties.
+ * Fusion-style sketch primitives only.
+ * One rectangle, one circle — set size after place. No frame/cutout clones.
  */
 export const TEMPLATE_LIBRARY: TemplateEntry[] = [
   {
@@ -9,36 +10,18 @@ export const TEMPLATE_LIBRARY: TemplateEntry[] = [
     name: "Rectangle",
     category: "shape",
     icon: "rect",
-    tags: ["rect", "box", "square", "shape"],
-    description: "Set width and height after place",
+    tags: ["rect", "box", "square", "frame", "cutout", "plate"],
+    description: "Rectangle — set W × H after place",
     place: { kind: "rect" }
   },
   {
-    id: "hole",
-    name: "Hole",
+    id: "circle",
+    name: "Circle",
     category: "hole",
     icon: "hole",
-    tags: ["hole", "circle", "round", "diameter"],
-    description: "Set diameter after place",
+    tags: ["circle", "hole", "round", "diameter"],
+    description: "Circle — set diameter after place",
     place: { kind: "macro", defId: "mount-hole" }
-  },
-  {
-    id: "frame",
-    name: "Frame",
-    category: "frame",
-    icon: "frame",
-    tags: ["frame", "plate", "outline"],
-    description: "Set width and height after place",
-    place: { kind: "macro", defId: "panel" }
-  },
-  {
-    id: "cutout",
-    name: "Cutout",
-    category: "cutout",
-    icon: "cutout",
-    tags: ["cutout", "opening", "window"],
-    description: "Set width and height after place",
-    place: { kind: "macro", defId: "screen" }
   },
   {
     id: "import",
@@ -56,5 +39,5 @@ export function getTemplate(id: string): TemplateEntry | undefined {
 }
 
 export function listTemplateCategories(): TemplateEntry["category"][] {
-  return ["shape", "hole", "frame", "cutout", "import"];
+  return ["shape", "hole", "import"];
 }

@@ -2,20 +2,16 @@ import { describe, it, expect } from "vitest";
 import { searchTemplates } from "./search";
 import { TEMPLATE_LIBRARY } from "./library";
 
-describe("searchTemplates", () => {
-  it("has five simple shapes", () => {
-    expect(TEMPLATE_LIBRARY).toHaveLength(5);
+describe("sketch library", () => {
+  it("has rect, circle, import only", () => {
+    expect(TEMPLATE_LIBRARY.map((t) => t.id).sort()).toEqual(["circle", "import", "rect"]);
   });
 
-  it("returns all for empty query", () => {
-    expect(searchTemplates("")).toHaveLength(5);
+  it("search finds circle via hole", () => {
+    expect(searchTemplates("hole").some((t) => t.id === "circle")).toBe(true);
   });
 
-  it("finds hole", () => {
-    expect(searchTemplates("hole").map((t) => t.id)).toEqual(["hole"]);
-  });
-
-  it("finds rect by box", () => {
-    expect(searchTemplates("box").some((t) => t.id === "rect")).toBe(true);
+  it("empty query returns all three", () => {
+    expect(searchTemplates("")).toHaveLength(3);
   });
 });

@@ -88,62 +88,53 @@ function placeTemplate(
 }
 
 /**
- * Icon shape library: one of each figure + search.
+ * Fusion-style sketch create palette: few primitives + icons.
  */
 export function TemplateLibrary() {
   const { state, dispatch } = useStore();
   const [query, setQuery] = useState("");
-
   const results = useMemo(() => searchTemplates(query), [query]);
 
   return (
-    <div className="tpl" data-testid="template-library">
-      <div className="tpl__header">
-        <h2 className="tpl__title">Shapes</h2>
-      </div>
+    <div className="sketch" data-testid="template-library">
+      <h2 className="sketch__title">Sketch</h2>
 
       <input
-        className="tpl__search"
+        className="sketch__search"
         type="search"
         placeholder="Search…"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         autoComplete="off"
-        aria-label="Search shapes"
+        aria-label="Search tools"
       />
 
-      {results.length === 0 ? (
-        <p className="tpl__empty">No match</p>
-      ) : (
-        <div className="tpl__grid" role="list">
-          {results.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              role="listitem"
-              className="tpl__tile"
-              title={t.description}
-              onClick={() => placeTemplate(t, state, dispatch)}
-            >
-              <span className="tpl__icon">
-                <TemplateIconSvg name={t.icon} />
-              </span>
-              <span className="tpl__name">{t.name}</span>
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="sketch__tools" role="toolbar" aria-label="Sketch tools">
+        {results.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            className="sketch__tool"
+            title={t.description}
+            onClick={() => placeTemplate(t, state, dispatch)}
+          >
+            <TemplateIconSvg name={t.icon} />
+            <span>{t.name}</span>
+          </button>
+        ))}
+        {results.length === 0 && <p className="sketch__empty">No match</p>}
+      </div>
 
-      <p className="tpl__tip">Place a shape, then set size in Properties.</p>
+      <p className="sketch__tip">Place → drag to move → set size in Properties</p>
 
       <style>{`
-        .tpl,
-        .tpl * {
+        .sketch,
+        .sketch * {
           font-size: 13px;
           line-height: 1.3;
           box-sizing: border-box;
         }
-        .tpl {
+        .sketch {
           display: flex;
           flex-direction: column;
           gap: 10px;
@@ -152,13 +143,13 @@ export function TemplateLibrary() {
           background: #fff;
           border: 1px solid #e2e8f0;
         }
-        .tpl__title {
+        .sketch__title {
           margin: 0;
           font-size: 16px;
           font-weight: 600;
           color: #0f172a;
         }
-        .tpl__search {
+        .sketch__search {
           width: 100%;
           padding: 8px 10px;
           border: 1px solid #cbd5e1;
@@ -167,52 +158,45 @@ export function TemplateLibrary() {
           color: #0f172a;
           font: inherit;
         }
-        .tpl__search:focus {
+        .sketch__search:focus {
           outline: 2px solid #93c5fd;
           border-color: #3b82f6;
           background: #fff;
         }
-        .tpl__grid {
+        .sketch__tools {
           display: grid;
           grid-template-columns: repeat(3, minmax(0, 1fr));
           gap: 8px;
         }
-        .tpl__tile {
+        .sketch__tool {
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
           gap: 6px;
           margin: 0;
-          padding: 12px 6px;
+          padding: 14px 8px;
           border: 1px solid #e2e8f0;
           border-radius: 10px;
           background: #f8fafc;
           color: #0f172a;
           font: inherit;
+          font-weight: 600;
+          font-size: 12px;
           cursor: pointer;
         }
-        .tpl__tile:hover {
+        .sketch__tool:hover {
           border-color: #3b82f6;
           background: #eff6ff;
           color: #1d4ed8;
         }
-        .tpl__icon {
-          display: flex;
-          color: inherit;
-        }
-        .tpl__name {
-          font-weight: 600;
-          font-size: 12px;
-          text-align: center;
-        }
-        .tpl__empty {
+        .sketch__empty {
+          grid-column: 1 / -1;
           margin: 0;
-          padding: 12px;
           text-align: center;
           color: #64748b;
         }
-        .tpl__tip {
+        .sketch__tip {
           margin: 0;
           font-size: 11px;
           color: #94a3b8;

@@ -149,23 +149,6 @@ export function DesignView({ objects, selectedId, onSelect, onPatchObject }: Des
           return;
         }
 
-        if (startObj.defId === "panel" || startObj.defId === "screen") {
-          onPatchRef.current(
-            drag.id,
-            {
-              transform: { ...startObj.transform, e: minX, f: minY },
-              params: {
-                ...startObj.params,
-                widthMm: newW,
-                heightMm: newH,
-                ...(startObj.defId === "screen" ? { preset: "custom" } : {})
-              }
-            },
-            live
-          );
-          return;
-        }
-
         onPatchRef.current(
           drag.id,
           {
