@@ -1,22 +1,27 @@
-# Hardware Macros (FPD-style parts library) — Design
+# Hardware Macros (workshop parts library) — Design
 
 **Date:** 2026-08-08  
-**Status:** Draft for review  
+**Status:** Draft for review (revised after design roast)  
 **Product:** Laseryx  
-**Direction:** Approach A — Front Panel Designer–style parametric macros on the laser canvas
+**Direction:** Approach A — parametric hardware macros on the laser canvas  
+
+**Honesty label (product + docs):**  
+Footprints are **workshop-approximate**. UI and catalog copy must say so (e.g. “Verify against datasheet before final cut”). This is **not** Front Panel Designer parity — it is the FPD *idea* (place parts as blocks) on a laser workbench.
 
 ## Goal
 
-Let workshop / hackathon users build **physical interface panels** by placing **hardware blocks** on the design canvas — screen cutouts with mounting holes, pots, buttons, USB slots, panel outlines — as single selectable units that expand to cut geometry and run through the existing CAM → G-code → GRBL path.
+Let workshop / hackathon users build **physical interface panels** by placing **hardware blocks** on the design canvas — panel outline, screen cutout + mounts, simple controls, mounting holes — as single selectable units that expand to cut geometry and run through the existing CAM → G-code → GRBL path.
 
 ## Non-goals (v1)
 
-- Explode macro to independent path objects (may add later)
-- Multi-operation macros (cut + engrave label on different layers in one macro)
-- Click-to-place on bed, drag handles, rotate, snap (numeric X/Y only first)
-- Live electrical control of resistors / pots (params are mechanical / label only)
-- User-authored custom macro UI (built-in catalog only)
-- Full Front Panel Designer feature parity (threads, countersinks, 19″ system holes, order/price)
+- Explode macro to independent path objects
+- Multi-operation macros (cut + engrave on different layers in one macro)
+- Drag handles, rotate UI, snap, full free-move editor
+- Live electrical control of resistors / pots
+- User-authored custom macro UI
+- Full FPD parity (threads, countersinks, 19″ system holes, order/price, edge-USB depth modeling)
+- Pot/resistance **labels as geometry** (no engraver text from macros in v1)
+- USB-C / D-hole pot as **success-blocking** catalog items (post-v1 / stretch)
 
 ## Competitive context (why this)
 
@@ -25,42 +30,47 @@ Let workshop / hackathon users build **physical interface panels** by placing **
 | Laser apps | LightBurn, xTool, Glowforge | Cut control, art/material libraries | No electronics hardware macros |
 | Panel CAD | Front Panel Designer | Macros, D-holes, system holes | No live laser job loop |
 | Generators | Boxes.py, MakerCase | Parametric enclosures | Not an interactive panel workbench |
+| Laseryx today | SVG import + rect | Already cuts freeform | Import wins if place UX is worse than SVG |
 
-**Opportunity:** browser Laseryx + FPD-style macros + existing agent/MCP control.
+**Opportunity:** macros win only if placing is faster than importing SVG. Place UX is therefore first-class, not optional polish.
 
 ## Architecture overview
 
 ```
-MacroDef (catalog)  →  MacroObj (document instance)  →  expand()  →  polylines
-                                                              ↓
-                                              DesignView preview + cam.objToPolylines
-                                                              ↓
-                                                         planCam → G-code → GRBL
+MacroDef (catalog, versioned)  →  MacroObj (document)  →  expand()  →  polylines
+                                                                      ↓
+                                                  DesignView preview + cam.objToPolylines
+                                                                      ↓
+                                                             planCam → G-code → GRBL
 ```
 
 ### Units
 
-1. **MacroDef** — built-in definition: id, display name, param schema, pure `expand(params) → local polylines` (mm, origin at macro local 0,0).
-2. **MacroObj** — document object instance; one selection unit; persists with the project.
-3. **expand pipeline** — applies instance transform to local polylines; shared by UI and CAM so preview matches cut.
-4. **Catalog** — static registry of MacroDefs for the workshop starter set.
-5. **UI hooks** — Document “+ Hardware”, Properties param form, DesignView hit-test as whole object.
-6. **Agent commands** — `document.addMacro`, `document.updateMacroParams` (reuse transform/layer/delete).
+1. **MacroDef** — built-in definition: id, `defVersion`, display name, param schema, pure expand in local mm.
+2. **MacroObj** — document instance; one selection unit; stores `defId`, `defVersion`, validated `params`, transform, layer.
+3. **expand pipeline** — shared by UI and CAM so preview matches cut.
+4. **Catalog** — static registry; `CATALOG_VERSION` constant for the whole set.
+5. **UI hooks** — Hardware menu, Properties, DesignView whole-object select.
+6. **Agent** — add/update macros + catalog discovery.
 
-Core stays free of DOM (`apps/pwa/src/core`). UI and automation call services the same way as rectangles today.
+Core stays free of DOM (`apps/pwa/src/core`).
+
+---
 
 ## Data model
 
-### MacroObj (extends document `Obj` union)
+### MacroObj
 
 ```ts
 type MacroObj = {
   kind: "macro";
   id: string;
   layerId: string;
-  transform: Transform; // same affine as path/shape/image
-  defId: string;        // catalog key, e.g. "screen-preset"
-  params: Record<string, number | string>; // validated against MacroDef schema
+  transform: Transform;
+  defId: string;
+  /** Frozen at place/update time so geometry does not silently change when catalog code ships */
+  defVersion: number;
+  params: Record<string, number | string | boolean>;
 };
 ```
 
@@ -72,203 +82,291 @@ type MacroObj = {
 type MacroParamSpec = {
   key: string;
   label: string;
-  type: "number" | "enum" | "string";
+  type: "number" | "enum" | "string" | "boolean";
   unit?: "mm";
   min?: number;
   max?: number;
   step?: number;
-  options?: { value: string; label: string }[]; // for enum
-  default: number | string;
+  options?: { value: string; label: string }[];
+  default: number | string | boolean;
+  /** If true, editing this field sets preset → "custom" (dimension fields) */
+  breaksPreset?: boolean;
 };
 
 type MacroDef = {
   id: string;
+  defVersion: number; // bump when expand geometry for this def changes
   name: string;
-  category: "mount" | "display" | "control" | "io" | "panel";
+  category: "mount" | "display" | "control" | "panel";
+  /** Short disclaimer shown in Properties */
+  approxNote?: string;
   params: MacroParamSpec[];
-  expand: (params: Record<string, number | string>) => PolylinePath[];
+  expand: (params: Record<string, number | string | boolean>) => PolylinePath[];
 };
 ```
 
+Catalog root: `export const CATALOG_VERSION = 1` plus `getMacroDef(id)`, `listMacroDefs()`.
+
 ### Persistence
 
-- Macros serialize inside `Document.objects` like other objects.
-- Bump `document.version` if required by project load rules; loaders must ignore or soft-fail unknown kinds gracefully if older clients open files (prefer: newer app only for workshop).
-- No migration of legacy projects required (empty macros).
+- Macros live in `Document.objects`.
+- On load: if `defId` unknown **or** `defVersion` not found for that def → **hard error state** for that object (see Missing def), not silent skip.
+- Prefer not silently re-expanding with a newer `defVersion` than stored; either pin expand to stored version (if multiple expanders registered) **or** re-expand with current def but show a one-time warning “catalog updated; verify dimensions.” **v1 rule:** re-expand with current catalog code only when `defVersion` still matches; if app’s defVersion > stored, show **stale catalog** warning banner + still expand with current (user can re-save to bump). If defId missing entirely → missing-def error, no paths.
 
 ### Param validation
 
-- On add / update: coerce numbers, clamp min/max, fill defaults for missing keys.
-- Unknown `defId`: reject add with clear error; if loaded from disk with unknown def, show warning object / skip expand with warning in CAM (do not crash).
+- Coerce types, clamp min/max, fill defaults for missing keys.
+- Reject add with unknown `defId`.
+- Boolean supported (e.g. `includeCornerHoles`).
 
-## Workshop starter catalog
+### Preset vs custom (screen) — mandatory rule
 
-| defId | Name | Key params | Expanded geometry |
+For macros with a `preset` enum param:
+
+1. Selecting a non-`custom` preset **overwrites** all dimension params from a fixed preset table in catalog code.
+2. Editing any param marked `breaksPreset: true` (width, height, hole Ø, inset, etc.) sets `preset` to `"custom"`.
+3. Selecting `custom` leaves current numbers as-is.
+4. Agent `updateMacroParams` must apply the same rules after merge (validate in one function: `applyMacroParamUpdate(def, prev, partial)`).
+
+---
+
+## Workshop catalog
+
+### v1 success set (must ship)
+
+| defId | Name | Key params | Geometry |
 | --- | --- | --- | --- |
-| `mount-hole` | Mount hole | `diameterMm` | 1 closed circle |
-| `mount-4hole` | 4-hole pattern | `widthMm`, `heightMm`, `diameterMm` | 4 circles at rectangle corners |
-| `screen` | Screen / display | `preset` or `widthMm`, `heightMm`, `holeDiameterMm`, `holeInsetMm` | 1 rect cutout + 4 holes |
-| `pot` | Pot / resistor | `shaftDiameterMm`, `dFlat` (bool/enum), `valueLabel` (string) | shaft circle or D-hole; label is param only (no engrave path in v1) |
-| `button` | Button | `diameterMm` (default 16) | 1 circle |
-| `usb-c` | USB-C slot | `widthMm`, `heightMm`, `cornerRadiusMm` | rounded rect slot |
-| `panel` | Panel outline | `widthMm`, `heightMm`, `cornerRadiusMm`, `includeCornerHoles`, `holeDiameterMm`, `holeInsetMm` | outer path (+ optional 4 corner holes) |
+| `panel` | Panel outline | `widthMm`, `heightMm`, `cornerRadiusMm`, `includeCornerHoles`, `holeDiameterMm`, `holeInsetMm`, `clearanceMm` | Outer path + optional 4 corner holes |
+| `screen` | Screen / display | `preset`, `widthMm`, `heightMm`, `holeDiameterMm`, `holeInsetMm`, `clearanceMm` | **Opening only:** 1 rect cutout + 4 mount holes (not full module mechanical) |
+| `mount-hole` | Mount hole | `diameterMm`, `clearanceMm` | 1 closed circle |
+| `button` | Button | `diameterMm`, `clearanceMm` (default diameter 16) | 1 circle |
 
-**Screen presets (enum):** e.g. `2.8-ili9341`, `custom` — presets fill W/H/inset; user can override numbers after.
+**Screen presets (v1):** at least `2.8-ili9341` (documented nominal dims) and `custom`. Treat dims as approximate openings.
 
-**Pot “resistance”:** optional `valueLabel` (e.g. `"10k"`) and/or package size param; **not** live electronics control.
+### Hole diameter rule (clearance)
+
+Cut radius uses:
+
+```
+cutDiameter = nominalDiameterMm + clearanceMm
+```
+
+- Default `clearanceMm = 0.2` on hole-like macros (mount, button, screen holes, panel corner holes).
+- UI label: “Clearance (mm)” with helper text: “Added to nominal Ø so screws/modules fit.”
+- User may set `0` for exact nominal (they own the risk).
+
+### Stretch / post-v1 (not success criteria)
+
+| defId | Notes |
+| --- | --- |
+| `mount-4hole` | Convenience pattern |
+| `pot` | Shaft Ø + optional D-flat; **no** valueLabel geometry |
+| `usb-c` | Mid-panel rounded slot only (edge-notch is known gap) |
+
+Do not block workshop go-live on pot D-hole or USB.
+
+---
 
 ## Geometry helpers
 
-Under `core/macros/` (or `geom.ts` if tiny):
+`core/macros/geomHelpers.ts`:
 
-- `circleToPolyline(cx, cy, r, segments = 32): PolylinePath` (closed)
-- `roundedRectToPolyline(...): PolylinePath` (for USB-C)
-- D-hole: circle with flat chord for pot when `dFlat` enabled
+- `circleToPolyline(cx, cy, r, segments?)` — closed; default segments `max(24, ceil(r * 4))` so tiny holes are not hexagons.
+- `roundedRectToPolyline` — for stretch USB.
+- Screen cutout = axis-aligned rect polyline (opening only).
 
-All coordinates local to macro; instance `transform` applied in expand wrapper used by CAM/UI.
+Local coords; instance transform applied in `expandMacro(obj)`.
+
+---
 
 ## CAM integration
 
-### Change
-
-In `objToPolylines` (`cam.ts`):
-
 ```ts
 case "macro":
-  return expandMacro(obj); // looks up def, validates params, expand + transform
+  return expandMacro(obj); // missing def → [] + warning already recorded by caller
 ```
 
 ### Rules (v1)
 
-- Macro uses **one** `layerId` → one operation (typically Cut / line mode).
-- All expanded paths are closed vector cuts.
-- Existing path ordering (`insideOut`, etc.) applies to expanded polylines so holes tend to cut before large outer paths.
-- Images/macros/shapes coexistence unchanged.
-- No special multi-pass per sub-feature; passes come from the layer operation.
+- One `layerId` → one Cut (line) operation for all expanded paths.
+- Closed polylines only.
+- Path ordering uses existing `insideOut` / etc.; **not guaranteed** for every topology — document as best-effort. Prefer defining expand order: holes first in array when useful, but do not claim CAM is a full mill strategy.
+- **Missing / unexpandable macro:** `planCam` adds a **error-level or strong warning** and produces **no paths** for that object; UI shows the object in an error state so users do not cut a half panel silently.
 
-### Preview
+### Preview / selection
 
-`DesignView` renders expanded polylines (or SVG primitives equivalent) for `kind === "macro"`. Selection outline is the **union bbox** of expanded geometry (or def-provided bounds). Click hit-test: any expanded path or bbox — selects the **macro id**, not a child path.
+- Render expanded polylines for valid macros.
+- **Missing def:** dashed bbox placeholder + error badge in list; not invisible.
+- Selection: union bbox of expanded geometry; click hits that macro id. Overlapping macros: **topmost in `document.objects` order** (last drawn wins). v1 accepts imperfect hit-test; no z-order tools yet.
+
+---
 
 ## UI
 
 ### Document panel
 
-- Add **+ Hardware** control (dropdown or secondary list) listing catalog by category.
-- Keep **Add Rect** and **Import**.
-- Object list label: friendly name from def + key param summary (e.g. `Screen 2.8"`, `Pot Ø6`).
-- Delete: existing `DELETE_OBJECT`.
+- **+ Hardware** listing v1 defs (and stretch defs if implemented, marked optional).
+- Object list: friendly name + short summary; error state if unexpandable.
+- Disclaimer under Hardware: “Workshop approx — verify datasheet.”
 
-### Place flow (v1)
+### Place flow (v1) — cascade required
+
+**Problem avoided:** stacking every part at (10, 10).
 
 1. User picks a macro from Hardware.
-2. `ObjectService.addMacro(state, dispatch, defId, partialParams?)` creates MacroObj at default transform (e.g. `e=10, f=10`) on a line/cut layer (`findOrCreateLayer` with mode `"line"`).
-3. Dispatch `ADD_OBJECT` + `SELECT_OBJECT`.
-4. Properties shows param form immediately.
+2. `ObjectService.addMacro`:
+   - Place on cut/line layer via `findOrCreateLayer(..., "line")`.
+   - **Position:** cascade insert, not fixed origin:
+     - Base: `(10, 10)`.
+     - Each new macro: offset by `(15 * n, 15 * n)` where `n` = count of existing macros, **or** place at `(10 + 15 * n, 10)` in a row — pick **row cascade:** `e = 10 + n * 20`, `f = 10` (mm). If it would leave the bed, wrap to next row using machine bed width from profile when available, else wrap every 5 items.
+   - Optional stretch later: click-to-place mode.
+3. Store current `defVersion` from catalog.
+4. `ADD_OBJECT` + `SELECT_OBJECT`.
+5. Properties opens param form.
 
-**Later (not v1):** click-to-place, drag move, rotate, snap.
+**Also in v1 (minimum spatial bar):** numeric X/Y in Properties (already exists for objects). Cascade makes first multi-part panel usable without drag.
+
+**Still later:** click-to-place, drag, rotate UI, snap.
 
 ### Properties panel
 
-When selected object is `kind === "macro"`:
+When `kind === "macro"` and def resolves:
 
-- X / Y (transform e/f) — same as today
-- Layer select — same as today
-- Dynamic fields from `MacroDef.params` (number inputs, enum selects, string for labels)
-- On change: merge params → validate → `UPDATE_OBJECT` with new `params` (geometry regenerates live)
+- X / Y, Layer
+- Dynamic params from schema
+- **Clearance** where applicable
+- `approxNote` / global disclaimer
+- Live regenerate on commit (see Undo)
 
-W/H for free shapes do not apply unless the macro exposes equivalent params.
+When def missing: show error + defId + “Update Laseryx or remove object”; no silent empty params form pretending OK.
 
 ### Undo
 
-Prefer routing param/transform updates through existing history-aware actions so undo works like other object edits. If history currently only snapshots on certain actions, ensure ADD_OBJECT and UPDATE_OBJECT for macros are included the same way as rects.
+- `UPDATE_OBJECT` already history-tracked.
+- **Commit rule for numeric params:** apply on **blur** or Enter for number fields (or debounce ≥300ms), not every keystroke, so undoing diameter is one step. Enum/boolean can apply immediately.
+
+---
 
 ## Agent / automation
 
-Extend document command set (same protocol patterns as `document.addRect`):
-
 | Command | Args | Result |
 | --- | --- | --- |
-| `document.addMacro` | `defId`, optional `params`, `x`, `y`, `layer`, `object` (id) | created MacroObj |
-| `document.updateMacroParams` | `object`, `params` (partial merge) | updated MacroObj |
+| `macros.listDefs` | none | `{ defs: { id, name, category, defVersion, params: schema }[] }` |
+| `document.addMacro` | `defId`, optional `params`, `x`, `y`, `layer`, `object` | MacroObj (uses cascade if x/y omitted) |
+| `document.updateMacroParams` | `object`, `params` | MacroObj after `applyMacroParamUpdate` |
 
-Reuse:
+Reuse: `updateObjectTransform`, `setObjectLayer`, `deleteObject`.
 
-- `document.updateObjectTransform`
-- `document.setObjectLayer`
-- `document.deleteObject`
+Wire into capabilities / MCP next to `document.addRect`. Dry-run if siblings support it.
 
-Capabilities / MCP tool registration: expose new commands next to `document.addRect` (including hosted allowlist if applicable). Dry-run support if other document commands support it.
+Agents **must** be able to discover schema via `macros.listDefs` so they do not invent defIds.
+
+---
 
 ## Module layout
 
 ```
 apps/pwa/src/core/macros/
-  types.ts          # MacroDef, MacroParamSpec (if not all in model.ts)
-  catalog.ts        # built-in MacroDef registry + getMacroDef(id)
-  expand.ts         # expandMacro(obj) / expandDef(def, params, transform)
-  geomHelpers.ts    # circle, rounded rect, D-hole
-  validateParams.ts # defaults, clamp, coerce
+  types.ts
+  catalog.ts           # CATALOG_VERSION, defs, presets table, listMacroDefs
+  expand.ts
+  geomHelpers.ts
+  validateParams.ts    # applyMacroParamUpdate, defaults, clamp
+  place.ts             # nextCascadeTransform(document, bed?)
 
-apps/pwa/src/core/model.ts              # MacroObj on Obj union
-apps/pwa/src/core/cam.ts                # case "macro"
-apps/pwa/src/core/services/ObjectService.ts  # addMacro
+apps/pwa/src/core/model.ts
+apps/pwa/src/core/cam.ts
+apps/pwa/src/core/services/ObjectService.ts
 apps/pwa/src/ui/components/preview/DesignView.tsx
 apps/pwa/src/ui/panels/DocumentPanel.tsx
 apps/pwa/src/ui/panels/PropertiesPanel.tsx
 apps/pwa/src/automation/browser/documentCommands.ts
-# + capability lists / MCP tool maps as needed
+# + capability / MCP maps
 ```
 
-No DOM in `core/macros`.
+---
 
 ## Testing
 
-### Unit
+### Unit (required)
 
-- Each catalog def: expand defaults → stable path count and bbox (snapshot or precise asserts).
-- Screen: exactly 1 rect polyline + 4 hole polylines.
-- Param change: e.g. larger `diameterMm` increases hole radius / bbox.
-- `validateParams`: fill defaults, clamp, reject invalid enum.
-- `planCam`: document with one macro on cut layer includes expanded paths; stats/warnings sane.
-- Optional golden G-code fixture for a minimal one-macro job.
+- Each **v1** def: expand defaults → path count + bbox asserts.
+- Screen: 1 rect + 4 holes; preset apply overwrites dims; editing width → `preset === "custom"`.
+- `cutDiameter = nominal + clearance` reflected in geometry.
+- Cascade: second addMacro not same transform as first.
+- Missing defId / unexpandable: expand returns [] and planCam warns; no throw.
+- `validateParams` / `applyMacroParamUpdate` edge cases.
+
+### Golden (required for v1)
+
+- One fixture document: panel + screen + mount-hole + button → golden G-code (or plan polyline snapshot if gcode too brittle). **Not optional.**
 
 ### Integration / automation
 
-- `ObjectService.addMacro` + reducer stores `kind: "macro"`.
-- `document.addMacro` happy path; unknown `defId` → error diagnostic, no throw.
-- `document.updateMacroParams` merges params.
-- Properties-level update can be covered via service/reducer tests if UI tests are heavy.
+- addMacro + reducer persists `kind`, `defVersion`.
+- `macros.listDefs` returns v1 ids.
+- `document.addMacro` / `updateMacroParams` happy path; unknown defId errors cleanly.
+- Project save/load round-trip of MacroObj fields.
 
-## Success criteria (workshop)
+---
 
-1. User places a **panel**, **screen**, **pot**, **button**, **USB-C**, and **mount holes** from Hardware without importing SVG.
-2. Changing screen preset or hole Ø updates geometry immediately; part still selects as one object.
-3. Generate G-code and preview show all macro cut paths; job is streamable on existing GRBL path.
-4. Agent can `document.addMacro` for a screen and `updateMacroParams` without UI.
+## Success criteria (workshop v1)
 
-## Implementation order (for later plan)
+1. User places **panel**, **screen**, **mount-hole**, and **button** from Hardware without SVG import; parts are **not stacked** on one point (cascade).
+2. Screen preset change rewrites dims; editing a dimension sets preset to `custom`; hole/button Ø includes **clearance**.
+3. Generate G-code + preview show all macro paths; streamable on existing GRBL path; **mandatory golden** for the four-part sample.
+4. Agent: `macros.listDefs` + `document.addMacro` + `updateMacroParams` for a screen.
+5. UI shows workshop-approx disclaimer; missing def is a visible error, not a silent hole in the cut.
 
-1. Types + circle helper + expand + catalog (2–3 defs) + cam branch + unit tests  
-2. ObjectService + Document Hardware menu + DesignView render/select  
-3. Properties param form  
-4. Remaining catalog defs (screen presets, pot D-hole, USB, panel)  
-5. Agent commands + capability/MCP wiring + tests  
-6. Optional golden G-code + workshop sample project
+---
+
+## Implementation order
+
+1. Types, geom helpers, validateParams (preset rules), place cascade, expand + **panel / screen / mount-hole / button** + cam branch + unit tests  
+2. ObjectService + Hardware menu + DesignView render / error state / select  
+3. Properties (params + clearance + blur commit) + disclaimer  
+4. Agent: listDefs, addMacro, updateMacroParams + MCP/capabilities  
+5. **Golden** four-part fixture  
+6. Stretch only if time: mount-4hole, pot, usb-c  
+
+---
 
 ## Risks & mitigations
 
 | Risk | Mitigation |
 | --- | --- |
-| Circle approximation quality | 32+ segments; configurable later |
-| Hit-test only bbox is loose | Acceptable v1; tighten to path distance later |
-| History misses param edits | Explicitly include UPDATE_OBJECT in history policy |
-| Catalog growth / wrong footprints | Start with labeled “workshop approx” dims; presets documented |
-| Scope creep to full FPD | Non-goals list; reject multi-op and custom authoring in v1 |
+| Users trust wrong footprints | Approx disclaimer in UI + docs; success is “workshop”, not aerospace |
+| Stacked parts | Cascade place required in v1 |
+| Silent wrong geometry after catalog change | `defVersion` + stale/missing handling |
+| Screws don’t fit | Default `clearanceMm = 0.2` |
+| SVG import still faster | Cascade + 4 solid macros first; don’t dilute into 7 half-done parts |
+| Undo spam | Blur/debounce param commits |
+| insideOut not perfect | Don’t over-claim; holes-first array order where easy |
+
+---
+
+## Known gaps (accepted; do not block v1)
+
+| Gap | Notes |
+| --- | --- |
+| No click-to-place / drag / rotate UI | Cascade + numeric X/Y only |
+| No multi-layer cut+engrave macros | Labels not cut/engraved from params |
+| No pot valueLabel geometry | Avoid fake “resistance on panel” |
+| USB edge-notch / enclosure thickness | Stretch mid-panel slot only if built |
+| No kerf compensation beyond clearance param | Clearance is the v1 fit tool |
+| Hit-test / z-order tools | Last-in-document wins; refine later |
+| Full FPD library (D-holes standards, rack holes, standoffs) | Out of scope |
+| Pin multiple expand implementations per defVersion forever | v1 warns on stale; may re-expand with current code |
+
+---
 
 ## Open decisions (resolved for v1)
 
-- **Approach:** A — parametric macros (not explode-only templates).  
-- **Place:** default offset insert, not click-to-place.  
-- **Engrave labels:** out of scope; pot value is metadata/string only.  
-- **Multi-layer macros:** out of scope.
+- **Approach:** parametric macros (not explode-only templates).  
+- **Place:** **cascade insert** (required); click-to-place later.  
+- **v1 catalog:** panel, screen, mount-hole, button only for success.  
+- **Clearance:** default 0.2 mm on hole-like cuts.  
+- **Preset rule:** preset overwrites dims; dim edit → `custom`.  
+- **Catalog identity:** store `defVersion`; missing def = hard error UI.  
+- **Engrave / multi-op / live electronics:** out of scope.  
+- **Golden test:** required for four-part sample.
