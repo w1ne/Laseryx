@@ -31,40 +31,27 @@ body {
 
 .app__topbar {
   position: relative;
-  z-index: 100;
-  display: grid;
-  grid-template-columns: minmax(180px, 1fr) auto minmax(260px, auto) auto;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 16px;
-  padding: 12px 16px;
-  border-radius: 14px;
-  background: linear-gradient(120deg, rgba(15, 23, 42, 0.95), rgba(30, 64, 175, 0.9));
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #0f172a;
   color: #f8fafc;
-  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.22);
-  animation: riseIn 0.5s ease both;
-}
-
-.app__topbar h1 {
-  margin: 2px 0 0;
-  font-size: 20px;
-  line-height: 1.1;
 }
 
 .app__brand {
   min-width: 0;
-}
-
-.app__eyebrow {
-  margin: 0;
-  text-transform: uppercase;
-  letter-spacing: 0.2em;
-  font-size: 12px;
-  color: rgba(248, 250, 252, 0.6);
+  font-weight: 700;
+  font-size: 15px;
+  margin-right: auto;
 }
 
 .app__mode-tabs {
   display: flex;
-  gap: 8px;
+  gap: 6px;
 }
 
 .app__commands {
@@ -233,25 +220,39 @@ body {
 }
 
 .tab {
-  border: none;
-  background: rgba(255, 255, 255, 0.7);
-  color: #1f2937;
-  padding: 10px 18px;
-  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: transparent;
+  color: #cbd5e1;
+  padding: 6px 12px;
+  border-radius: 8px;
   font-weight: 600;
+  font-size: 13px;
   cursor: pointer;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
 .tab.is-active {
-  background: #0f172a;
-  color: #f8fafc;
+  background: #fff;
+  color: #0f172a;
+  border-color: #fff;
 }
 
-.tab:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.18);
+.tab:hover:not(.is-active) {
+  color: #fff;
+  border-color: rgba(248, 250, 252, 0.4);
+}
+
+.app__topbar .button {
+  padding: 6px 12px;
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.app__topbar .button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+  transform: none;
+  box-shadow: none;
 }
 
 .app__main {
@@ -300,6 +301,8 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  position: relative;
+  z-index: 1;
 }
 
 .app__preview-area > .panel--preview {
@@ -665,18 +668,15 @@ select {
   background: linear-gradient(160deg, rgba(15, 23, 42, 0.08), rgba(148, 163, 184, 0.08));
 }
 
+/* In-flow switch — never float over the app header */
 .preview-mode-switch {
-  position: absolute;
-  top: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10;
+  position: static;
   display: flex;
   gap: 4px;
   padding: 4px;
   border-radius: 8px;
   background: #e2e8f0;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
 }
 
 .segmented-button {

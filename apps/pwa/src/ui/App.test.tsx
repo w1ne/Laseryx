@@ -77,7 +77,7 @@ describe("App", () => {
 
     it("renders the main title", () => {
         render(<App />);
-        expect(screen.getByText(/Laseryx Workspace/i)).toBeInTheDocument();
+        expect(screen.getByText(/Laseryx/i)).toBeInTheDocument();
     });
 
     it("renders the workspace mode controls", () => {
@@ -103,7 +103,7 @@ describe("App", () => {
         expect(screen.getByRole("banner")).toHaveClass("app__topbar");
         expect(screen.getByRole("group", { name: "Workspace mode" })).toBeInTheDocument();
         expect(screen.getByRole("group", { name: "Project actions" })).toBeInTheDocument();
-        expect(screen.getByText(/Release/i)).toBeInTheDocument();
+        expect(screen.getByText(/^Laseryx$/i)).toBeInTheDocument();
     });
 
     it("hides agent control when no local bridge is attached", () => {

@@ -21,8 +21,6 @@ import { PreviewPanel } from "./panels/PreviewPanel";
 import { TemplateLibrary } from "./components/TemplateLibrary";
 import { ModifyToolbar } from "./components/ModifyToolbar";
 import { duplicateObject, nudgeObject } from "../core/objectEdit";
-import { DonateButton } from "./DonateButton";
-import { AboutDialog } from "./AboutDialog";
 import { MaterialManagerDialog } from "./dialogs/MaterialManagerDialog";
 import { useToast } from "./hooks/useToast";
 import { useAgentSessionController } from "./hooks/useAgentSessionController";
@@ -30,7 +28,6 @@ import { AgentControlPanel } from "./components/AgentControlPanel";
 import { ToastContainer } from "./components/Toast";
 import "./app.css";
 
-// --- PWA Types ---
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
@@ -56,7 +53,6 @@ export function App() {
   const [showLoadDialog, setShowLoadDialog] = useState(false);
   const [savedProjects, setSavedProjects] = useState<ProjectSummary[]>([]);
 
-  const [showAbout, setShowAbout] = useState(false);
   const [showMaterialManager, setShowMaterialManager] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const agentSession = useAgentSessionController();
@@ -166,6 +162,7 @@ export function App() {
       }
     });
   };
+
 
   // --- Machine Profile Init ---
   useEffect(() => {
@@ -508,10 +505,7 @@ export function App() {
   return (
     <div className="app">
       <header className="app__topbar">
-        <div className="app__brand">
-          <p className="app__eyebrow">Release {__APP_VERSION__}</p>
-          <h1>Laseryx Workspace</h1>
-        </div>
+        <div className="app__brand">Laseryx</div>
         <div className="app__mode-tabs" role="group" aria-label="Workspace mode">
           <button className={`tab ${activeTab === "design" ? "is-active" : ""}`} onClick={() => dispatch({ type: "SET_ACTIVE_TAB", payload: "design" })}>Design</button>
           <button className={`tab ${activeTab === "machine" ? "is-active" : ""}`} onClick={() => dispatch({ type: "SET_ACTIVE_TAB", payload: "machine" })}>Machine</button>
@@ -520,14 +514,8 @@ export function App() {
           <button className="button" onClick={handleNewProject}>New</button>
           <button className="button" onClick={handleListProjects}>Open</button>
           <button className="button" onClick={handleSaveProject}>Save</button>
-          <button className="button" onClick={() => setShowAbout(true)}>About</button>
           {installPrompt && (
-            <button
-              className="button button--accent"
-              onClick={handleInstallClick}
-            >
-              Install App
-            </button>
+            <button className="button" onClick={handleInstallClick}>Install App</button>
           )}
           {isLocalAgentRuntime && (
             <AgentControlPanel
@@ -539,7 +527,6 @@ export function App() {
               onCopyConnection={agentSession.copyConnectionLink}
             />
           )}
-          <DonateButton />
         </div>
       </header>
 
@@ -707,7 +694,6 @@ export function App() {
           </>
         )}
       </main>
-      <AboutDialog isOpen={showAbout} onClose={() => setShowAbout(false)} />
       <MaterialManagerDialog isOpen={showMaterialManager} onClose={() => setShowMaterialManager(false)} />
       <ToastContainer toasts={toast.toasts} onDismiss={toast.dismissToast} />
     </div>
