@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { App } from "./ui/App";
 import { StoreProvider } from "./core/state/store";
+import { SketchProvider } from "./ui/sketch/SketchContext";
 import { registerServiceWorker } from "./io/registerServiceWorker";
 
 registerServiceWorker();
@@ -14,7 +15,9 @@ if (!rootElement) {
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
     <StoreProvider>
-      <App />
+      <SketchProvider>
+        <App />
+      </SketchProvider>
     </StoreProvider>
   </React.StrictMode>
 );

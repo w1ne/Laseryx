@@ -20,6 +20,7 @@ import { LayersPanel } from "./panels/LayersPanel";
 import { PreviewPanel } from "./panels/PreviewPanel";
 import { ModifyToolbar } from "./components/ModifyToolbar";
 import { duplicateObject, nudgeObject } from "../core/objectEdit";
+import { useSketchTool } from "./sketch/SketchContext";
 import { MaterialManagerDialog } from "./dialogs/MaterialManagerDialog";
 import { useToast } from "./hooks/useToast";
 import { useAgentSessionController } from "./hooks/useAgentSessionController";
@@ -38,6 +39,7 @@ export function App() {
   const { activeTab } = ui;
   const toast = useToast();
   const stateRef = useRef(state);
+  const { setTool } = useSketchTool();
 
   useEffect(() => {
     stateRef.current = state;
@@ -125,6 +127,12 @@ export function App() {
         return;
       }
 
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setTool("select");
+        return;
+      }
+
       if ((e.key === "Delete" || e.key === "Backspace") && selectedId) {
         e.preventDefault();
         dispatch({ type: "DELETE_OBJECT", payload: selectedId });
@@ -150,7 +158,7 @@ export function App() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [dispatch]);
+  }, [dispatch, setTool]);
 
   const handleInstallClick = () => {
     if (!installPrompt) return;

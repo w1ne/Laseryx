@@ -6,13 +6,24 @@ import { TEMPLATE_LIBRARY } from "../../core/templates";
 import { TemplateIconSvg } from "../components/TemplateIcons";
 import { placeTemplate } from "../components/placeTemplate";
 import { formatMm } from "../../core/util";
+import { useSketchTool, type SketchToolId } from "../sketch/SketchContext";
+
+const TOOL_BY_TEMPLATE: Record<string, SketchToolId> = {
+  rect: "rect",
+  circle: "circle",
+  line: "line",
+  slot: "slot",
+  "round-rect": "round-rect",
+  import: "import"
+};
 
 /**
- * Left panel: slim icon tools + object list (CAD-style).
+ * Fusion-style left rail: pick tool (or Select), then draw on canvas.
  */
 export function DocumentPanel() {
   const { state, dispatch } = useStore();
   const { document, selectedObjectId } = state;
+  const { tool, setTool } = useSketchTool();
 
   const objectLabel = (obj: (typeof document.objects)[number]): string => {
     let base: string;
@@ -37,21 +48,49 @@ export function DocumentPanel() {
     return base;
   };
 
+  const onToolClick = (templateId: string) => {
+    const t = TOOL_BY_TEMPLATE[templateId] ?? "select";
+    if (t === "import") {
+      const entry = TEMPLATE_LIBRARY.find((x) => x.id === "import");
+      if (entry) placeTemplate(entry, state, dispatch);
+      setTool("select");
+      return;
+    }
+    setTool(t);
+  };
+
   return (
     <div className="side">
-      <div className="side__tools" role="toolbar" aria-label="Draw" data-testid="template-library">
-        {TEMPLATE_LIBRARY.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            className="side__tool"
-            title={t.description}
-            onClick={() => placeTemplate(t, state, dispatch)}
-          >
-            <TemplateIconSvg name={t.icon} />
-            <span className="side__tool-label">{t.name}</span>
-          </button>
-        ))}
+      <div className="side__tools" role="toolbar" aria-label="Sketch tools" data-testid="template-library">
+        <button
+          type="button"
+          className={`side__tool ${tool === "select" ? "is-active" : ""}`}
+          title="Select and move"
+          onClick={() => setTool("select")}
+        >
+          <SelectIcon />
+          <span className="side__tool-label">Select</span>
+        </button>
+        {TEMPLATE_LIBRARY.map((t) => {
+          const tid = TOOL_BY_TEMPLATE[t.id] ?? "select";
+          const active = tid !== "import" && tool === tid;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              className={`side__tool ${active ? "is-active" : ""}`}
+              title={
+                t.id === "import"
+                  ? t.description
+                  : `${t.description} — drag on the bed to draw`
+              }
+              onClick={() => onToolClick(t.id)}
+            >
+              <TemplateIconSvg name={t.icon} />
+              <span className="side__tool-label">{t.name}</span>
+            </button>
+          );
+        })}
       </div>
 
       <div className="side__list-head">
@@ -61,7 +100,9 @@ export function DocumentPanel() {
 
       <div className="side__list">
         {document.objects.length === 0 ? (
-          <p className="side__empty">No objects yet</p>
+          <p className="side__empty">
+            {tool === "select" ? "Pick a tool, drag on the bed" : "Drag on the bed to draw"}
+          </p>
         ) : (
           document.objects.map((obj) => {
             const isSelected = obj.id === selectedObjectId;
@@ -70,7 +111,10 @@ export function DocumentPanel() {
                 <button
                   type="button"
                   className="side__row-main"
-                  onClick={() => dispatch({ type: "SELECT_OBJECT", payload: obj.id })}
+                  onClick={() => {
+                    setTool("select");
+                    dispatch({ type: "SELECT_OBJECT", payload: obj.id });
+                  }}
                 >
                   {objectLabel(obj)}
                 </button>
@@ -92,7 +136,6 @@ export function DocumentPanel() {
         .side {
           display: flex;
           flex-direction: column;
-          gap: 0;
           background: #fff;
           border: 1px solid #e2e8f0;
           border-radius: 12px;
@@ -128,8 +171,9 @@ export function DocumentPanel() {
           background: #f1f5f9;
           color: #0f172a;
         }
-        .side__tool:active {
-          background: #e2e8f0;
+        .side__tool.is-active {
+          background: #0f172a;
+          color: #f8fafc;
         }
         .side__tool-label {
           max-width: 100%;
@@ -164,6 +208,7 @@ export function DocumentPanel() {
           padding: 16px 12px;
           color: #94a3b8;
           text-align: center;
+          font-size: 12px;
         }
         .side__row {
           display: flex;
@@ -188,9 +233,6 @@ export function DocumentPanel() {
           text-align: left;
           cursor: pointer;
         }
-        .side__row-main:hover {
-          background: rgba(15, 23, 42, 0.03);
-        }
         .side__row-del {
           width: 36px;
           margin: 0;
@@ -199,7 +241,6 @@ export function DocumentPanel() {
           background: transparent;
           color: #94a3b8;
           font-size: 16px;
-          line-height: 1;
           cursor: pointer;
         }
         .side__row-del:hover {
@@ -208,5 +249,17 @@ export function DocumentPanel() {
         }
       `}</style>
     </div>
+  );
+}
+
+function SelectIcon() {
+  return (
+    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden>
+      <path
+        d="M8 4l12 14-5 1 3 8-3 1-3-8-4 4V4z"
+        fill="currentColor"
+        opacity="0.9"
+      />
+    </svg>
   );
 }

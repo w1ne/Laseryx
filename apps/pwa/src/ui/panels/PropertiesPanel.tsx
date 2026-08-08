@@ -1,313 +1,225 @@
 import React, { useEffect, useState } from "react";
 import { useStore } from "../../core/state/store";
 import { ObjectService } from "../../core/services/ObjectService";
-import { ImageObj, MacroObj } from "../../core/model";
+import { MacroObj } from "../../core/model";
 import { getMacroDef } from "../../core/macros/catalog";
 import type { MacroParamSpec } from "../../core/macros/types";
 import { getObjectSize, setObjectPosition, setObjectSize, boundsOf } from "../../core/objectEdit";
 import { formatMm, roundMm } from "../../core/util";
 
+/**
+ * Fusion-style sketch properties: dimensions first, then options.
+ */
 export function PropertiesPanel() {
-    const { state, dispatch } = useStore();
-    const { document, selectedObjectId } = state;
-    const selectedObject = document.objects.find(o => o.id === selectedObjectId);
+  const { state, dispatch } = useStore();
+  const { document, selectedObjectId } = state;
+  const selectedObject = document.objects.find((o) => o.id === selectedObjectId);
 
-    if (!selectedObject) {
-        return (
-            <div className="panel props">
-                <div className="panel__header"><h2>Properties</h2></div>
-                <div className="panel__body">
-                    <p className="props__empty">Select an object to edit.</p>
-                </div>
-                <PropsStyles />
-            </div>
-        );
-    }
-
-    const f = (n?: number) => (n !== undefined && Number.isFinite(n) ? formatMm(n) : "");
-    const bbox = boundsOf(selectedObject);
-    const size = getObjectSize(selectedObject);
-
+  if (!selectedObject) {
     return (
-        <div className="panel props">
-            <div className="panel__header"><h2>Properties</h2></div>
-            <div className="panel__body">
-                <div className="props__form">
-                    <p className="props__name">Position &amp; size (mm)</p>
-                    <div className="props__row">
-                        <label className="props__field">
-                            X
-                            <input
-                                type="number"
-                                className="props__input"
-                                step={0.1}
-                                value={f(bbox?.minX)}
-                                onChange={e => {
-                                    const v = roundMm(e.target.valueAsNumber);
-                                    if (!Number.isFinite(v) || !bbox) return;
-                                    const patch = setObjectPosition(selectedObject, v, bbox.minY);
-                                    if (patch) ObjectService.updateObject(dispatch, selectedObject.id, patch);
-                                }}
-                            />
-                        </label>
-                        <label className="props__field">
-                            Y
-                            <input
-                                type="number"
-                                className="props__input"
-                                step={0.1}
-                                value={f(bbox?.minY)}
-                                onChange={e => {
-                                    const v = roundMm(e.target.valueAsNumber);
-                                    if (!Number.isFinite(v) || !bbox) return;
-                                    const patch = setObjectPosition(selectedObject, bbox.minX, v);
-                                    if (patch) ObjectService.updateObject(dispatch, selectedObject.id, patch);
-                                }}
-                            />
-                        </label>
-                    </div>
-
-                    <div className="props__row">
-                        <label className="props__field">
-                            W
-                            <input
-                                type="number"
-                                className="props__input"
-                                step={0.1}
-                                min={0.1}
-                                value={f(size?.w)}
-                                onChange={e => {
-                                    const v = roundMm(e.target.valueAsNumber);
-                                    if (!Number.isFinite(v) || !size) return;
-                                    const patch = setObjectSize(selectedObject, v, size.h);
-                                    if (patch) ObjectService.updateObject(dispatch, selectedObject.id, patch);
-                                }}
-                            />
-                        </label>
-                        <label className="props__field">
-                            H
-                            <input
-                                type="number"
-                                className="props__input"
-                                step={0.1}
-                                min={0.1}
-                                value={f(size?.h)}
-                                onChange={e => {
-                                    const v = roundMm(e.target.valueAsNumber);
-                                    if (!Number.isFinite(v) || !size) return;
-                                    const patch = setObjectSize(selectedObject, size.w, v);
-                                    if (patch) ObjectService.updateObject(dispatch, selectedObject.id, patch);
-                                }}
-                            />
-                        </label>
-                    </div>
-
-                    <label className="props__field">
-                        Layer
-                        <select
-                            className="props__input"
-                            value={selectedObject.layerId}
-                            onChange={e => ObjectService.updateObjectLayer(dispatch, selectedObject.id, e.target.value)}
-                        >
-                            {document.layers.map(l => (
-                                <option key={l.id} value={l.id}>{l.name}</option>
-                            ))}
-                        </select>
-                    </label>
-
-                    {selectedObject.kind !== "image" && (
-                        <label className="props__check">
-                            <input
-                                type="checkbox"
-                                checked={selectedObject.construction === true}
-                                onChange={(e) =>
-                                    ObjectService.setConstruction(dispatch, selectedObject.id, e.target.checked)
-                                }
-                            />
-                            Construction (guide only — not burned)
-                        </label>
-                    )}
-
-                    {selectedObject.kind === "macro" && (
-                        <MacroFields
-                            key={selectedObject.id}
-                            object={selectedObject}
-                            onCommit={(partial) => ObjectService.updateMacroParams(dispatch, selectedObject, partial)}
-                        />
-                    )}
-                </div>
-            </div>
-            <PropsStyles />
+      <div className="panel props">
+        <div className="panel__header">
+          <h2>Properties</h2>
         </div>
+        <div className="panel__body">
+          <p className="props__empty">
+            Select an object, or pick a sketch tool and drag on the bed.
+          </p>
+        </div>
+        <PropsStyles />
+      </div>
     );
-}
+  }
 
-function MacroFields({
-    object,
-    onCommit
-}: {
-    object: MacroObj;
-    onCommit: (partial: Record<string, unknown>) => void;
-}) {
-    const def = getMacroDef(object.defId);
-    const [draft, setDraft] = useState(object.params);
+  const f = (n?: number) => (n !== undefined && Number.isFinite(n) ? formatMm(n) : "");
+  const bbox = boundsOf(selectedObject);
+  const size = getObjectSize(selectedObject);
+  const typeLabel =
+    selectedObject.kind === "shape"
+      ? "Rectangle"
+      : selectedObject.kind === "path"
+        ? selectedObject.closed
+          ? "Path"
+          : "Line"
+        : selectedObject.kind === "macro"
+          ? getMacroDef(selectedObject.defId)?.name ?? "Sketch"
+          : selectedObject.kind === "image"
+            ? "Image"
+            : "Object";
 
-    useEffect(() => {
-        setDraft(object.params);
-    }, [object.id, object.params]);
+  return (
+    <div className="panel props">
+      <div className="panel__header">
+        <h2>{typeLabel}</h2>
+      </div>
+      <div className="panel__body">
+        <div className="props__form">
+          <div className="props__section">Dimensions</div>
+          <div className="props__row">
+            <label className="props__field">
+              X
+              <input
+                type="number"
+                className="props__input"
+                step={0.1}
+                value={f(bbox?.minX)}
+                onChange={(e) => {
+                  const v = roundMm(e.target.valueAsNumber);
+                  if (!Number.isFinite(v) || !bbox) return;
+                  const patch = setObjectPosition(selectedObject, v, bbox.minY);
+                  if (patch) ObjectService.updateObject(dispatch, selectedObject.id, patch);
+                }}
+              />
+            </label>
+            <label className="props__field">
+              Y
+              <input
+                type="number"
+                className="props__input"
+                step={0.1}
+                value={f(bbox?.minY)}
+                onChange={(e) => {
+                  const v = roundMm(e.target.valueAsNumber);
+                  if (!Number.isFinite(v) || !bbox) return;
+                  const patch = setObjectPosition(selectedObject, bbox.minX, v);
+                  if (patch) ObjectService.updateObject(dispatch, selectedObject.id, patch);
+                }}
+              />
+            </label>
+          </div>
 
-    if (!def) {
-        return <p className="props__empty">Unknown element: {object.defId}</p>;
-    }
+          {selectedObject.kind === "macro" &&
+          (selectedObject.defId === "mount-hole" || selectedObject.defId === "button") ? (
+            <label className="props__field">
+              Diameter
+              <input
+                type="number"
+                className="props__input"
+                step={0.1}
+                min={0.5}
+                value={f(Number(selectedObject.params.diameterMm))}
+                onChange={(e) => {
+                  const v = roundMm(e.target.valueAsNumber);
+                  if (!Number.isFinite(v)) return;
+                  ObjectService.updateMacroParams(dispatch, selectedObject, { diameterMm: v });
+                }}
+              />
+            </label>
+          ) : (
+            <div className="props__row">
+              <label className="props__field">
+                {selectedObject.kind === "macro" && selectedObject.defId === "slot" ? "Length" : "Width"}
+                <input
+                  type="number"
+                  className="props__input"
+                  step={0.1}
+                  min={0.1}
+                  value={f(size?.w)}
+                  onChange={(e) => {
+                    const v = roundMm(e.target.valueAsNumber);
+                    if (!Number.isFinite(v) || !size) return;
+                    const patch = setObjectSize(selectedObject, v, size.h);
+                    if (patch) ObjectService.updateObject(dispatch, selectedObject.id, patch);
+                  }}
+                />
+              </label>
+              <label className="props__field">
+                {selectedObject.kind === "macro" && selectedObject.defId === "slot" ? "Width" : "Height"}
+                <input
+                  type="number"
+                  className="props__input"
+                  step={0.1}
+                  min={0.1}
+                  value={f(size?.h)}
+                  onChange={(e) => {
+                    const v = roundMm(e.target.valueAsNumber);
+                    if (!Number.isFinite(v) || !size) return;
+                    const patch = setObjectSize(selectedObject, size.w, v);
+                    if (patch) ObjectService.updateObject(dispatch, selectedObject.id, patch);
+                  }}
+                />
+              </label>
+            </div>
+          )}
 
-    const commitNumber = (spec: MacroParamSpec, raw: string) => {
-        const v = roundMm(Number(raw));
-        if (!Number.isFinite(v)) return;
-        onCommit({ [spec.key]: v });
-    };
+          {selectedObject.kind === "macro" && selectedObject.defId === "round-rect" && (
+            <label className="props__field">
+              Corner R
+              <input
+                type="number"
+                className="props__input"
+                step={0.1}
+                min={0}
+                value={f(Number(selectedObject.params.radiusMm))}
+                onChange={(e) => {
+                  const v = roundMm(e.target.valueAsNumber);
+                  if (!Number.isFinite(v)) return;
+                  ObjectService.updateMacroParams(dispatch, selectedObject, { radiusMm: v });
+                }}
+              />
+            </label>
+          )}
 
-    return (
-        <>
-            <p className="props__name">{def.name}</p>
-            {def.params.map((spec) => {
-                const value = draft[spec.key] ?? spec.default;
+          <div className="props__section">Options</div>
 
-                if (spec.type === "enum" && spec.options) {
-                    return (
-                        <label className="props__field" key={spec.key}>
-                            {spec.label}
-                            <select
-                                className="props__input"
-                                value={String(value)}
-                                onChange={(e) => onCommit({ [spec.key]: e.target.value })}
-                            >
-                                {spec.options.map((opt) => (
-                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                ))}
-                            </select>
-                        </label>
-                    );
+          {selectedObject.kind !== "image" && (
+            <label className="props__check">
+              <input
+                type="checkbox"
+                checked={selectedObject.construction === true}
+                onChange={(e) =>
+                  ObjectService.setConstruction(dispatch, selectedObject.id, e.target.checked)
                 }
+              />
+              Construction (not burned)
+            </label>
+          )}
 
-                if (spec.type === "boolean") {
-                    return (
-                        <label className="props__check" key={spec.key}>
-                            <input
-                                type="checkbox"
-                                checked={Boolean(value)}
-                                onChange={(e) => onCommit({ [spec.key]: e.target.checked })}
-                            />
-                            {spec.label}
-                        </label>
-                    );
-                }
-
-                if (spec.type === "string") {
-                    return (
-                        <label className="props__field" key={spec.key}>
-                            {spec.label}
-                            <input
-                                className="props__input"
-                                value={String(value ?? "")}
-                                onChange={(e) => setDraft({ ...draft, [spec.key]: e.target.value })}
-                                onBlur={(e) => onCommit({ [spec.key]: e.target.value })}
-                                onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                        onCommit({ [spec.key]: (e.target as HTMLInputElement).value });
-                                    }
-                                }}
-                            />
-                        </label>
-                    );
-                }
-
-                return (
-                    <label className="props__field" key={spec.key}>
-                        {spec.label}{spec.unit ? ` (${spec.unit})` : ""}
-                        <input
-                            type="number"
-                            className="props__input"
-                            step={spec.step ?? 0.1}
-                            min={spec.min}
-                            max={spec.max}
-                            value={value === undefined || value === null ? "" : Number(value)}
-                            onChange={(e) => {
-                                const n = e.target.valueAsNumber;
-                                setDraft({
-                                    ...draft,
-                                    [spec.key]: Number.isFinite(n) ? n : draft[spec.key]
-                                });
-                            }}
-                            onBlur={(e) => commitNumber(spec, e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                    commitNumber(spec, (e.target as HTMLInputElement).value);
-                                }
-                            }}
-                        />
-                    </label>
-                );
-            })}
-        </>
-    );
+          <label className="props__field">
+            Layer
+            <select
+              className="props__input"
+              value={selectedObject.layerId}
+              onChange={(e) => ObjectService.updateObjectLayer(dispatch, selectedObject.id, e.target.value)}
+            >
+              {document.layers.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </div>
+      <PropsStyles />
+    </div>
+  );
 }
 
 function PropsStyles() {
-    return (
-        <style>{`
-            .props,
-            .props * {
-                font-size: 13px;
-                line-height: 1.4;
-            }
-            .props .panel__header h2 {
-                font-size: 16px;
-                font-weight: 600;
-            }
-            .props__empty {
-                margin: 0;
-                color: #64748b;
-            }
-            .props__form {
-                display: flex;
-                flex-direction: column;
-                gap: 10px;
-            }
-            .props__name {
-                margin: 0;
-                font-weight: 600;
-                color: #0f172a;
-            }
-            .props__row {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 8px;
-            }
-            .props__field {
-                display: flex;
-                flex-direction: column;
-                gap: 4px;
-                color: #334155;
-                font: inherit;
-            }
-            .props__input {
-                width: 100%;
-                box-sizing: border-box;
-                padding: 8px 10px;
-                border: 1px solid #cbd5e1;
-                border-radius: 6px;
-                background: #fff;
-                color: #0f172a;
-                font: inherit;
-            }
-            .props__check {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                color: #334155;
-                font: inherit;
-                cursor: pointer;
-            }
-        `}</style>
-    );
+  return (
+    <style>{`
+      .props, .props * { font-size: 13px; line-height: 1.4; }
+      .props .panel__header h2 { font-size: 15px; font-weight: 600; }
+      .props__empty { margin: 0; color: #64748b; }
+      .props__form { display: flex; flex-direction: column; gap: 10px; }
+      .props__section {
+        margin: 4px 0 0;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #64748b;
+      }
+      .props__row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      .props__field { display: flex; flex-direction: column; gap: 4px; color: #334155; font: inherit; }
+      .props__input {
+        width: 100%; box-sizing: border-box; padding: 8px 10px;
+        border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; color: #0f172a; font: inherit;
+      }
+      .props__check {
+        display: flex; align-items: center; gap: 8px; color: #334155; font: inherit; cursor: pointer;
+      }
+    `}</style>
+  );
 }

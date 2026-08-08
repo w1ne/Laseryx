@@ -6,10 +6,11 @@ import { usePanZoom } from "../hooks/usePanZoom";
 
 import { BedBackground } from "../components/preview/BedBackground";
 import { DesignView, type ObjectTransformPatch } from "../components/preview/DesignView";
-// import { GcodeView } from "../components/preview/GcodeView"; // Replaced by Canvas
 import { CanvasGcodeView } from "../components/preview/CanvasGcodeView";
 import { MachineHead } from "../components/preview/MachineHead";
 import { ObjectService } from "../../core/services/ObjectService";
+import { SketchDrawLayer } from "../components/SketchDrawLayer";
+import { useSketchTool } from "../sketch/SketchContext";
 
 type PreviewPanelProps = {
     className?: string;
@@ -61,6 +62,8 @@ export function PreviewPanel({
 }: PreviewPanelProps) {
     const { state, dispatch } = useStore();
     const { document: doc, machineProfile, selectedObjectId } = state;
+    const { tool } = useSketchTool();
+    const drawing = viewMode === "design" && tool !== "select" && tool !== "import";
 
     // Default to machine bed size 
     const initialViewport = useMemo(() => ({ x: 0, y: 0, w: machineProfile.bedMm.w, h: machineProfile.bedMm.h }), [machineProfile.bedMm]);
@@ -119,8 +122,8 @@ export function PreviewPanel({
                         width={machineProfile.bedMm.w}
                         height={machineProfile.bedMm.h}
                         onPanStart={(e) => {
-                            // Empty bed: left-drag pans; also clear selection
-                            if (e.button === 0) {
+                            // Empty bed pans only in select mode (or middle mouse handled above)
+                            if (e.button === 0 && !drawing) {
                                 dispatch({ type: "SELECT_OBJECT", payload: null });
                                 handlers.onPointerDown(e);
                             }
@@ -146,6 +149,8 @@ export function PreviewPanel({
                                 }}
                             />
                         )}
+
+                        <SketchDrawLayer enabled={drawing} />
 
                         {showMachineHead && (
                             <MachineHead status={machineStatus} />
