@@ -649,7 +649,7 @@ export function App() {
                 isGcodeReady={!!generatedGcode}
               />
             </section>
-            <section className="app__canvas-zone app__canvas-zone--wide" aria-label="Laser bed workspace" data-mobile-panel="canvas">
+            <section className="app__canvas-zone app__canvas-zone--wide" aria-label="Workspace" data-mobile-panel="canvas">
               <div className="app__preview-area">
                 <PreviewPanel
                   showMachineHead={true}
