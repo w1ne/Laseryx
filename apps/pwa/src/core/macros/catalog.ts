@@ -28,6 +28,7 @@ function defaultClearance() {
   };
 }
 
+/** Single hole type — place once, set diameter in Properties. */
 const mountHole: MacroDef = {
   id: "mount-hole",
   defVersion: 1,
@@ -40,41 +41,15 @@ const mountHole: MacroDef = {
       type: "number",
       unit: "mm",
       min: 0.5,
-      max: 50,
+      max: 200,
       step: 0.1,
       default: 3,
       breaksPreset: true
-    },
-    defaultClearance()
+    }
   ],
   expand: (params) => {
-    const d = cutDiameter(num(params, "diameterMm", 3), num(params, "clearanceMm", 0.2));
-    return [circleToPolyline(0, 0, d / 2)];
-  }
-};
-
-const button: MacroDef = {
-  id: "button",
-  defVersion: 1,
-  name: "Circle",
-  category: "control",
-  params: [
-    {
-      key: "diameterMm",
-      label: "Diameter",
-      type: "number",
-      unit: "mm",
-      min: 1,
-      max: 40,
-      step: 0.1,
-      default: 16,
-      breaksPreset: true
-    },
-    defaultClearance()
-  ],
-  expand: (params) => {
-    const d = cutDiameter(num(params, "diameterMm", 16), num(params, "clearanceMm", 0.2));
-    return [circleToPolyline(0, 0, d / 2)];
+    const d = num(params, "diameterMm", 3);
+    return [circleToPolyline(0, 0, Math.max(0.25, d / 2))];
   }
 };
 
@@ -248,12 +223,18 @@ const panel: MacroDef = {
   }
 };
 
-const DEFS: MacroDef[] = [panel, screen, mountHole, button];
+const DEFS: MacroDef[] = [panel, screen, mountHole];
+
+/** Legacy id still resolves to Hole (old projects / commands). */
+const LEGACY_ALIASES: Record<string, string> = {
+  button: "mount-hole"
+};
 
 const BY_ID = new Map(DEFS.map((d) => [d.id, d]));
 
 export function getMacroDef(defId: string): MacroDef | undefined {
-  return BY_ID.get(defId);
+  const resolved = LEGACY_ALIASES[defId] ?? defId;
+  return BY_ID.get(resolved);
 }
 
 export function listMacroDefs(): MacroDefSummary[] {

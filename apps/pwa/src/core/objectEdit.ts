@@ -78,16 +78,14 @@ export function setObjectSize(obj: Obj, w: number, h: number): Partial<Obj> | nu
   }
   if (obj.kind === "macro") {
     if (obj.defId === "mount-hole" || obj.defId === "button") {
-      const d = Math.min(w, h);
-      const clearance = Number(obj.params.clearanceMm ?? 0.2);
-      const nominal = Math.max(0.5, d - clearance);
+      const d = Math.max(0.5, Math.min(w, h));
       return {
         transform: {
           ...obj.transform,
           e: b.minX + d / 2,
           f: b.minY + d / 2
         },
-        params: { ...obj.params, diameterMm: nominal }
+        params: { ...obj.params, diameterMm: d }
       };
     }
     if (obj.defId === "panel" || obj.defId === "screen") {

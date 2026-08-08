@@ -128,9 +128,7 @@ export function DesignView({ objects, selectedId, onSelect, onPatchObject }: Des
 
       if (startObj.kind === "macro") {
         if (startObj.defId === "mount-hole" || startObj.defId === "button") {
-          const d = Math.max(1, Math.min(newW, newH));
-          const clearance = Number(startObj.params.clearanceMm ?? 0.2);
-          const nominal = Math.max(0.5, d - clearance);
+          const d = Math.max(0.5, Math.min(newW, newH));
           onPatchRef.current(
             drag.id,
             {
@@ -139,7 +137,7 @@ export function DesignView({ objects, selectedId, onSelect, onPatchObject }: Des
                 e: minX + d / 2,
                 f: minY + d / 2
               },
-              params: { ...startObj.params, diameterMm: nominal }
+              params: { ...startObj.params, diameterMm: d }
             },
             live
           );

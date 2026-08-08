@@ -7,21 +7,16 @@ describe("searchTemplates", () => {
     expect(searchTemplates("").length).toBe(TEMPLATE_LIBRARY.length);
   });
 
-  it("finds M3 hole by size tag", () => {
-    const hits = searchTemplates("m3");
-    expect(hits.some((t) => t.id === "hole-m3")).toBe(true);
-    expect(hits.every((t) => t.name.toLowerCase().includes("m3") || t.tags.includes("m3"))).toBe(true);
-  });
-
-  it("finds display by keyword", () => {
-    const hits = searchTemplates("display tft");
-    expect(hits.some((t) => t.id === "cutout-display-28")).toBe(true);
+  it("finds the single hole template", () => {
+    const hits = searchTemplates("hole");
+    expect(hits.some((t) => t.id === "hole")).toBe(true);
+    expect(hits.filter((t) => t.category === "hole")).toHaveLength(1);
   });
 
   it("filters by category", () => {
     const holes = searchTemplates("", { category: "hole" });
-    expect(holes.length).toBeGreaterThan(0);
-    expect(holes.every((t) => t.category === "hole")).toBe(true);
+    expect(holes).toHaveLength(1);
+    expect(holes[0].id).toBe("hole");
   });
 
   it("returns empty for nonsense", () => {
