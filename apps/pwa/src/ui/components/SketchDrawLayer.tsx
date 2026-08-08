@@ -44,7 +44,7 @@ export function SketchDrawLayer({ enabled }: { enabled: boolean }) {
 
     setGhost(null);
     startRef.current = null;
-    setTool("select");
+    // Fusion keeps the sketch tool active so you can place another figure
   };
 
   const onPointerDown = (e: React.PointerEvent) => {

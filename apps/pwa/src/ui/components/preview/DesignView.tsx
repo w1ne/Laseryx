@@ -1,15 +1,16 @@
 import React, { useEffect, useRef } from "react";
 import { isConstruction, Obj } from "../../../core/model";
 import { expandMacro } from "../../../core/macros/expand";
-import { roundMm } from "../../../core/util";
+import { formatMm, roundMm } from "../../../core/util";
+import { getObjectSize } from "../../../core/objectEdit";
 import { clientToSvgPoint, objectBounds, type BBox } from "./designGeometry";
 
 const r = (n: number) => roundMm(n);
 
-/** CAD-style construction: dashed, not cut. */
+/** Fusion-style construction: orange dashed, not cut. */
 function strokeFor(obj: Obj, isSelected: boolean): { stroke: string; dash?: string } {
   if (isConstruction(obj)) {
-    return { stroke: isSelected ? "#0ea5e9" : "#38bdf8", dash: "4 3" };
+    return { stroke: isSelected ? "#ea580c" : "#f97316", dash: "4 3" };
   }
   return { stroke: isSelected ? "#3b82f6" : "#0f172a" };
 }
@@ -492,6 +493,32 @@ export function DesignView({ objects, selectedId, onSelect, onPatchObject }: Des
               onPointerDown={(e) => beginResize(e, selected, corner)}
             />
           ))}
+          {/* Fusion-like dimension readout on selection */}
+          {(() => {
+            const size = getObjectSize(selected);
+            if (!size) return null;
+            const midX = (selectedBBox.minX + selectedBBox.maxX) / 2;
+            const midY = (selectedBBox.minY + selectedBBox.maxY) / 2;
+            const isCircle =
+              selected.kind === "macro" &&
+              (selected.defId === "mount-hole" || selected.defId === "button");
+            const label = isCircle
+              ? `Ø${formatMm(size.w)}`
+              : `${formatMm(size.w)} × ${formatMm(size.h)}`;
+            return (
+              <text
+                x={midX}
+                y={selectedBBox.minY - 2}
+                fill="#1d4ed8"
+                fontSize="3.2"
+                textAnchor="middle"
+                pointerEvents="none"
+                style={{ userSelect: "none" }}
+              >
+                {label}
+              </text>
+            );
+          })()}
         </g>
       )}
     </g>

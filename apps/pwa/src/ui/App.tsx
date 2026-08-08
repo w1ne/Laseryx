@@ -132,6 +132,19 @@ export function App() {
         return;
       }
 
+      // Fusion: X toggles construction on the selection
+      if ((e.key === "x" || e.key === "X") && selected) {
+        e.preventDefault();
+        if (selected.kind !== "image") {
+          const next = !selected.construction;
+          dispatch({
+            type: "UPDATE_OBJECT",
+            payload: { id: selected.id, changes: { construction: next } as typeof selected }
+          });
+        }
+        return;
+      }
+
       if ((e.key === "Delete" || e.key === "Backspace") && selectedId) {
         e.preventDefault();
         dispatch({ type: "DELETE_OBJECT", payload: selectedId });
