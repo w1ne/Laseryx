@@ -12,17 +12,12 @@ export function PropertiesPanel() {
 
     if (!selectedObject) {
         return (
-            <div className="panel">
+            <div className="panel props">
                 <div className="panel__header"><h2>Properties</h2></div>
                 <div className="panel__body">
-                    <div style={{ padding: 12, fontSize: 13, color: "#475569", lineHeight: 1.5 }}>
-                        <p style={{ margin: "0 0 8px", fontWeight: 600, color: "#0f172a" }}>Nothing selected</p>
-                        <p style={{ margin: 0 }}>
-                            Click a part on the canvas, or in the <strong>Build panel</strong> list on the left.
-                            Then set position (X/Y) and sizes here.
-                        </p>
-                    </div>
+                    <p className="props__empty">Select a part to edit size and position.</p>
                 </div>
+                <PropsStyles />
             </div>
         );
     }
@@ -30,58 +25,103 @@ export function PropertiesPanel() {
     const f = (n?: number) => n !== undefined ? Number(n.toFixed(2)) : "";
 
     return (
-        <div className="panel">
+        <div className="panel props">
             <div className="panel__header"><h2>Properties</h2></div>
             <div className="panel__body">
-                <div className="form">
-                    <div className="form__row">
-                        <label className="form-label">X <input type="number" className="form-input" value={f(selectedObject.transform.e)} onChange={e => {
-                            const v = e.target.valueAsNumber;
-                            if (!isNaN(v)) ObjectService.updateObject(dispatch, selectedObject.id, { transform: { ...selectedObject.transform, e: v } });
-                        }} /></label>
-                        <label className="form-label">Y <input type="number" className="form-input" value={f(selectedObject.transform.f)} onChange={e => {
-                            const v = e.target.valueAsNumber;
-                            if (!isNaN(v)) ObjectService.updateObject(dispatch, selectedObject.id, { transform: { ...selectedObject.transform, f: v } });
-                        }} /></label>
-                    </div>
-
-                    <div className="form__group">
-                        <label className="form-label">Layer
-                            <select className="form-input" value={selectedObject.layerId} onChange={e => {
-                                ObjectService.updateObjectLayer(dispatch, selectedObject.id, e.target.value);
-                            }}>
-                                {document.layers.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                            </select>
+                <div className="props__form">
+                    <div className="props__row">
+                        <label className="props__field">
+                            X
+                            <input
+                                type="number"
+                                className="props__input"
+                                value={f(selectedObject.transform.e)}
+                                onChange={e => {
+                                    const v = e.target.valueAsNumber;
+                                    if (!isNaN(v)) {
+                                        ObjectService.updateObject(dispatch, selectedObject.id, {
+                                            transform: { ...selectedObject.transform, e: v }
+                                        });
+                                    }
+                                }}
+                            />
+                        </label>
+                        <label className="props__field">
+                            Y
+                            <input
+                                type="number"
+                                className="props__input"
+                                value={f(selectedObject.transform.f)}
+                                onChange={e => {
+                                    const v = e.target.valueAsNumber;
+                                    if (!isNaN(v)) {
+                                        ObjectService.updateObject(dispatch, selectedObject.id, {
+                                            transform: { ...selectedObject.transform, f: v }
+                                        });
+                                    }
+                                }}
+                            />
                         </label>
                     </div>
 
+                    <label className="props__field">
+                        Layer
+                        <select
+                            className="props__input"
+                            value={selectedObject.layerId}
+                            onChange={e => ObjectService.updateObjectLayer(dispatch, selectedObject.id, e.target.value)}
+                        >
+                            {document.layers.map(l => (
+                                <option key={l.id} value={l.id}>{l.name}</option>
+                            ))}
+                        </select>
+                    </label>
+
                     {(selectedObject.kind === "shape" || selectedObject.kind === "image") && (
-                        <div className="form__row">
-                            <label className="form-label">W <input type="number" className="form-input" value={f(selectedObject.kind === "shape" ? selectedObject.shape?.width : (selectedObject as ImageObj).width)} onChange={e => {
-                                const v = e.target.valueAsNumber;
-                                if (!isNaN(v)) {
-                                    if (selectedObject.kind === "shape") {
-                                        ObjectService.updateObject(dispatch, selectedObject.id, { shape: { ...selectedObject.shape, width: v } });
-                                    } else if (selectedObject.kind === "image") {
-                                        ObjectService.updateObject(dispatch, selectedObject.id, { width: v });
-                                    }
-                                }
-                            }} /></label>
-                            <label className="form-label">H <input type="number" className="form-input" value={f(selectedObject.kind === "shape" ? selectedObject.shape?.height : (selectedObject as ImageObj).height)} onChange={e => {
-                                const v = e.target.valueAsNumber;
-                                if (!isNaN(v)) {
-                                    if (selectedObject.kind === "shape") {
-                                        ObjectService.updateObject(dispatch, selectedObject.id, { shape: { ...selectedObject.shape, height: v } });
-                                    } else if (selectedObject.kind === "image") {
-                                        ObjectService.updateObject(dispatch, selectedObject.id, { height: v });
-                                    }
-                                }
-                            }} /></label>
+                        <div className="props__row">
+                            <label className="props__field">
+                                W
+                                <input
+                                    type="number"
+                                    className="props__input"
+                                    value={f(selectedObject.kind === "shape" ? selectedObject.shape?.width : (selectedObject as ImageObj).width)}
+                                    onChange={e => {
+                                        const v = e.target.valueAsNumber;
+                                        if (isNaN(v)) return;
+                                        if (selectedObject.kind === "shape") {
+                                            ObjectService.updateObject(dispatch, selectedObject.id, {
+                                                shape: { ...selectedObject.shape, width: v }
+                                            });
+                                        } else {
+                                            ObjectService.updateObject(dispatch, selectedObject.id, { width: v });
+                                        }
+                                    }}
+                                />
+                            </label>
+                            <label className="props__field">
+                                H
+                                <input
+                                    type="number"
+                                    className="props__input"
+                                    value={f(selectedObject.kind === "shape" ? selectedObject.shape?.height : (selectedObject as ImageObj).height)}
+                                    onChange={e => {
+                                        const v = e.target.valueAsNumber;
+                                        if (isNaN(v)) return;
+                                        if (selectedObject.kind === "shape") {
+                                            ObjectService.updateObject(dispatch, selectedObject.id, {
+                                                shape: { ...selectedObject.shape, height: v }
+                                            });
+                                        } else {
+                                            ObjectService.updateObject(dispatch, selectedObject.id, { height: v });
+                                        }
+                                    }}
+                                />
+                            </label>
                         </div>
                     )}
 
                     {selectedObject.kind === "macro" && (
-                        <MacroProperties
+                        <MacroFields
                             key={selectedObject.id}
                             object={selectedObject}
                             onCommit={(partial) => ObjectService.updateMacroParams(dispatch, selectedObject, partial)}
@@ -89,25 +129,12 @@ export function PropertiesPanel() {
                     )}
                 </div>
             </div>
-            <style>{`
-                .form-label { display: block; font-size: 12px; color: #555; margin-bottom: 4px; font-weight: 500; }
-                .form-input { 
-                    width: 100%; 
-                    padding: 8px; 
-                    font-size: 13px; 
-                    border: 1px solid #ddd; 
-                    border-radius: 4px; 
-                    background: #fff; 
-                    color: #333;
-                }
-                .form__row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
-                .form__group { margin-bottom: 12px; }
-            `}</style>
+            <PropsStyles />
         </div>
     );
 }
 
-function MacroProperties({
+function MacroFields({
     object,
     onCommit
 }: {
@@ -122,11 +149,7 @@ function MacroProperties({
     }, [object.id, object.params]);
 
     if (!def) {
-        return (
-            <div className="form__group" style={{ padding: 8, background: "#fee2e2", borderRadius: 4, color: "#991b1b", fontSize: 12 }}>
-                Missing macro definition: <code>{object.defId}</code>. Update Laseryx or remove this object.
-            </div>
-        );
+        return <p className="props__empty">Unknown part type: {object.defId}</p>;
     }
 
     const commitNumber = (spec: MacroParamSpec, raw: string) => {
@@ -137,99 +160,146 @@ function MacroProperties({
 
     return (
         <>
-            <div className="form__group" style={{ color: "#1d4ed8", fontWeight: 700, fontSize: 14 }}>
-                {def.name}
-            </div>
-            <div className="form__group" style={{ fontSize: 12, color: "#475569", background: "#f1f5f9", padding: 8, borderRadius: 6, lineHeight: 1.4 }}>
-                Move with <strong>X / Y</strong> (mm). Change sizes below — the canvas updates immediately.
-            </div>
-            {def.approxNote && (
-                <div className="form__group" style={{ fontSize: 11, color: "#9a3412", background: "#fff7ed", padding: 8, borderRadius: 4 }}>
-                    {def.approxNote}
-                </div>
-            )}
+            <p className="props__name">{def.name}</p>
             {def.params.map((spec) => {
                 const value = draft[spec.key] ?? spec.default;
+
                 if (spec.type === "enum" && spec.options) {
                     return (
-                        <div className="form__group" key={spec.key}>
-                            <label className="form-label">{spec.label}
-                                <select
-                                    className="form-input"
-                                    value={String(value)}
-                                    onChange={(e) => onCommit({ [spec.key]: e.target.value })}
-                                >
-                                    {spec.options.map((opt) => (
-                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                    ))}
-                                </select>
-                            </label>
-                        </div>
+                        <label className="props__field" key={spec.key}>
+                            {spec.label}
+                            <select
+                                className="props__input"
+                                value={String(value)}
+                                onChange={(e) => onCommit({ [spec.key]: e.target.value })}
+                            >
+                                {spec.options.map((opt) => (
+                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                ))}
+                            </select>
+                        </label>
                     );
                 }
+
                 if (spec.type === "boolean") {
                     return (
-                        <div className="form__group" key={spec.key}>
-                            <label className="form-label" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                <input
-                                    type="checkbox"
-                                    checked={Boolean(value)}
-                                    onChange={(e) => onCommit({ [spec.key]: e.target.checked })}
-                                />
-                                {spec.label}
-                            </label>
-                        </div>
+                        <label className="props__check" key={spec.key}>
+                            <input
+                                type="checkbox"
+                                checked={Boolean(value)}
+                                onChange={(e) => onCommit({ [spec.key]: e.target.checked })}
+                            />
+                            {spec.label}
+                        </label>
                     );
                 }
+
                 if (spec.type === "string") {
                     return (
-                        <div className="form__group" key={spec.key}>
-                            <label className="form-label">{spec.label}
-                                <input
-                                    className="form-input"
-                                    value={String(value ?? "")}
-                                    onChange={(e) => setDraft({ ...draft, [spec.key]: e.target.value })}
-                                    onBlur={(e) => onCommit({ [spec.key]: e.target.value })}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
-                                            onCommit({ [spec.key]: (e.target as HTMLInputElement).value });
-                                        }
-                                    }}
-                                />
-                            </label>
-                        </div>
-                    );
-                }
-                // number
-                return (
-                    <div className="form__group" key={spec.key}>
-                        <label className="form-label">
-                            {spec.label}{spec.unit ? ` (${spec.unit})` : ""}
+                        <label className="props__field" key={spec.key}>
+                            {spec.label}
                             <input
-                                type="number"
-                                className="form-input"
-                                step={spec.step ?? 0.1}
-                                min={spec.min}
-                                max={spec.max}
-                                value={value === undefined || value === null ? "" : Number(value)}
-                                onChange={(e) => {
-                                    const n = e.target.valueAsNumber;
-                                    setDraft({
-                                        ...draft,
-                                        [spec.key]: Number.isFinite(n) ? n : draft[spec.key]
-                                    });
-                                }}
-                                onBlur={(e) => commitNumber(spec, e.target.value)}
+                                className="props__input"
+                                value={String(value ?? "")}
+                                onChange={(e) => setDraft({ ...draft, [spec.key]: e.target.value })}
+                                onBlur={(e) => onCommit({ [spec.key]: e.target.value })}
                                 onKeyDown={(e) => {
                                     if (e.key === "Enter") {
-                                        commitNumber(spec, (e.target as HTMLInputElement).value);
+                                        onCommit({ [spec.key]: (e.target as HTMLInputElement).value });
                                     }
                                 }}
                             />
                         </label>
-                    </div>
+                    );
+                }
+
+                return (
+                    <label className="props__field" key={spec.key}>
+                        {spec.label}{spec.unit ? ` (${spec.unit})` : ""}
+                        <input
+                            type="number"
+                            className="props__input"
+                            step={spec.step ?? 0.1}
+                            min={spec.min}
+                            max={spec.max}
+                            value={value === undefined || value === null ? "" : Number(value)}
+                            onChange={(e) => {
+                                const n = e.target.valueAsNumber;
+                                setDraft({
+                                    ...draft,
+                                    [spec.key]: Number.isFinite(n) ? n : draft[spec.key]
+                                });
+                            }}
+                            onBlur={(e) => commitNumber(spec, e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                    commitNumber(spec, (e.target as HTMLInputElement).value);
+                                }
+                            }}
+                        />
+                    </label>
                 );
             })}
         </>
+    );
+}
+
+function PropsStyles() {
+    return (
+        <style>{`
+            .props,
+            .props * {
+                font-size: 13px;
+                line-height: 1.4;
+            }
+            .props .panel__header h2 {
+                font-size: 16px;
+                font-weight: 600;
+            }
+            .props__empty {
+                margin: 0;
+                color: #64748b;
+            }
+            .props__form {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+            .props__name {
+                margin: 0;
+                font-weight: 600;
+                color: #0f172a;
+            }
+            .props__row {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+            .props__field {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+                color: #334155;
+                font: inherit;
+            }
+            .props__input {
+                width: 100%;
+                box-sizing: border-box;
+                padding: 8px 10px;
+                border: 1px solid #cbd5e1;
+                border-radius: 6px;
+                background: #fff;
+                color: #0f172a;
+                font: inherit;
+            }
+            .props__check {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                color: #334155;
+                font: inherit;
+                cursor: pointer;
+            }
+        `}</style>
     );
 }
