@@ -182,15 +182,15 @@ describe("App", () => {
     it("renders desktop workbench zones for design mode", () => {
         render(<App />);
 
-        expect(screen.getByRole("region", { name: "Document navigation" })).toHaveClass("app__left-zone");
-        expect(screen.getByRole("region", { name: "Laser bed workspace" })).toHaveClass("app__canvas-zone");
+        expect(screen.getByRole("region", { name: "Create and objects" })).toHaveClass("app__left-zone");
+        expect(screen.getByRole("region", { name: "Workspace" })).toHaveClass("app__canvas-zone");
         expect(screen.getByRole("region", { name: "Inspector and operations" })).toHaveClass("app__right-zone");
     });
 
     it("places design panels into left and right desktop zones", () => {
         render(<App />);
 
-        const leftZone = screen.getByRole("region", { name: "Document navigation" });
+        const leftZone = screen.getByRole("region", { name: "Create and objects" });
         const rightZone = screen.getByRole("region", { name: "Inspector and operations" });
 
         expect(within(leftZone).getByTestId("design-panel-document")).toBeInTheDocument();
@@ -201,8 +201,8 @@ describe("App", () => {
     it("marks desktop wrapper zones with mobile panel state", () => {
         render(<App />);
 
-        const leftZone = screen.getByRole("region", { name: "Document navigation" });
-        const canvasZone = screen.getByRole("region", { name: "Laser bed workspace" });
+        const leftZone = screen.getByRole("region", { name: "Create and objects" });
+        const canvasZone = screen.getByRole("region", { name: "Workspace" });
         const rightZone = screen.getByRole("region", { name: "Inspector and operations" });
 
         expect(leftZone).toHaveAttribute("data-mobile-panel", "active");
@@ -236,8 +236,8 @@ describe("App", () => {
         render(<App />);
 
         expect(screen.getByRole("region", { name: "Machine controls" })).toHaveAttribute("data-mobile-panel", "active");
-        expect(screen.getByRole("region", { name: "Laser bed workspace" })).toHaveAttribute("data-mobile-panel", "canvas");
-        expect(screen.queryByRole("region", { name: "Document navigation" })).not.toBeInTheDocument();
+        expect(screen.getByRole("region", { name: "Workspace" })).toHaveAttribute("data-mobile-panel", "canvas");
+        expect(screen.queryByRole("region", { name: "Create and objects" })).not.toBeInTheDocument();
         expect(screen.queryByRole("region", { name: "Inspector and operations" })).not.toBeInTheDocument();
     });
 

@@ -557,9 +557,14 @@ export function App() {
           <>
             <section
               className="app__left-zone"
-              aria-label="Document navigation"
+              aria-label="Create and objects"
               data-mobile-panel={designPanel === "document" ? "active" : "inactive"}
             >
+              {previewMode === "design" && (
+                <div className="app__create-dock" data-testid="creation-toolbar">
+                  <DesignToolsBar />
+                </div>
+              )}
               <div
                 id="design-panel-document"
                 className="app__panel-slot"
@@ -571,11 +576,10 @@ export function App() {
                 <DocumentPanel />
               </div>
             </section>
-            <section className="app__canvas-zone" aria-label="Laser bed workspace" data-mobile-panel="canvas">
+            <section className="app__canvas-zone" aria-label="Workspace" data-mobile-panel="canvas">
               <div className="app__preview-area">
                 <div className="app__canvas-toolbar">
-                  {previewMode === "design" && <DesignToolsBar />}
-                  <div className="preview-mode-switch" role="group" aria-label="Preview mode">
+                  <div className="preview-mode-switch" role="group" aria-label="View mode">
                     <button
                       className={`segmented-button ${previewMode === "design" ? "is-active" : ""}`}
                       onClick={() => setPreviewMode("design")}

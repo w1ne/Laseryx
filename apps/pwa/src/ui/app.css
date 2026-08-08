@@ -282,7 +282,29 @@ body {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
+}
+
+/* LightBurn-style: Create dock above object list on the left */
+.app__create-dock {
+  min-width: 0;
+}
+
+.app__create-dock .creation-toolbar {
+  width: 100%;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.app__create-dock .creation-toolbar__title {
+  width: 100%;
+  padding-bottom: 2px;
+}
+
+.app__create-dock .creation-toolbar__btn {
+  flex: 1 1 auto;
+  min-width: 64px;
 }
 
 .app__canvas-zone {

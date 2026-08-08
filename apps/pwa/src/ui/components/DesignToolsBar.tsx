@@ -2,15 +2,13 @@ import { useStore } from "../../core/state/store";
 import { ObjectService } from "../../core/services/ObjectService";
 import { parseSvg } from "../../core/svgImport";
 import { PathObj, Transform } from "../../core/model";
-import { listMacroDefs } from "../../core/macros/catalog";
 
 /**
- * General design toolbar: shapes + import + parametric elements.
- * Not a product-specific "panel builder".
+ * Creation tools — LightBurn / CAD style.
+ * Primitive shapes + import. Parametric compounds as normal shapes, not a product mode.
  */
 export function DesignToolsBar() {
     const { state, dispatch } = useStore();
-    const elements = listMacroDefs();
 
     const handleImportFile = () => {
         const input = window.document.createElement("input");
@@ -72,72 +70,103 @@ export function DesignToolsBar() {
         input.click();
     };
 
+    type Tool = {
+        id: string;
+        label: string;
+        title: string;
+        run: () => void;
+    };
+
+    const tools: Tool[] = [
+        {
+            id: "rect",
+            label: "Rect",
+            title: "Rectangle",
+            run: () => ObjectService.addRectangle(state, dispatch)
+        },
+        {
+            id: "circle",
+            label: "Circle",
+            title: "Circle",
+            run: () => ObjectService.addMacro(state, dispatch, "button")
+        },
+        {
+            id: "hole",
+            label: "Hole",
+            title: "Circle hole (cut)",
+            run: () => ObjectService.addMacro(state, dispatch, "mount-hole")
+        },
+        {
+            id: "frame",
+            label: "Frame",
+            title: "Outer frame / plate outline",
+            run: () => ObjectService.addMacro(state, dispatch, "panel")
+        },
+        {
+            id: "cutout",
+            label: "Cutout",
+            title: "Rectangle cutout with corner holes",
+            run: () => ObjectService.addMacro(state, dispatch, "screen")
+        },
+        {
+            id: "import",
+            label: "Import",
+            title: "Import SVG or image",
+            run: handleImportFile
+        }
+    ];
+
     return (
-        <div className="design-tools" role="toolbar" aria-label="Design tools">
-            <button
-                type="button"
-                className="design-tools__btn"
-                onClick={() => ObjectService.addRectangle(state, dispatch)}
-            >
-                Rect
-            </button>
-            {elements.map((d) => (
+        <div className="creation-toolbar" role="toolbar" aria-label="Create">
+            <div className="creation-toolbar__title">Create</div>
+            {tools.map((tool) => (
                 <button
-                    key={d.id}
+                    key={tool.id}
                     type="button"
-                    className="design-tools__btn"
-                    onClick={() => ObjectService.addMacro(state, dispatch, d.id)}
+                    className="creation-toolbar__btn"
+                    title={tool.title}
+                    onClick={tool.run}
                 >
-                    {d.name}
+                    {tool.label}
                 </button>
             ))}
-            <span className="design-tools__sep" aria-hidden />
-            <button
-                type="button"
-                className="design-tools__btn design-tools__btn--quiet"
-                onClick={handleImportFile}
-            >
-                Import
-            </button>
 
             <style>{`
-                .design-tools {
+                .creation-toolbar {
                     display: flex;
-                    flex-wrap: wrap;
-                    align-items: center;
+                    flex-direction: column;
                     gap: 6px;
-                    padding: 8px 10px;
-                    border-radius: 10px;
+                    padding: 10px;
+                    border-radius: 12px;
                     background: #fff;
                     border: 1px solid #e2e8f0;
                     font-size: 13px;
                     line-height: 1.3;
+                    min-width: 88px;
                 }
-                .design-tools__btn {
+                .creation-toolbar__title {
+                    font-size: 11px;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    letter-spacing: 0.04em;
+                    color: #64748b;
+                    padding: 0 2px 4px;
+                }
+                .creation-toolbar__btn {
                     margin: 0;
-                    padding: 6px 10px;
+                    padding: 8px 10px;
                     border: 1px solid #cbd5e1;
-                    border-radius: 6px;
+                    border-radius: 8px;
                     background: #f8fafc;
                     color: #0f172a;
                     font: inherit;
                     font-weight: 600;
+                    text-align: center;
                     cursor: pointer;
                 }
-                .design-tools__btn:hover {
+                .creation-toolbar__btn:hover {
                     border-color: #3b82f6;
                     background: #eff6ff;
-                }
-                .design-tools__btn--quiet {
-                    font-weight: 500;
-                    color: #475569;
-                    background: transparent;
-                }
-                .design-tools__sep {
-                    width: 1px;
-                    height: 20px;
-                    background: #e2e8f0;
-                    margin: 0 2px;
                 }
             `}</style>
         </div>

@@ -3,7 +3,10 @@ import { ObjectService } from "../../core/services/ObjectService";
 import { getMacroDef } from "../../core/macros/catalog";
 import { UndoToolbar } from "../components/UndoToolbar";
 
-/** Object list for general editing — select / remove. */
+/**
+ * Selection list (what’s on the design).
+ * Creation lives in the Create toolbar — like LightBurn / CAD object browsers.
+ */
 export function DocumentPanel() {
     const { state, dispatch } = useStore();
     const { document, selectedObjectId } = state;
@@ -35,7 +38,7 @@ export function DocumentPanel() {
 
             <div className="panel__body objects-panel__body">
                 {document.objects.length === 0 ? (
-                    <p className="objects-panel__empty">No objects. Add shapes from the toolbar above the canvas.</p>
+                    <p className="objects-panel__empty">Empty. Use Create to add shapes.</p>
                 ) : (
                     <ul className="objects-panel__list">
                         {document.objects.map((obj) => {
