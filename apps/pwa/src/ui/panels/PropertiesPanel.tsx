@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useStore } from "../../core/state/store";
 import { ObjectService } from "../../core/services/ObjectService";
-import { ImageObj } from "../../core/model";
+import { ImageObj, MacroObj } from "../../core/model";
+import { getMacroDef } from "../../core/macros/catalog";
+import type { MacroParamSpec } from "../../core/macros/types";
 
 export function PropertiesPanel() {
     const { state, dispatch } = useStore();
@@ -71,6 +73,14 @@ export function PropertiesPanel() {
                             }} /></label>
                         </div>
                     )}
+
+                    {selectedObject.kind === "macro" && (
+                        <MacroProperties
+                            key={selectedObject.id}
+                            object={selectedObject}
+                            onCommit={(partial) => ObjectService.updateMacroParams(dispatch, selectedObject, partial)}
+                        />
+                    )}
                 </div>
             </div>
             <style>{`
@@ -88,5 +98,132 @@ export function PropertiesPanel() {
                 .form__group { margin-bottom: 12px; }
             `}</style>
         </div>
+    );
+}
+
+function MacroProperties({
+    object,
+    onCommit
+}: {
+    object: MacroObj;
+    onCommit: (partial: Record<string, unknown>) => void;
+}) {
+    const def = getMacroDef(object.defId);
+    const [draft, setDraft] = useState(object.params);
+
+    useEffect(() => {
+        setDraft(object.params);
+    }, [object.id, object.params]);
+
+    if (!def) {
+        return (
+            <div className="form__group" style={{ padding: 8, background: "#fee2e2", borderRadius: 4, color: "#991b1b", fontSize: 12 }}>
+                Missing macro definition: <code>{object.defId}</code>. Update Laseryx or remove this object.
+            </div>
+        );
+    }
+
+    const commitNumber = (spec: MacroParamSpec, raw: string) => {
+        const v = Number(raw);
+        if (!Number.isFinite(v)) return;
+        onCommit({ [spec.key]: v });
+    };
+
+    return (
+        <>
+            <div className="form__group" style={{ color: "#2563eb", fontWeight: 600, fontSize: 13 }}>
+                {def.name} · macro
+            </div>
+            {def.approxNote && (
+                <div className="form__group" style={{ fontSize: 10, color: "#9a3412", background: "#fff7ed", padding: 8, borderRadius: 4 }}>
+                    {def.approxNote}
+                </div>
+            )}
+            <div className="form__group" style={{ fontSize: 10, color: "#888" }}>
+                defVersion {object.defVersion}
+            </div>
+            {def.params.map((spec) => {
+                const value = draft[spec.key] ?? spec.default;
+                if (spec.type === "enum" && spec.options) {
+                    return (
+                        <div className="form__group" key={spec.key}>
+                            <label className="form-label">{spec.label}
+                                <select
+                                    className="form-input"
+                                    value={String(value)}
+                                    onChange={(e) => onCommit({ [spec.key]: e.target.value })}
+                                >
+                                    {spec.options.map((opt) => (
+                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                    ))}
+                                </select>
+                            </label>
+                        </div>
+                    );
+                }
+                if (spec.type === "boolean") {
+                    return (
+                        <div className="form__group" key={spec.key}>
+                            <label className="form-label" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <input
+                                    type="checkbox"
+                                    checked={Boolean(value)}
+                                    onChange={(e) => onCommit({ [spec.key]: e.target.checked })}
+                                />
+                                {spec.label}
+                            </label>
+                        </div>
+                    );
+                }
+                if (spec.type === "string") {
+                    return (
+                        <div className="form__group" key={spec.key}>
+                            <label className="form-label">{spec.label}
+                                <input
+                                    className="form-input"
+                                    value={String(value ?? "")}
+                                    onChange={(e) => setDraft({ ...draft, [spec.key]: e.target.value })}
+                                    onBlur={(e) => onCommit({ [spec.key]: e.target.value })}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                            onCommit({ [spec.key]: (e.target as HTMLInputElement).value });
+                                        }
+                                    }}
+                                />
+                            </label>
+                        </div>
+                    );
+                }
+                // number
+                return (
+                    <div className="form__group" key={spec.key}>
+                        <label className="form-label">
+                            {spec.label}{spec.unit ? ` (${spec.unit})` : ""}
+                            <input
+                                type="number"
+                                className="form-input"
+                                step={spec.step ?? 0.1}
+                                min={spec.min}
+                                max={spec.max}
+                                value={value === undefined || value === null ? "" : Number(value)}
+                                onChange={(e) => {
+                                    const n = e.target.valueAsNumber;
+                                    setDraft({
+                                        ...draft,
+                                        [spec.key]: Number.isFinite(n) ? n : draft[spec.key]
+                                    });
+                                }}
+                                onBlur={(e) => commitNumber(spec, e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                        commitNumber(spec, (e.target as HTMLInputElement).value);
+                                    }
+                                }}
+                            />
+                        </label>
+                    </div>
+                );
+            })}
+        </>
     );
 }

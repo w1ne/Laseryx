@@ -9,6 +9,7 @@ import type {
   PreviewGeom
 } from "./model";
 import { computeBounds, polygonArea, rectToPolyline, transformPoints } from "./geom";
+import { expandMacro } from "./macros/expand";
 
 export type CamPlanResult = {
   plan: CamPlan;
@@ -79,7 +80,7 @@ export function planCam(document: Document, cam: CamSettings, images?: Map<strin
           }
         } else {
           // Implement Vector Scanline Fill here
-          paths.push(...vectorFill(objToPolylines(obj), operation.lineInterval || 0.1, operation.angle || 0));
+          paths.push(...vectorFill(objToPolylines(obj, warnings), operation.lineInterval || 0.1, operation.angle || 0));
         }
       } else {
         // Mode = "line" (Vector Cut/Score)
@@ -87,7 +88,7 @@ export function planCam(document: Document, cam: CamSettings, images?: Map<strin
           // Images cannot be vector cut
           continue;
         }
-        paths.push(...objToPolylines(obj));
+        paths.push(...objToPolylines(obj, warnings));
       }
     }
 
@@ -118,7 +119,7 @@ export function planCam(document: Document, cam: CamSettings, images?: Map<strin
   return { plan: { ops }, preview, warnings };
 }
 
-function objToPolylines(obj: Obj): PolylinePath[] {
+function objToPolylines(obj: Obj, warnings?: string[]): PolylinePath[] {
   switch (obj.kind) {
     case "path":
       return [
@@ -132,6 +133,17 @@ function objToPolylines(obj: Obj): PolylinePath[] {
         return [rectToPolyline(obj.shape, obj.transform)];
       }
       return [];
+    case "macro": {
+      const result = expandMacro(obj);
+      if (!result.ok) {
+        warnings?.push(result.error);
+        return [];
+      }
+      if (result.warning) {
+        warnings?.push(result.warning);
+      }
+      return result.paths;
+    }
     default:
       return [];
   }

@@ -114,6 +114,33 @@ export const AUTOMATION_CAPABILITIES = [
     description: "Add a rectangle object to a document layer."
   },
   {
+    command: "macros.listDefs",
+    category: "document",
+    mutates: false,
+    supportsDryRun: false,
+    requiredPermission: "read",
+    transports: ["protocol", "cli", "mcp"],
+    description: "List hardware macro definitions (id, params schema, version)."
+  },
+  {
+    command: "document.addMacro",
+    category: "document",
+    mutates: true,
+    supportsDryRun: false,
+    requiredPermission: "edit",
+    transports: ["protocol", "cli", "mcp"],
+    description: "Add a parametric hardware macro (panel, screen, hole, button)."
+  },
+  {
+    command: "document.updateMacroParams",
+    category: "document",
+    mutates: true,
+    supportsDryRun: true,
+    requiredPermission: "edit",
+    transports: ["protocol", "cli", "mcp"],
+    description: "Update macro parameters with preset/clearance validation."
+  },
+  {
     command: "document.updateObjectTransform",
     category: "document",
     mutates: true,

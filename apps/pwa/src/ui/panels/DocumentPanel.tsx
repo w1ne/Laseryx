@@ -3,16 +3,22 @@ import { ObjectService } from "../../core/services/ObjectService";
 import { parseSvg } from "../../core/svgImport";
 import { PathObj, Transform } from "../../core/model";
 import { UndoToolbar } from "../components/UndoToolbar";
+import { getMacroDef, listMacroDefs } from "../../core/macros/catalog";
 
 export function DocumentPanel() {
     const { state, dispatch } = useStore();
     const { document, selectedObjectId } = state;
+    const hardwareDefs = listMacroDefs();
 
     // Helper to format numbers for display
     const f = (n: number) => n.toFixed(2);
 
     const handleAddRectangle = () => {
         ObjectService.addRectangle(state, dispatch);
+    };
+
+    const handleAddMacro = (defId: string) => {
+        ObjectService.addMacro(state, dispatch, defId);
     };
 
     const handleImportFile = () => {
@@ -92,10 +98,33 @@ export function DocumentPanel() {
         <div className="panel">
             <div className="panel__header">
                 <h2>Document</h2>
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                    <label style={{ fontSize: "11px", display: "flex", alignItems: "center", gap: 4 }}>
+                        <span style={{ color: "#555" }}>+ Hardware</span>
+                        <select
+                            className="button"
+                            style={{ fontSize: "11px", padding: "4px 6px", maxWidth: 140 }}
+                            defaultValue=""
+                            onChange={(e) => {
+                                const id = e.target.value;
+                                if (id) {
+                                    handleAddMacro(id);
+                                    e.target.value = "";
+                                }
+                            }}
+                        >
+                            <option value="" disabled>Part…</option>
+                            {hardwareDefs.map((d) => (
+                                <option key={d.id} value={d.id}>{d.name}</option>
+                            ))}
+                        </select>
+                    </label>
                     <button className="button" style={{ fontSize: "11px", padding: "4px 8px" }} onClick={handleAddRectangle}>Add Rect</button>
                     <button className="button" style={{ fontSize: "11px", padding: "4px 8px" }} onClick={handleImportFile}>Import</button>
                 </div>
+            </div>
+            <div style={{ padding: "6px 12px", borderBottom: "1px solid #eee", fontSize: "10px", color: "#888" }}>
+                Workshop approx footprints — verify datasheet before final cut.
             </div>
             <div style={{ padding: "8px 12px", borderBottom: "1px solid #eee" }}>
                 <UndoToolbar />
@@ -108,6 +137,20 @@ export function DocumentPanel() {
                         if (obj.kind === "shape") label = `Rect ${f(obj.shape.width)}x${f(obj.shape.height)}`;
                         if (obj.kind === "image") label = `Image ${f(obj.width)}x${f(obj.height)}`;
                         if (obj.kind === "path") label = "Path";
+                        if (obj.kind === "macro") {
+                            const def = getMacroDef(obj.defId);
+                            if (!def) {
+                                label = `⚠ Missing: ${obj.defId}`;
+                            } else if (obj.defId === "screen") {
+                                label = `Screen ${String(obj.params.preset ?? "custom")}`;
+                            } else if (obj.defId === "mount-hole" || obj.defId === "button") {
+                                label = `${def.name} Ø${f(Number(obj.params.diameterMm))}`;
+                            } else if (obj.defId === "panel") {
+                                label = `Panel ${f(Number(obj.params.widthMm))}x${f(Number(obj.params.heightMm))}`;
+                            } else {
+                                label = def.name;
+                            }
+                        }
 
                         const layerName = document.layers.find(l => l.id === obj.layerId)?.name || obj.layerId;
 

@@ -58,7 +58,22 @@ export type ImageObj = {
   src: string;
 };
 
-export type Obj = PathObj | ShapeObj | ImageObj;
+/** Parametric hardware part instance (screen, hole, button, panel, …). */
+export type MacroObj = {
+  kind: "macro";
+  id: string;
+  layerId: string;
+  transform: Transform;
+  defId: string;
+  /** Catalog def version frozen when placed/updated. */
+  defVersion: number;
+  params: Record<string, number | string | boolean>;
+};
+
+export type Obj = PathObj | ShapeObj | ImageObj | MacroObj;
+
+/** Alias used by some UI components. */
+export type DocumentObject = Obj;
 
 export type Document = {
   version: number;

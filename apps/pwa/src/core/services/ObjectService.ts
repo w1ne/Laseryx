@@ -1,6 +1,12 @@
 import { AppState } from "../state/types";
 import { Action } from "../state/actions";
-import { ShapeObj, Obj, ImageObj } from "../model";
+import { ShapeObj, Obj, ImageObj, MacroObj } from "../model";
+import {
+    defaultParamsForDef,
+    getMacroDef,
+    nextCascadeTransform,
+    revalidateMacroParams
+} from "../macros";
 
 export const ObjectService = {
     addRectangle: (state: AppState, dispatch: React.Dispatch<Action>) => {
@@ -19,6 +25,51 @@ export const ObjectService = {
 
         dispatch({ type: "ADD_OBJECT", payload: newObj });
         dispatch({ type: "SELECT_OBJECT", payload: newObj.id });
+    },
+
+    addMacro: (
+        state: AppState,
+        dispatch: React.Dispatch<Action>,
+        defId: string,
+        partialParams?: Record<string, unknown>
+    ): MacroObj | null => {
+        const def = getMacroDef(defId);
+        if (!def) {
+            console.error(`Unknown macro defId: ${defId}`);
+            return null;
+        }
+
+        const layerId = ObjectService.findOrCreateLayer(state, dispatch, "line", "Layer");
+        const params = revalidateMacroParams(defId, defaultParamsForDef(def), partialParams ?? {}) ??
+            defaultParamsForDef(def);
+        const transform = nextCascadeTransform(state.document, state.machineProfile?.bedMm);
+
+        const newObj: MacroObj = {
+            kind: "macro",
+            id: `macro-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            layerId,
+            transform,
+            defId: def.id,
+            defVersion: def.defVersion,
+            params
+        };
+
+        dispatch({ type: "ADD_OBJECT", payload: newObj });
+        dispatch({ type: "SELECT_OBJECT", payload: newObj.id });
+        return newObj;
+    },
+
+    updateMacroParams: (
+        dispatch: React.Dispatch<Action>,
+        object: MacroObj,
+        partial: Record<string, unknown>
+    ) => {
+        const next = revalidateMacroParams(object.defId, object.params, partial);
+        if (!next) return;
+        dispatch({
+            type: "UPDATE_OBJECT",
+            payload: { id: object.id, changes: { params: next } }
+        });
     },
 
     updateObjectLayer: (dispatch: React.Dispatch<Action>, objectId: string, layerId: string) => {
