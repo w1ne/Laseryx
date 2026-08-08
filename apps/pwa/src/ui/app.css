@@ -285,26 +285,9 @@ body {
   gap: 12px;
 }
 
-/* LightBurn-style: Create dock above object list on the left */
+/* Template library + objects on the left (CAD block browser style) */
 .app__create-dock {
   min-width: 0;
-}
-
-.app__create-dock .creation-toolbar {
-  width: 100%;
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.app__create-dock .creation-toolbar__title {
-  width: 100%;
-  padding-bottom: 2px;
-}
-
-.app__create-dock .creation-toolbar__btn {
-  flex: 1 1 auto;
-  min-width: 64px;
 }
 
 .app__canvas-zone {

@@ -18,7 +18,7 @@ import { DocumentPanel } from "./panels/DocumentPanel";
 import { PropertiesPanel } from "./panels/PropertiesPanel";
 import { LayersPanel } from "./panels/LayersPanel";
 import { PreviewPanel } from "./panels/PreviewPanel";
-import { DesignToolsBar } from "./components/DesignToolsBar";
+import { TemplateLibrary } from "./components/TemplateLibrary";
 import { DonateButton } from "./DonateButton";
 import { AboutDialog } from "./AboutDialog";
 import { MaterialManagerDialog } from "./dialogs/MaterialManagerDialog";
@@ -561,8 +561,8 @@ export function App() {
               data-mobile-panel={designPanel === "document" ? "active" : "inactive"}
             >
               {previewMode === "design" && (
-                <div className="app__create-dock" data-testid="creation-toolbar">
-                  <DesignToolsBar />
+                <div className="app__create-dock" data-testid="template-library">
+                  <TemplateLibrary />
                 </div>
               )}
               <div
