@@ -33,25 +33,12 @@ export function TemplateIconSvg({ name }: { name: TemplateIcon }) {
           <line x1="6" y1="24" x2="26" y2="8" />
         </svg>
       );
-    case "construction":
-      return (
-        <svg {...common}>
-          <line x1="6" y1="24" x2="26" y2="8" strokeDasharray="3 2.5" />
-        </svg>
-      );
     case "import":
       return (
         <svg {...common}>
           <path d="M16 6v14" />
           <path d="M10 14l6 6 6-6" />
           <path d="M7 26h18" />
-        </svg>
-      );
-    case "frame":
-    case "cutout":
-      return (
-        <svg {...common}>
-          <rect x="6" y="8" width="20" height="16" rx="1" />
         </svg>
       );
     default:

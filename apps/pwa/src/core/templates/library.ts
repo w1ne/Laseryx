@@ -28,18 +28,9 @@ export const TEMPLATE_LIBRARY: TemplateEntry[] = [
     name: "Line",
     category: "line",
     icon: "line",
-    tags: ["line", "path", "cut"],
-    description: "Line segment — will be cut",
-    place: { kind: "line", construction: false }
-  },
-  {
-    id: "construction",
-    name: "Construction",
-    category: "line",
-    icon: "construction",
-    tags: ["construction", "reference", "guide", "decorative", "not cut"],
-    description: "Guide line — not burned by the laser",
-    place: { kind: "line", construction: true }
+    tags: ["line", "path", "cut", "construction", "guide"],
+    description: "Line segment — mark Construction in Properties to skip cut",
+    place: { kind: "line" }
   },
   {
     id: "import",

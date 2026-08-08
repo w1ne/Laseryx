@@ -81,7 +81,7 @@ function placeTemplate(
     return;
   }
   if (place.kind === "line") {
-    ObjectService.addLine(state, dispatch, { construction: place.construction === true });
+    ObjectService.addLine(state, dispatch);
     return;
   }
   if (place.kind === "import") {
@@ -130,7 +130,7 @@ export function TemplateLibrary() {
       </div>
 
       <p className="sketch__tip">
-        Construction lines are guides only — not burned. Toggle on any shape in Properties.
+        Place a shape, then set size. Use Construction in Properties for guides (not burned).
       </p>
 
       <style>{`

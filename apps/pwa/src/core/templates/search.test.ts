@@ -3,18 +3,14 @@ import { searchTemplates } from "./search";
 import { TEMPLATE_LIBRARY } from "./library";
 
 describe("sketch library", () => {
-  it("includes construction line tool", () => {
+  it("has rect, circle, line, import — no separate construction tool", () => {
     expect(TEMPLATE_LIBRARY.map((t) => t.id).sort()).toEqual(
-      ["circle", "construction", "import", "line", "rect"].sort()
+      ["circle", "import", "line", "rect"].sort()
     );
+    expect(TEMPLATE_LIBRARY.some((t) => t.id === "construction")).toBe(false);
   });
 
-  it("search finds construction guides", () => {
-    const hits = searchTemplates("construction");
-    expect(hits.some((t) => t.id === "construction")).toBe(true);
-  });
-
-  it("empty query returns all tools", () => {
-    expect(searchTemplates("")).toHaveLength(5);
+  it("empty query returns four tools", () => {
+    expect(searchTemplates("")).toHaveLength(4);
   });
 });

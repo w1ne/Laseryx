@@ -1,10 +1,10 @@
 export type TemplateCategory = "shape" | "hole" | "line" | "import";
 
-export type TemplateIcon = "rect" | "hole" | "line" | "construction" | "import";
+export type TemplateIcon = "rect" | "hole" | "line" | "import";
 
 export type TemplatePlace =
   | { kind: "rect" }
-  | { kind: "line"; construction?: boolean }
+  | { kind: "line" }
   | { kind: "import" }
   | {
       kind: "macro";
