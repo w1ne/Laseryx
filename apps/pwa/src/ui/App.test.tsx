@@ -92,7 +92,7 @@ describe("App", () => {
 
         expect(screen.getByRole("group", { name: "Project actions" })).toBeInTheDocument();
         expect(screen.getByRole("tablist", { name: "Design panels" })).toBeInTheDocument();
-        expect(screen.getByRole("tab", { name: "Objects" })).toHaveAttribute("aria-selected", "true");
+        expect(screen.getByRole("tab", { name: "Parts" })).toHaveAttribute("aria-selected", "true");
         expect(screen.getByRole("tab", { name: "Properties" })).toHaveAttribute("aria-selected", "false");
         expect(screen.getByRole("tab", { name: "Operations" })).toHaveAttribute("aria-selected", "false");
     });
@@ -246,7 +246,7 @@ describe("App", () => {
 
         fireEvent.click(screen.getByRole("tab", { name: "Operations" }));
 
-        expect(screen.getByRole("tab", { name: "Objects" })).toHaveAttribute("aria-selected", "false");
+        expect(screen.getByRole("tab", { name: "Parts" })).toHaveAttribute("aria-selected", "false");
         expect(screen.getByRole("tab", { name: "Operations" })).toHaveAttribute("aria-selected", "true");
         expect(screen.getByTestId("design-panel-layers")).toHaveAttribute("data-mobile-panel", "active");
     });

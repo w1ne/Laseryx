@@ -15,7 +15,13 @@ export function PropertiesPanel() {
             <div className="panel">
                 <div className="panel__header"><h2>Properties</h2></div>
                 <div className="panel__body">
-                    <div className="panel__note" style={{ color: "#666", padding: "12px" }}>Select an object to edit its properties.</div>
+                    <div style={{ padding: 12, fontSize: 13, color: "#475569", lineHeight: 1.5 }}>
+                        <p style={{ margin: "0 0 8px", fontWeight: 600, color: "#0f172a" }}>Nothing selected</p>
+                        <p style={{ margin: 0 }}>
+                            Click a part on the canvas, or in the <strong>Build panel</strong> list on the left.
+                            Then set position (X/Y) and sizes here.
+                        </p>
+                    </div>
                 </div>
             </div>
         );
@@ -131,17 +137,17 @@ function MacroProperties({
 
     return (
         <>
-            <div className="form__group" style={{ color: "#2563eb", fontWeight: 600, fontSize: 13 }}>
-                {def.name} · macro
+            <div className="form__group" style={{ color: "#1d4ed8", fontWeight: 700, fontSize: 14 }}>
+                {def.name}
+            </div>
+            <div className="form__group" style={{ fontSize: 12, color: "#475569", background: "#f1f5f9", padding: 8, borderRadius: 6, lineHeight: 1.4 }}>
+                Move with <strong>X / Y</strong> (mm). Change sizes below — the canvas updates immediately.
             </div>
             {def.approxNote && (
-                <div className="form__group" style={{ fontSize: 10, color: "#9a3412", background: "#fff7ed", padding: 8, borderRadius: 4 }}>
+                <div className="form__group" style={{ fontSize: 11, color: "#9a3412", background: "#fff7ed", padding: 8, borderRadius: 4 }}>
                     {def.approxNote}
                 </div>
             )}
-            <div className="form__group" style={{ fontSize: 10, color: "#888" }}>
-                defVersion {object.defVersion}
-            </div>
             {def.params.map((spec) => {
                 const value = draft[spec.key] ?? spec.default;
                 if (spec.type === "enum" && spec.options) {

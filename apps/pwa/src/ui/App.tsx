@@ -526,7 +526,7 @@ export function App() {
             aria-controls="design-panel-document"
             onClick={() => setDesignPanel("document")}
           >
-            Objects
+            Parts
           </button>
           <button
             id="design-panel-tab-properties"
