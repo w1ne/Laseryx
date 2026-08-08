@@ -18,6 +18,7 @@ import { DocumentPanel } from "./panels/DocumentPanel";
 import { PropertiesPanel } from "./panels/PropertiesPanel";
 import { LayersPanel } from "./panels/LayersPanel";
 import { PreviewPanel } from "./panels/PreviewPanel";
+import { DesignToolsBar } from "./components/DesignToolsBar";
 import { DonateButton } from "./DonateButton";
 import { AboutDialog } from "./AboutDialog";
 import { MaterialManagerDialog } from "./dialogs/MaterialManagerDialog";
@@ -572,20 +573,23 @@ export function App() {
             </section>
             <section className="app__canvas-zone" aria-label="Laser bed workspace" data-mobile-panel="canvas">
               <div className="app__preview-area">
-                <div className="preview-mode-switch" role="group" aria-label="Preview mode">
-                  <button
-                    className={`segmented-button ${previewMode === "design" ? "is-active" : ""}`}
-                    onClick={() => setPreviewMode("design")}
-                  >
-                    Design
-                  </button>
-                  <button
-                    className={`segmented-button ${previewMode === "gcode" ? "is-active" : ""}`}
-                    disabled={!generatedGcode}
-                    onClick={() => generatedGcode && setPreviewMode("gcode")}
-                  >
-                    Preview
-                  </button>
+                <div className="app__canvas-toolbar">
+                  {previewMode === "design" && <DesignToolsBar />}
+                  <div className="preview-mode-switch" role="group" aria-label="Preview mode">
+                    <button
+                      className={`segmented-button ${previewMode === "design" ? "is-active" : ""}`}
+                      onClick={() => setPreviewMode("design")}
+                    >
+                      Design
+                    </button>
+                    <button
+                      className={`segmented-button ${previewMode === "gcode" ? "is-active" : ""}`}
+                      disabled={!generatedGcode}
+                      onClick={() => generatedGcode && setPreviewMode("gcode")}
+                    >
+                      Preview
+                    </button>
+                  </div>
                 </div>
                 <PreviewPanel
                   viewMode={previewMode}
