@@ -1002,11 +1002,6 @@ select {
     min-height: 56px;
   }
 
-  .app__worker {
-    max-width: 100%;
-    width: fit-content;
-  }
-
   .app__panel-tabs {
     position: sticky;
     top: 48px;
