@@ -15,7 +15,7 @@ export function PropertiesPanel() {
             <div className="panel props">
                 <div className="panel__header"><h2>Properties</h2></div>
                 <div className="panel__body">
-                    <p className="props__empty">Select a part to edit size and position.</p>
+                    <p className="props__empty">Select an object to edit.</p>
                 </div>
                 <PropsStyles />
             </div>
@@ -149,7 +149,7 @@ function MacroFields({
     }, [object.id, object.params]);
 
     if (!def) {
-        return <p className="props__empty">Unknown part type: {object.defId}</p>;
+        return <p className="props__empty">Unknown element: {object.defId}</p>;
     }
 
     const commitNumber = (spec: MacroParamSpec, raw: string) => {

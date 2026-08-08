@@ -4,10 +4,13 @@ import { parseSvg } from "../../core/svgImport";
 import { PathObj, Transform } from "../../core/model";
 import { listMacroDefs } from "../../core/macros/catalog";
 
-/** Tools for the bed — not the left list. */
+/**
+ * General design toolbar: shapes + import + parametric elements.
+ * Not a product-specific "panel builder".
+ */
 export function DesignToolsBar() {
     const { state, dispatch } = useStore();
-    const hardwareDefs = listMacroDefs();
+    const elements = listMacroDefs();
 
     const handleImportFile = () => {
         const input = window.document.createElement("input");
@@ -70,9 +73,15 @@ export function DesignToolsBar() {
     };
 
     return (
-        <div className="design-tools" role="toolbar" aria-label="Add to bed">
-            <span className="design-tools__label">Add</span>
-            {hardwareDefs.map((d) => (
+        <div className="design-tools" role="toolbar" aria-label="Design tools">
+            <button
+                type="button"
+                className="design-tools__btn"
+                onClick={() => ObjectService.addRectangle(state, dispatch)}
+            >
+                Rect
+            </button>
+            {elements.map((d) => (
                 <button
                     key={d.id}
                     type="button"
@@ -83,13 +92,6 @@ export function DesignToolsBar() {
                 </button>
             ))}
             <span className="design-tools__sep" aria-hidden />
-            <button
-                type="button"
-                className="design-tools__btn design-tools__btn--quiet"
-                onClick={() => ObjectService.addRectangle(state, dispatch)}
-            >
-                Rect
-            </button>
             <button
                 type="button"
                 className="design-tools__btn design-tools__btn--quiet"
@@ -110,11 +112,6 @@ export function DesignToolsBar() {
                     border: 1px solid #e2e8f0;
                     font-size: 13px;
                     line-height: 1.3;
-                }
-                .design-tools__label {
-                    color: #64748b;
-                    font-weight: 600;
-                    margin-right: 2px;
                 }
                 .design-tools__btn {
                     margin: 0;

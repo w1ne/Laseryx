@@ -4,7 +4,7 @@ import { bool, num, str, validateParams } from "./validateParams";
 
 export const CATALOG_VERSION = 1;
 
-/** Screen opening presets (workshop approx — verify datasheet). */
+/** Optional size presets for display openings (edit freely after place). */
 export const SCREEN_PRESETS: Record<string, Record<string, MacroParamValue>> = {
   "2.8-ili9341": {
     widthMm: 50,
@@ -31,13 +31,12 @@ function defaultClearance() {
 const mountHole: MacroDef = {
   id: "mount-hole",
   defVersion: 1,
-  name: "Mount hole",
+  name: "Hole",
   category: "mount",
-  approxNote: "Workshop approx — verify against fastener datasheet.",
   params: [
     {
       key: "diameterMm",
-      label: "Nominal Ø",
+      label: "Diameter",
       type: "number",
       unit: "mm",
       min: 0.5,
@@ -57,13 +56,12 @@ const mountHole: MacroDef = {
 const button: MacroDef = {
   id: "button",
   defVersion: 1,
-  name: "Button",
+  name: "Circle",
   category: "control",
-  approxNote: "Default 16 mm panel hole — verify against switch datasheet.",
   params: [
     {
       key: "diameterMm",
-      label: "Nominal Ø",
+      label: "Diameter",
       type: "number",
       unit: "mm",
       min: 1,
@@ -83,18 +81,17 @@ const button: MacroDef = {
 const screen: MacroDef = {
   id: "screen",
   defVersion: 1,
-  name: "Screen / display",
+  name: "Cutout + holes",
   category: "display",
-  approxNote: "Opening + mount holes only (workshop approx). Verify module datasheet.",
   params: [
     {
       key: "preset",
-      label: "Module preset",
+      label: "Preset",
       type: "enum",
-      default: "2.8-ili9341",
+      default: "custom",
       options: [
-        { value: "2.8-ili9341", label: '2.8" ILI9341 (approx)' },
-        { value: "custom", label: "Custom" }
+        { value: "custom", label: "Custom" },
+        { value: "2.8-ili9341", label: '2.8" display' }
       ]
     },
     {
@@ -164,9 +161,8 @@ const screen: MacroDef = {
 const panel: MacroDef = {
   id: "panel",
   defVersion: 1,
-  name: "Panel outline",
+  name: "Frame",
   category: "panel",
-  approxNote: "Outer panel cut — workshop approx.",
   params: [
     {
       key: "widthMm",
@@ -273,7 +269,7 @@ export function listMacroDefs(): MacroDefSummary[] {
 
 export function defaultParamsForDef(def: MacroDef): Record<string, MacroParamValue> {
   const base = validateParams(def, {});
-  const preset = str(base, "preset", "");
+  const preset = str(base, "preset", "custom");
   if (preset && preset !== "custom" && SCREEN_PRESETS[preset]) {
     return validateParams(def, { ...base, ...SCREEN_PRESETS[preset], preset });
   }

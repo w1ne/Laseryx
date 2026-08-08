@@ -120,7 +120,7 @@ export const AUTOMATION_CAPABILITIES = [
     supportsDryRun: false,
     requiredPermission: "read",
     transports: ["protocol", "cli", "mcp"],
-    description: "List hardware macro definitions (id, params schema, version)."
+    description: "List parametric element definitions (id, params schema, version)."
   },
   {
     command: "document.addMacro",
@@ -129,7 +129,7 @@ export const AUTOMATION_CAPABILITIES = [
     supportsDryRun: false,
     requiredPermission: "edit",
     transports: ["protocol", "cli", "mcp"],
-    description: "Add a parametric hardware macro (panel, screen, hole, button)."
+    description: "Add a parametric element (frame, cutout, hole, circle)."
   },
   {
     command: "document.updateMacroParams",
@@ -138,7 +138,7 @@ export const AUTOMATION_CAPABILITIES = [
     supportsDryRun: true,
     requiredPermission: "edit",
     transports: ["protocol", "cli", "mcp"],
-    description: "Update macro parameters with preset/clearance validation."
+    description: "Update parametric element parameters."
   },
   {
     command: "document.updateObjectTransform",

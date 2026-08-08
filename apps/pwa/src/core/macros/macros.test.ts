@@ -39,21 +39,20 @@ describe("macros validateParams + preset rules", () => {
   it("preset overwrites dims; editing dim sets custom", () => {
     const def = getMacroDef("screen")!;
     const base = defaultParamsForDef(def);
-    expect(base.preset).toBe("2.8-ili9341");
-    expect(base.widthMm).toBe(SCREEN_PRESETS["2.8-ili9341"].widthMm);
-
-    const afterDim = applyMacroParamUpdate(def, base, { widthMm: 60 }, SCREEN_PRESETS);
-    expect(afterDim.preset).toBe("custom");
-    expect(afterDim.widthMm).toBe(60);
+    expect(base.preset).toBe("custom");
 
     const afterPreset = applyMacroParamUpdate(
       def,
-      afterDim,
+      base,
       { preset: "2.8-ili9341" },
       SCREEN_PRESETS
     );
     expect(afterPreset.preset).toBe("2.8-ili9341");
     expect(afterPreset.widthMm).toBe(SCREEN_PRESETS["2.8-ili9341"].widthMm);
+
+    const afterDim = applyMacroParamUpdate(def, afterPreset, { widthMm: 60 }, SCREEN_PRESETS);
+    expect(afterDim.preset).toBe("custom");
+    expect(afterDim.widthMm).toBe(60);
   });
 });
 
