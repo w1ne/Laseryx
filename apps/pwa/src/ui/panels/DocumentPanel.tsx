@@ -21,6 +21,10 @@ export function DocumentPanel() {
         else if (obj.kind === "macro") {
             if (obj.defId === "mount-hole" || obj.defId === "button") {
                 base = `Circle Ø${f(Number(obj.params.diameterMm))}`;
+            } else if (obj.defId === "slot") {
+                base = `Slot ${f(Number(obj.params.lengthMm))}×${f(Number(obj.params.widthMm))}`;
+            } else if (obj.defId === "round-rect") {
+                base = `Round rect ${f(Number(obj.params.widthMm))}×${f(Number(obj.params.heightMm))}`;
             } else {
                 base = getMacroDef(obj.defId)?.name ?? obj.defId;
             }

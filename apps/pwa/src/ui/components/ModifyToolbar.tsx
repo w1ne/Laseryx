@@ -94,14 +94,14 @@ export function ModifyToolbar() {
 
       <span className="modify__sep" />
 
-      <button type="button" className="modify__btn" title="Mirror horizontal" onClick={() => applyPatch(mirrorHorizontal(selected))}>
-        Flip H
+      <button type="button" className="modify__btn" title="Mirror left ↔ right (about center)" onClick={() => applyPatch(mirrorHorizontal(selected))}>
+        Mirror H
       </button>
-      <button type="button" className="modify__btn" title="Mirror vertical" onClick={() => applyPatch(mirrorVertical(selected))}>
-        Flip V
+      <button type="button" className="modify__btn" title="Mirror top ↔ bottom (about center)" onClick={() => applyPatch(mirrorVertical(selected))}>
+        Mirror V
       </button>
       <button type="button" className="modify__btn" title="Rotate 90° clockwise" onClick={() => applyPatch(rotate90(selected, 1))}>
-        Rot 90°
+        Rotate 90°
       </button>
       <button type="button" className="modify__btn" title="Duplicate" onClick={dup}>
         Duplicate

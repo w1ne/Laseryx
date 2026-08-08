@@ -33,6 +33,18 @@ export function TemplateIconSvg({ name }: { name: TemplateIcon }) {
           <line x1="6" y1="24" x2="26" y2="8" />
         </svg>
       );
+    case "slot":
+      return (
+        <svg {...common}>
+          <rect x="5" y="11" width="22" height="10" rx="5" />
+        </svg>
+      );
+    case "round-rect":
+      return (
+        <svg {...common}>
+          <rect x="6" y="8" width="20" height="16" rx="5" />
+        </svg>
+      );
     case "import":
       return (
         <svg {...common}>

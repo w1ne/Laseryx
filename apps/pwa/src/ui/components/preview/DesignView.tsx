@@ -156,6 +156,34 @@ export function DesignView({ objects, selectedId, onSelect, onPatchObject }: Des
           );
           return;
         }
+        if (startObj.defId === "slot") {
+          onPatchRef.current(
+            drag.id,
+            {
+              transform: { ...startObj.transform, e: minX, f: minY },
+              params: { ...startObj.params, lengthMm: newW, widthMm: newH }
+            },
+            live
+          );
+          return;
+        }
+        if (startObj.defId === "round-rect") {
+          const rad = Number(startObj.params.radiusMm ?? 0);
+          onPatchRef.current(
+            drag.id,
+            {
+              transform: { ...startObj.transform, e: minX, f: minY },
+              params: {
+                ...startObj.params,
+                widthMm: newW,
+                heightMm: newH,
+                radiusMm: r(Math.min(rad, newW / 2, newH / 2))
+              }
+            },
+            live
+          );
+          return;
+        }
 
         onPatchRef.current(
           drag.id,

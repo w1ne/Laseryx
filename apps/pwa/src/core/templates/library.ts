@@ -1,8 +1,8 @@
 import type { TemplateEntry } from "./types";
 
 /**
- * Fusion-style sketch tools.
- * Construction geometry is decorative — never burned.
+ * Sketch primitives + common cut patterns.
+ * One of each — set sizes after place. Mirror/rotate for orientation.
  */
 export const TEMPLATE_LIBRARY: TemplateEntry[] = [
   {
@@ -11,16 +11,16 @@ export const TEMPLATE_LIBRARY: TemplateEntry[] = [
     category: "shape",
     icon: "rect",
     tags: ["rect", "box", "square"],
-    description: "Rectangle — set W × H after place",
+    description: "Rectangle — set W × H",
     place: { kind: "rect" }
   },
   {
     id: "circle",
     name: "Circle",
-    category: "hole",
+    category: "shape",
     icon: "hole",
     tags: ["circle", "hole", "round"],
-    description: "Circle — set diameter after place",
+    description: "Circle — set diameter",
     place: { kind: "macro", defId: "mount-hole" }
   },
   {
@@ -28,9 +28,27 @@ export const TEMPLATE_LIBRARY: TemplateEntry[] = [
     name: "Line",
     category: "line",
     icon: "line",
-    tags: ["line", "path", "cut", "construction", "guide"],
-    description: "Line segment — mark Construction in Properties to skip cut",
+    tags: ["line", "path"],
+    description: "Line — mark Construction in Properties for guides",
     place: { kind: "line" }
+  },
+  {
+    id: "slot",
+    name: "Slot",
+    category: "pattern",
+    icon: "slot",
+    tags: ["slot", "oblong", "stadium", "capsule", "elongated"],
+    description: "Slot / stadium hole — set length & width; Mirror or Rot 90 for direction",
+    place: { kind: "macro", defId: "slot" }
+  },
+  {
+    id: "round-rect",
+    name: "Round rect",
+    category: "pattern",
+    icon: "round-rect",
+    tags: ["rounded", "fillet", "round", "rect"],
+    description: "Rounded rectangle — set W, H, corner radius",
+    place: { kind: "macro", defId: "round-rect" }
   },
   {
     id: "import",
@@ -48,5 +66,5 @@ export function getTemplate(id: string): TemplateEntry | undefined {
 }
 
 export function listTemplateCategories(): TemplateEntry["category"][] {
-  return ["shape", "hole", "line", "import"];
+  return ["shape", "pattern", "line", "import"];
 }

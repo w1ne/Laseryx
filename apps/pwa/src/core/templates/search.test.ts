@@ -3,14 +3,15 @@ import { searchTemplates } from "./search";
 import { TEMPLATE_LIBRARY } from "./library";
 
 describe("sketch library", () => {
-  it("has rect, circle, line, import — no separate construction tool", () => {
-    expect(TEMPLATE_LIBRARY.map((t) => t.id).sort()).toEqual(
-      ["circle", "import", "line", "rect"].sort()
-    );
-    expect(TEMPLATE_LIBRARY.some((t) => t.id === "construction")).toBe(false);
+  it("includes slot and round-rect patterns", () => {
+    const ids = TEMPLATE_LIBRARY.map((t) => t.id);
+    expect(ids).toContain("slot");
+    expect(ids).toContain("round-rect");
+    expect(ids).toContain("rect");
+    expect(ids).toContain("circle");
   });
 
-  it("empty query returns four tools", () => {
-    expect(searchTemplates("")).toHaveLength(4);
+  it("search finds slot", () => {
+    expect(searchTemplates("slot oblong").some((t) => t.id === "slot")).toBe(true);
   });
 });

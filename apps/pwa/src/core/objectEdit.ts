@@ -122,6 +122,24 @@ export function setObjectSize(obj: Obj, w: number, h: number): Partial<Obj> | nu
         params: { ...obj.params, diameterMm: d }
       });
     }
+    if (obj.defId === "slot") {
+      return roundPatch({
+        transform: { ...obj.transform, e: b.minX, f: b.minY },
+        params: { ...obj.params, lengthMm: w, widthMm: h }
+      });
+    }
+    if (obj.defId === "round-rect") {
+      const rad = Number(obj.params.radiusMm ?? 0);
+      return roundPatch({
+        transform: { ...obj.transform, e: b.minX, f: b.minY },
+        params: {
+          ...obj.params,
+          widthMm: w,
+          heightMm: h,
+          radiusMm: Math.min(rad, w / 2, h / 2)
+        }
+      });
+    }
   }
   if (obj.kind === "path") {
     const curW = b.maxX - b.minX || 1;
@@ -191,9 +209,10 @@ export function mirrorHorizontal(obj: Obj): Partial<Obj> | null {
     if (obj.defId === "mount-hole" || obj.defId === "button") {
       return roundPatch({ transform: { ...obj.transform, e: 2 * cx - obj.transform.e } });
     }
-    const w = Number(obj.params.widthMm ?? b.maxX - b.minX);
+    // top-left macros (slot, round-rect, etc.)
+    const width = b.maxX - b.minX;
     return roundPatch({
-      transform: { ...obj.transform, e: 2 * cx - obj.transform.e - w }
+      transform: { ...obj.transform, e: 2 * cx - obj.transform.e - width }
     });
   }
   if (obj.kind === "path") {
@@ -233,9 +252,9 @@ export function mirrorVertical(obj: Obj): Partial<Obj> | null {
     if (obj.defId === "mount-hole" || obj.defId === "button") {
       return roundPatch({ transform: { ...obj.transform, f: 2 * cy - obj.transform.f } });
     }
-    const h = Number(obj.params.heightMm ?? b.maxY - b.minY);
+    const height = b.maxY - b.minY;
     return roundPatch({
-      transform: { ...obj.transform, f: 2 * cy - obj.transform.f - h }
+      transform: { ...obj.transform, f: 2 * cy - obj.transform.f - height }
     });
   }
   if (obj.kind === "path") {
@@ -286,6 +305,24 @@ export function rotate90(obj: Obj, dir: 1 | -1 = 1): Partial<Obj> | null {
   if (obj.kind === "macro") {
     if (obj.defId === "mount-hole" || obj.defId === "button") {
       return roundPatch({ transform: { ...obj.transform, e: cx, f: cy } });
+    }
+    if (obj.defId === "slot") {
+      return roundPatch({
+        transform: { ...obj.transform, e: newMinX, f: newMinY },
+        params: { ...obj.params, lengthMm: newW, widthMm: newH }
+      });
+    }
+    if (obj.defId === "round-rect") {
+      const rad = Number(obj.params.radiusMm ?? 0);
+      return roundPatch({
+        transform: { ...obj.transform, e: newMinX, f: newMinY },
+        params: {
+          ...obj.params,
+          widthMm: newW,
+          heightMm: newH,
+          radiusMm: Math.min(rad, newW / 2, newH / 2)
+        }
+      });
     }
   }
   if (obj.kind === "path") {

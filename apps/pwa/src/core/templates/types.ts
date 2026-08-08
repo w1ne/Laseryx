@@ -1,6 +1,6 @@
-export type TemplateCategory = "shape" | "hole" | "line" | "import";
+export type TemplateCategory = "shape" | "pattern" | "line" | "import";
 
-export type TemplateIcon = "rect" | "hole" | "line" | "import";
+export type TemplateIcon = "rect" | "hole" | "line" | "slot" | "round-rect" | "import";
 
 export type TemplatePlace =
   | { kind: "rect" }

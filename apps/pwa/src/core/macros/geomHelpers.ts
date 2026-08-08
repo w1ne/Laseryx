@@ -67,3 +67,32 @@ export function roundedRectToPolyline(
 export function cutDiameter(nominalMm: number, clearanceMm: number): number {
   return Math.max(0, nominalMm + clearanceMm);
 }
+
+/**
+ * Horizontal slot (stadium / capsule): overall length × width.
+ * Ends are semicircles; length must be ≥ width (else becomes a circle).
+ * Origin at top-left of bounding box.
+ */
+export function slotToPolyline(lengthMm: number, widthMm: number, segmentsPerEnd = 12): PolylinePath {
+  const w = Math.max(0.5, Math.abs(widthMm));
+  const L = Math.max(w, Math.abs(lengthMm));
+  const r = w / 2;
+  const straight = L - w;
+  const points: Point[] = [];
+
+  // Right semicircle (center at x = r + straight, y = r)
+  const cxR = r + straight;
+  const cy = r;
+  for (let i = 0; i <= segmentsPerEnd; i += 1) {
+    const a = -Math.PI / 2 + (Math.PI * i) / segmentsPerEnd;
+    points.push({ x: cxR + r * Math.cos(a), y: cy + r * Math.sin(a) });
+  }
+  // Left semicircle (center at x = r, y = r)
+  const cxL = r;
+  for (let i = 0; i <= segmentsPerEnd; i += 1) {
+    const a = Math.PI / 2 + (Math.PI * i) / segmentsPerEnd;
+    points.push({ x: cxL + r * Math.cos(a), y: cy + r * Math.sin(a) });
+  }
+
+  return { points, closed: true };
+}
