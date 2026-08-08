@@ -38,11 +38,26 @@ export function appReducer(state: AppState, action: Action): AppState {
         };
     }
 
+    if (action.type === "COMMIT_HISTORY") {
+        const nextUndoable: UndoableState = {
+            document: state.document,
+            camSettings: state.camSettings,
+            selectedObjectId: state.selectedObjectId
+        };
+        return {
+            ...state,
+            history: pushState(state.history, nextUndoable)
+        };
+    }
+
     // 2. Perform the internal reduction
     const newState = internalReducer(state, action);
 
-    // 3. If action was undoable, update history
-    if (UNDOABLE_ACTIONS.has(action.type)) {
+    // 3. If action was undoable, update history (canvas drag uses skipHistory + COMMIT_HISTORY)
+    if (
+        UNDOABLE_ACTIONS.has(action.type) &&
+        !(action.type === "UPDATE_OBJECT" && action.skipHistory)
+    ) {
         const nextUndoable: UndoableState = {
             document: newState.document,
             camSettings: newState.camSettings,

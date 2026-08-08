@@ -5,10 +5,11 @@ import { parseGcode } from "../../core/gcodeParser";
 import { usePanZoom } from "../hooks/usePanZoom";
 
 import { BedBackground } from "../components/preview/BedBackground";
-import { DesignView } from "../components/preview/DesignView";
+import { DesignView, type ObjectTransformPatch } from "../components/preview/DesignView";
 // import { GcodeView } from "../components/preview/GcodeView"; // Replaced by Canvas
 import { CanvasGcodeView } from "../components/preview/CanvasGcodeView";
 import { MachineHead } from "../components/preview/MachineHead";
+import { ObjectService } from "../../core/services/ObjectService";
 
 type PreviewPanelProps = {
     className?: string;
@@ -107,6 +108,7 @@ export function PreviewPanel({
                     preserveAspectRatio="xMidYMid meet"
                     onWheel={handlers.onWheel}
                     onPointerDown={(e) => {
+                        // Middle mouse always pans (CAD-style)
                         if (e.button === 1) handlers.onPointerDown(e);
                     }}
                     onPointerMove={handlers.onPointerMove}
@@ -116,7 +118,13 @@ export function PreviewPanel({
                     <BedBackground
                         width={machineProfile.bedMm.w}
                         height={machineProfile.bedMm.h}
-                        onPanStart={handlers.onPointerDown}
+                        onPanStart={(e) => {
+                            // Empty bed: left-drag pans; also clear selection
+                            if (e.button === 0) {
+                                dispatch({ type: "SELECT_OBJECT", payload: null });
+                                handlers.onPointerDown(e);
+                            }
+                        }}
                         isDragging={false}
                     >
                         {viewMode === "design" && (
@@ -124,6 +132,18 @@ export function PreviewPanel({
                                 objects={doc.objects}
                                 selectedId={selectedObjectId || undefined}
                                 onSelect={(id) => dispatch({ type: "SELECT_OBJECT", payload: id })}
+                                onPatchObject={(id, patch: ObjectTransformPatch, opts) => {
+                                    if (opts?.commit) {
+                                        ObjectService.commitHistory(dispatch);
+                                        return;
+                                    }
+                                    ObjectService.updateObject(
+                                        dispatch,
+                                        id,
+                                        patch as Parameters<typeof ObjectService.updateObject>[2],
+                                        { skipHistory: opts?.skipHistory }
+                                    );
+                                }}
                             />
                         )}
 

@@ -7,7 +7,9 @@ export type Action =
     | { type: "ADD_LAYER"; payload: Layer }
     | { type: "DELETE_LAYER"; payload: string } // layerId
     | { type: "ADD_OBJECT"; payload: Obj }
-    | { type: "UPDATE_OBJECT"; payload: { id: string; changes: Partial<Obj> } }
+    | { type: "UPDATE_OBJECT"; payload: { id: string; changes: Partial<Obj> }; skipHistory?: boolean }
+    /** Push current document snapshot onto undo stack (e.g. end of canvas drag). */
+    | { type: "COMMIT_HISTORY" }
     | { type: "DELETE_OBJECT"; payload: string } // objectId
     | { type: "SELECT_OBJECT"; payload: string | null }
 

@@ -79,11 +79,22 @@ export const ObjectService = {
         });
     },
 
-    updateObject: (dispatch: React.Dispatch<Action>, objectId: string, changes: Partial<Obj>) => {
+    updateObject: (
+        dispatch: React.Dispatch<Action>,
+        objectId: string,
+        changes: Partial<Obj>,
+        options?: { skipHistory?: boolean }
+    ) => {
         dispatch({
             type: "UPDATE_OBJECT",
-            payload: { id: objectId, changes }
+            payload: { id: objectId, changes },
+            skipHistory: options?.skipHistory
         });
+    },
+
+    /** Call after a canvas drag so Undo reverts the whole move/resize once. */
+    commitHistory: (dispatch: React.Dispatch<Action>) => {
+        dispatch({ type: "COMMIT_HISTORY" });
     },
 
     deleteObject: (dispatch: React.Dispatch<Action>, objectId: string) => {
