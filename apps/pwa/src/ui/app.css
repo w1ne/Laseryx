@@ -67,22 +67,6 @@ body {
   gap: 8px;
 }
 
-.app__worker {
-  justify-self: end;
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: rgba(148, 163, 184, 0.2);
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  white-space: nowrap;
-}
-
-.app__worker.is-ready {
-  background: rgba(34, 197, 94, 0.18);
-  color: #bbf7d0;
-}
-
 .app__commands {
   display: flex;
   flex-wrap: wrap;

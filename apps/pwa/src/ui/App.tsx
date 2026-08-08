@@ -541,9 +541,6 @@ export function App() {
           )}
           <DonateButton />
         </div>
-        <div className={`app__worker ${workerStatus.ready ? "is-ready" : ""}`}>
-          {workerStatus.ready ? "Worker Ready" : "Loading..."}
-        </div>
       </header>
 
       {/* Load Dialog Overlay */}
