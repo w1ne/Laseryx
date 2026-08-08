@@ -1,45 +1,50 @@
 import type { TemplateEntry } from "./types";
 
 /**
- * Small universal library. One Hole — set diameter after place.
+ * One of each figure. Place → set size in Properties.
  */
 export const TEMPLATE_LIBRARY: TemplateEntry[] = [
   {
-    id: "shape-rect",
+    id: "rect",
     name: "Rectangle",
     category: "shape",
-    tags: ["rect", "box", "square"],
-    description: "Rectangle",
+    icon: "rect",
+    tags: ["rect", "box", "square", "shape"],
+    description: "Set width and height after place",
     place: { kind: "rect" }
   },
   {
     id: "hole",
     name: "Hole",
     category: "hole",
-    tags: ["hole", "circle", "round", "drill", "screw", "diameter"],
-    description: "Round hole — set diameter in Properties",
+    icon: "hole",
+    tags: ["hole", "circle", "round", "diameter"],
+    description: "Set diameter after place",
     place: { kind: "macro", defId: "mount-hole" }
   },
   {
     id: "frame",
     name: "Frame",
     category: "frame",
+    icon: "frame",
     tags: ["frame", "plate", "outline"],
-    description: "Outer frame / plate",
+    description: "Set width and height after place",
     place: { kind: "macro", defId: "panel" }
   },
   {
     id: "cutout",
     name: "Cutout",
     category: "cutout",
-    tags: ["cutout", "opening", "window", "display"],
-    description: "Rectangle opening with corner holes",
-    place: { kind: "macro", defId: "screen", params: { preset: "custom" } }
+    icon: "cutout",
+    tags: ["cutout", "opening", "window"],
+    description: "Set width and height after place",
+    place: { kind: "macro", defId: "screen" }
   },
   {
-    id: "import-file",
+    id: "import",
     name: "Import",
     category: "import",
+    icon: "import",
     tags: ["svg", "png", "image", "file"],
     description: "Import SVG or image",
     place: { kind: "import" }

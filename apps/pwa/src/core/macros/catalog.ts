@@ -1,231 +1,79 @@
 import type { MacroDef, MacroDefSummary, MacroParamValue } from "./types";
-import { circleToPolyline, cutDiameter, rectPolyline, roundedRectToPolyline } from "./geomHelpers";
+import { circleToPolyline, rectPolyline, roundedRectToPolyline } from "./geomHelpers";
 import { bool, num, str, validateParams } from "./validateParams";
 
 export const CATALOG_VERSION = 1;
 
-/** Optional size presets for display openings (edit freely after place). */
-export const SCREEN_PRESETS: Record<string, Record<string, MacroParamValue>> = {
-  "2.8-ili9341": {
-    widthMm: 50,
-    heightMm: 69.2,
-    holeDiameterMm: 2.5,
-    holeInsetMm: 2.5
-  }
-};
+/** @deprecated kept for tests that import the name; presets no longer used for cutout. */
+export const SCREEN_PRESETS: Record<string, Record<string, MacroParamValue>> = {};
 
-function defaultClearance() {
-  return {
-    key: "clearanceMm",
-    label: "Clearance",
-    type: "number" as const,
-    unit: "mm" as const,
-    min: 0,
-    max: 5,
-    step: 0.05,
-    default: 0.2,
-    breaksPreset: true
-  };
-}
+const numParam = (
+  key: string,
+  label: string,
+  def: number,
+  min: number,
+  max: number
+) => ({
+  key,
+  label,
+  type: "number" as const,
+  unit: "mm" as const,
+  min,
+  max,
+  step: 0.1,
+  default: def,
+  breaksPreset: true
+});
 
-/** Single hole type — place once, set diameter in Properties. */
+/** One Hole — set diameter after place. */
 const mountHole: MacroDef = {
   id: "mount-hole",
-  defVersion: 1,
+  defVersion: 2,
   name: "Hole",
   category: "mount",
-  params: [
-    {
-      key: "diameterMm",
-      label: "Diameter",
-      type: "number",
-      unit: "mm",
-      min: 0.5,
-      max: 200,
-      step: 0.1,
-      default: 3,
-      breaksPreset: true
-    }
-  ],
+  params: [numParam("diameterMm", "Diameter", 3, 0.5, 200)],
   expand: (params) => {
     const d = num(params, "diameterMm", 3);
     return [circleToPolyline(0, 0, Math.max(0.25, d / 2))];
   }
 };
 
-const screen: MacroDef = {
-  id: "screen",
-  defVersion: 1,
-  name: "Cutout + holes",
-  category: "display",
-  params: [
-    {
-      key: "preset",
-      label: "Preset",
-      type: "enum",
-      default: "custom",
-      options: [
-        { value: "custom", label: "Custom" },
-        { value: "2.8-ili9341", label: '2.8" display' }
-      ]
-    },
-    {
-      key: "widthMm",
-      label: "Opening W",
-      type: "number",
-      unit: "mm",
-      min: 5,
-      max: 400,
-      step: 0.1,
-      default: 50,
-      breaksPreset: true
-    },
-    {
-      key: "heightMm",
-      label: "Opening H",
-      type: "number",
-      unit: "mm",
-      min: 5,
-      max: 400,
-      step: 0.1,
-      default: 69.2,
-      breaksPreset: true
-    },
-    {
-      key: "holeDiameterMm",
-      label: "Hole nominal Ø",
-      type: "number",
-      unit: "mm",
-      min: 0.5,
-      max: 10,
-      step: 0.1,
-      default: 2.5,
-      breaksPreset: true
-    },
-    {
-      key: "holeInsetMm",
-      label: "Hole inset",
-      type: "number",
-      unit: "mm",
-      min: 0,
-      max: 50,
-      step: 0.1,
-      default: 2.5,
-      breaksPreset: true
-    },
-    defaultClearance()
-  ],
-  expand: (params) => {
-    const w = num(params, "widthMm", 50);
-    const h = num(params, "heightMm", 69.2);
-    const inset = num(params, "holeInsetMm", 2.5);
-    const holeD = cutDiameter(num(params, "holeDiameterMm", 2.5), num(params, "clearanceMm", 0.2));
-    const r = holeD / 2;
-    const paths = [rectPolyline(0, 0, w, h)];
-    // Holes first in array (prefer cut order)
-    const holes = [
-      circleToPolyline(inset, inset, r),
-      circleToPolyline(w - inset, inset, r),
-      circleToPolyline(inset, h - inset, r),
-      circleToPolyline(w - inset, h - inset, r)
-    ];
-    return [...holes, ...paths];
-  }
-};
-
+/** One Frame — set width / height. */
 const panel: MacroDef = {
   id: "panel",
-  defVersion: 1,
+  defVersion: 2,
   name: "Frame",
   category: "panel",
   params: [
-    {
-      key: "widthMm",
-      label: "Width",
-      type: "number",
-      unit: "mm",
-      min: 10,
-      max: 1000,
-      step: 0.1,
-      default: 160,
-      breaksPreset: true
-    },
-    {
-      key: "heightMm",
-      label: "Height",
-      type: "number",
-      unit: "mm",
-      min: 10,
-      max: 1000,
-      step: 0.1,
-      default: 120,
-      breaksPreset: true
-    },
-    {
-      key: "cornerRadiusMm",
-      label: "Corner radius",
-      type: "number",
-      unit: "mm",
-      min: 0,
-      max: 50,
-      step: 0.1,
-      default: 0,
-      breaksPreset: true
-    },
-    {
-      key: "includeCornerHoles",
-      label: "Corner holes",
-      type: "boolean",
-      default: true
-    },
-    {
-      key: "holeDiameterMm",
-      label: "Hole nominal Ø",
-      type: "number",
-      unit: "mm",
-      min: 0.5,
-      max: 20,
-      step: 0.1,
-      default: 3,
-      breaksPreset: true
-    },
-    {
-      key: "holeInsetMm",
-      label: "Hole inset",
-      type: "number",
-      unit: "mm",
-      min: 0,
-      max: 50,
-      step: 0.1,
-      default: 5,
-      breaksPreset: true
-    },
-    defaultClearance()
+    numParam("widthMm", "Width", 100, 1, 2000),
+    numParam("heightMm", "Height", 80, 1, 2000)
   ],
   expand: (params) => {
-    const w = num(params, "widthMm", 160);
-    const h = num(params, "heightMm", 120);
-    const cr = num(params, "cornerRadiusMm", 0);
-    const outer = cr > 0 ? roundedRectToPolyline(0, 0, w, h, cr) : rectPolyline(0, 0, w, h);
-    if (!bool(params, "includeCornerHoles", true)) {
-      return [outer];
-    }
-    const inset = num(params, "holeInsetMm", 5);
-    const holeD = cutDiameter(num(params, "holeDiameterMm", 3), num(params, "clearanceMm", 0.2));
-    const r = holeD / 2;
-    return [
-      circleToPolyline(inset, inset, r),
-      circleToPolyline(w - inset, inset, r),
-      circleToPolyline(inset, h - inset, r),
-      circleToPolyline(w - inset, h - inset, r),
-      outer
-    ];
+    const w = num(params, "widthMm", 100);
+    const h = num(params, "heightMm", 80);
+    return [rectPolyline(0, 0, w, h)];
   }
 };
 
-const DEFS: MacroDef[] = [panel, screen, mountHole];
+/** One Cutout — rectangle opening; set width / height. */
+const screen: MacroDef = {
+  id: "screen",
+  defVersion: 2,
+  name: "Cutout",
+  category: "display",
+  params: [
+    numParam("widthMm", "Width", 40, 1, 2000),
+    numParam("heightMm", "Height", 30, 1, 2000)
+  ],
+  expand: (params) => {
+    const w = num(params, "widthMm", 40);
+    const h = num(params, "heightMm", 30);
+    return [rectPolyline(0, 0, w, h)];
+  }
+};
 
-/** Legacy id still resolves to Hole (old projects / commands). */
+const DEFS: MacroDef[] = [mountHole, panel, screen];
+
 const LEGACY_ALIASES: Record<string, string> = {
   button: "mount-hole"
 };
@@ -249,14 +97,14 @@ export function listMacroDefs(): MacroDefSummary[] {
 }
 
 export function defaultParamsForDef(def: MacroDef): Record<string, MacroParamValue> {
-  const base = validateParams(def, {});
-  const preset = str(base, "preset", "custom");
-  if (preset && preset !== "custom" && SCREEN_PRESETS[preset]) {
-    return validateParams(def, { ...base, ...SCREEN_PRESETS[preset], preset });
-  }
-  return base;
+  return validateParams(def, {});
 }
 
 export function v1DefIds(): string[] {
   return DEFS.map((d) => d.id);
 }
+
+// keep imports used if roundedRect unused now
+void roundedRectToPolyline;
+void bool;
+void str;

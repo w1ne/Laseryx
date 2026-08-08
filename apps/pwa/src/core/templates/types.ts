@@ -1,9 +1,6 @@
-export type TemplateCategory =
-  | "shape"
-  | "hole"
-  | "frame"
-  | "cutout"
-  | "import";
+export type TemplateCategory = "shape" | "hole" | "frame" | "cutout" | "import";
+
+export type TemplateIcon = "rect" | "hole" | "frame" | "cutout" | "import";
 
 export type TemplatePlace =
   | { kind: "rect" }
@@ -18,7 +15,7 @@ export type TemplateEntry = {
   id: string;
   name: string;
   category: TemplateCategory;
-  /** Search keywords (name/category are searched too). */
+  icon: TemplateIcon;
   tags: string[];
   description: string;
   place: TemplatePlace;

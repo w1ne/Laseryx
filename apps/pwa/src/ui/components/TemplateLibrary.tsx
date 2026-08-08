@@ -3,21 +3,8 @@ import { useStore } from "../../core/state/store";
 import { ObjectService } from "../../core/services/ObjectService";
 import { parseSvg } from "../../core/svgImport";
 import { PathObj, Transform } from "../../core/model";
-import {
-  listTemplateCategories,
-  searchTemplates,
-  type TemplateCategory,
-  type TemplateEntry
-} from "../../core/templates";
-
-const CATEGORY_LABEL: Record<TemplateCategory | "all", string> = {
-  all: "All",
-  shape: "Shapes",
-  hole: "Holes",
-  frame: "Frames",
-  cutout: "Cutouts",
-  import: "Import"
-};
+import { searchTemplates, type TemplateEntry } from "../../core/templates";
+import { TemplateIconSvg } from "./TemplateIcons";
 
 function importFile(
   state: ReturnType<typeof useStore>["state"],
@@ -101,113 +88,75 @@ function placeTemplate(
 }
 
 /**
- * Searchable template library (LightBurn Art Library / CAD block browser style).
+ * Icon shape library: one of each figure + search.
  */
 export function TemplateLibrary() {
   const { state, dispatch } = useStore();
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<TemplateCategory | "all">("all");
 
-  const results = useMemo(
-    () => searchTemplates(query, { category }),
-    [query, category]
-  );
-
-  const categories: Array<TemplateCategory | "all"> = ["all", ...listTemplateCategories()];
+  const results = useMemo(() => searchTemplates(query), [query]);
 
   return (
     <div className="tpl" data-testid="template-library">
       <div className="tpl__header">
-        <h2 className="tpl__title">Library</h2>
+        <h2 className="tpl__title">Shapes</h2>
       </div>
 
-      <label className="tpl__search-wrap">
-        <span className="tpl__sr-only">Search templates</span>
-        <input
-          className="tpl__search"
-          type="search"
-          placeholder="Search templates…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          autoComplete="off"
-        />
-      </label>
+      <input
+        className="tpl__search"
+        type="search"
+        placeholder="Search…"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        autoComplete="off"
+        aria-label="Search shapes"
+      />
 
-      <div className="tpl__cats" role="tablist" aria-label="Template categories">
-        {categories.map((c) => (
-          <button
-            key={c}
-            type="button"
-            role="tab"
-            aria-selected={category === c}
-            className={`tpl__cat ${category === c ? "is-active" : ""}`}
-            onClick={() => setCategory(c)}
-          >
-            {CATEGORY_LABEL[c]}
-          </button>
-        ))}
-      </div>
+      {results.length === 0 ? (
+        <p className="tpl__empty">No match</p>
+      ) : (
+        <div className="tpl__grid" role="list">
+          {results.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              role="listitem"
+              className="tpl__tile"
+              title={t.description}
+              onClick={() => placeTemplate(t, state, dispatch)}
+            >
+              <span className="tpl__icon">
+                <TemplateIconSvg name={t.icon} />
+              </span>
+              <span className="tpl__name">{t.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
-      <ul className="tpl__list">
-        {results.length === 0 ? (
-          <li className="tpl__empty">No templates match “{query}”</li>
-        ) : (
-          results.map((t) => (
-            <li key={t.id}>
-              <button
-                type="button"
-                className="tpl__item"
-                title={t.description}
-                onClick={() => placeTemplate(t, state, dispatch)}
-              >
-                <span className="tpl__item-name">{t.name}</span>
-                <span className="tpl__item-meta">{CATEGORY_LABEL[t.category]}</span>
-              </button>
-            </li>
-          ))
-        )}
-      </ul>
+      <p className="tpl__tip">Place a shape, then set size in Properties.</p>
 
       <style>{`
         .tpl,
         .tpl * {
           font-size: 13px;
-          line-height: 1.35;
+          line-height: 1.3;
           box-sizing: border-box;
         }
         .tpl {
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          gap: 10px;
           padding: 12px;
           border-radius: 12px;
           background: #fff;
           border: 1px solid #e2e8f0;
-          max-height: 340px;
-        }
-        .tpl__header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
         }
         .tpl__title {
           margin: 0;
           font-size: 16px;
           font-weight: 600;
           color: #0f172a;
-        }
-        .tpl__sr-only {
-          position: absolute;
-          width: 1px;
-          height: 1px;
-          padding: 0;
-          margin: -1px;
-          overflow: hidden;
-          clip: rect(0,0,0,0);
-          border: 0;
-        }
-        .tpl__search-wrap {
-          display: block;
         }
         .tpl__search {
           width: 100%;
@@ -223,71 +172,50 @@ export function TemplateLibrary() {
           border-color: #3b82f6;
           background: #fff;
         }
-        .tpl__cats {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 4px;
+        .tpl__grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 8px;
         }
-        .tpl__cat {
+        .tpl__tile {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
           margin: 0;
-          padding: 4px 8px;
+          padding: 12px 6px;
           border: 1px solid #e2e8f0;
-          border-radius: 999px;
-          background: #fff;
-          color: #475569;
+          border-radius: 10px;
+          background: #f8fafc;
+          color: #0f172a;
           font: inherit;
-          font-size: 12px;
           cursor: pointer;
         }
-        .tpl__cat.is-active {
+        .tpl__tile:hover {
           border-color: #3b82f6;
           background: #eff6ff;
           color: #1d4ed8;
-          font-weight: 600;
         }
-        .tpl__list {
-          list-style: none;
-          margin: 0;
-          padding: 0;
-          overflow-y: auto;
-          flex: 1;
-          min-height: 80px;
+        .tpl__icon {
           display: flex;
-          flex-direction: column;
-          gap: 4px;
+          color: inherit;
         }
-        .tpl__empty {
-          padding: 12px;
-          color: #64748b;
+        .tpl__name {
+          font-weight: 600;
+          font-size: 12px;
           text-align: center;
         }
-        .tpl__item {
-          width: 100%;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 8px;
+        .tpl__empty {
           margin: 0;
-          padding: 8px 10px;
-          border: 1px solid #e2e8f0;
-          border-radius: 8px;
-          background: #fff;
-          color: #0f172a;
-          font: inherit;
-          text-align: left;
-          cursor: pointer;
-        }
-        .tpl__item:hover {
-          border-color: #3b82f6;
-          background: #f8fafc;
-        }
-        .tpl__item-name {
-          font-weight: 600;
-        }
-        .tpl__item-meta {
-          flex-shrink: 0;
-          font-size: 11px;
+          padding: 12px;
+          text-align: center;
           color: #64748b;
+        }
+        .tpl__tip {
+          margin: 0;
+          font-size: 11px;
+          color: #94a3b8;
         }
       `}</style>
     </div>

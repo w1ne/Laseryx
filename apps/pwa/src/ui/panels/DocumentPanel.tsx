@@ -20,11 +20,15 @@ export function DocumentPanel() {
         if (obj.kind === "macro") {
             const def = getMacroDef(obj.defId);
             if (!def) return `Missing: ${obj.defId}`;
-            if (obj.defId === "screen") return `Cutout ${f(Number(obj.params.widthMm))}×${f(Number(obj.params.heightMm))}`;
-            if (obj.defId === "mount-hole" || obj.defId === "button") {
-                return `Hole Ø${f(Number(obj.params.diameterMm))} mm`;
+            if (obj.defId === "screen") {
+                return `Cutout ${f(Number(obj.params.widthMm))}×${f(Number(obj.params.heightMm))}`;
             }
-            if (obj.defId === "panel") return `Frame ${f(Number(obj.params.widthMm))}×${f(Number(obj.params.heightMm))}`;
+            if (obj.defId === "mount-hole" || obj.defId === "button") {
+                return `Hole Ø${f(Number(obj.params.diameterMm))}`;
+            }
+            if (obj.defId === "panel") {
+                return `Frame ${f(Number(obj.params.widthMm))}×${f(Number(obj.params.heightMm))}`;
+            }
             return def.name;
         }
         return obj.id;

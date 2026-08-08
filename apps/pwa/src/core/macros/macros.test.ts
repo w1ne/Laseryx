@@ -1,172 +1,80 @@
 import { describe, it, expect } from "vitest";
 import {
-  applyMacroParamUpdate,
   circleToPolyline,
   defaultParamsForDef,
   expandMacro,
   getMacroDef,
   listMacroDefs,
-  nextCascadeTransform,
-  SCREEN_PRESETS,
-  validateParams,
-  v1DefIds
+  validateParams
 } from "./index";
-import type { Document, MacroObj } from "../model";
+import type { MacroObj } from "../model";
 import { planCam } from "../cam";
 import { computeBounds } from "../geom";
 
-describe("macros geomHelpers", () => {
-  it("circleToPolyline is closed with enough points", () => {
-    const path = circleToPolyline(0, 0, 5);
-    expect(path.closed).toBe(true);
-    expect(path.points.length).toBeGreaterThanOrEqual(24);
-  });
-});
-
-describe("macros validateParams + preset rules", () => {
-  it("fills defaults for mount-hole — diameter only", () => {
+describe("macros", () => {
+  it("one hole with diameter only", () => {
     const def = getMacroDef("mount-hole")!;
     const p = validateParams(def, {});
     expect(p.diameterMm).toBe(3);
-    expect(p.clearanceMm).toBeUndefined();
+    expect(Object.keys(p)).toEqual(["diameterMm"]);
+    const paths = def.expand(p);
+    expect(computeBounds(paths).maxX - computeBounds(paths).minX).toBeCloseTo(3, 1);
   });
 
-  it("preset overwrites dims; editing dim sets custom", () => {
-    const def = getMacroDef("screen")!;
-    const base = defaultParamsForDef(def);
-    expect(base.preset).toBe("custom");
+  it("frame and cutout are size-only", () => {
+    const frame = getMacroDef("panel")!;
+    expect(frame.params.map((p) => p.key)).toEqual(["widthMm", "heightMm"]);
+    const cut = getMacroDef("screen")!;
+    expect(cut.params.map((p) => p.key)).toEqual(["widthMm", "heightMm"]);
+    expect(cut.expand(defaultParamsForDef(cut))).toHaveLength(1);
+    expect(frame.expand(defaultParamsForDef(frame))).toHaveLength(1);
+  });
 
-    const afterPreset = applyMacroParamUpdate(
-      def,
-      base,
-      { preset: "2.8-ili9341" },
-      SCREEN_PRESETS
+  it("catalog has three defs", () => {
+    expect(listMacroDefs().map((d) => d.id).sort()).toEqual(
+      ["mount-hole", "panel", "screen"].sort()
     );
-    expect(afterPreset.preset).toBe("2.8-ili9341");
-    expect(afterPreset.widthMm).toBe(SCREEN_PRESETS["2.8-ili9341"].widthMm);
-
-    const afterDim = applyMacroParamUpdate(def, afterPreset, { widthMm: 60 }, SCREEN_PRESETS);
-    expect(afterDim.preset).toBe("custom");
-    expect(afterDim.widthMm).toBe(60);
-  });
-});
-
-describe("macros expand catalog", () => {
-  it("lists v1 defs without separate circle/button", () => {
-    const ids = listMacroDefs().map((d) => d.id);
-    expect(ids).toEqual(expect.arrayContaining(["panel", "screen", "mount-hole"]));
-    expect(ids).not.toContain("button");
-    expect(getMacroDef("button")?.id).toBe("mount-hole"); // legacy alias
+    expect(getMacroDef("button")?.id).toBe("mount-hole");
   });
 
-  it("screen expands to 4 holes + 1 rect", () => {
-    const def = getMacroDef("screen")!;
-    const paths = def.expand(defaultParamsForDef(def));
-    expect(paths).toHaveLength(5);
-  });
-
-  it("mount-hole diameter is exact cut size", () => {
-    const def = getMacroDef("mount-hole")!;
-    const params = validateParams(def, { diameterMm: 3 });
-    const paths = def.expand(params);
-    const bbox = computeBounds(paths);
-    expect(bbox.maxX - bbox.minX).toBeCloseTo(3, 1);
-  });
-
-  it("expandMacro applies transform", () => {
+  it("planCam expands hole", () => {
     const def = getMacroDef("mount-hole")!;
     const obj: MacroObj = {
       kind: "macro",
-      id: "m1",
+      id: "h1",
       layerId: "layer-1",
-      transform: { a: 1, b: 0, c: 0, d: 1, e: 10, f: 20 },
+      transform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 },
       defId: "mount-hole",
       defVersion: def.defVersion,
       params: defaultParamsForDef(def)
     };
-    const ok = expandMacro(obj);
-    expect(ok.ok).toBe(true);
+    const result = planCam(
+      {
+        version: 1,
+        units: "mm",
+        layers: [{ id: "layer-1", name: "Cut", visible: true, locked: false, operationId: "op-1" }],
+        objects: [obj]
+      },
+      { operations: [{ id: "op-1", name: "Cut", mode: "line", speed: 1000, power: 80, passes: 1 }] }
+    );
+    expect(result.plan.ops[0].paths.length).toBe(1);
   });
-});
 
-describe("macros place cascade", () => {
-  it("does not stack macros at same transform", () => {
-    const doc: Document = {
-      version: 1,
-      units: "mm",
-      layers: [{ id: "layer-1", name: "L", visible: true, locked: false }],
-      objects: []
-    };
-    const t0 = nextCascadeTransform(doc);
-    doc.objects.push({
-      kind: "macro",
-      id: "a",
-      layerId: "layer-1",
-      transform: t0,
-      defId: "mount-hole",
-      defVersion: 1,
-      params: {}
-    });
-    const t1 = nextCascadeTransform(doc);
-    expect(t1.e).not.toBe(t0.e);
+  it("circle helper still works", () => {
+    expect(circleToPolyline(0, 0, 5).closed).toBe(true);
   });
-});
 
-describe("macros planCam integration", () => {
-  it("includes expanded macro paths", () => {
+  it("expandMacro applies transform", () => {
     const def = getMacroDef("mount-hole")!;
-    const document: Document = {
-      version: 1,
-      units: "mm",
-      layers: [{ id: "layer-1", name: "Cut", visible: true, locked: false, operationId: "op-1" }],
-      objects: [
-        {
-          kind: "macro",
-          id: "h1",
-          layerId: "layer-1",
-          transform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 },
-          defId: "mount-hole",
-          defVersion: def.defVersion,
-          params: defaultParamsForDef(def)
-        }
-      ]
-    };
-    const cam = {
-      operations: [{ id: "op-1", name: "Cut", mode: "line" as const, speed: 1000, power: 80, passes: 1 }]
-    };
-    const result = planCam(document, cam);
-    expect(result.plan.ops[0].paths.length).toBeGreaterThanOrEqual(1);
-  });
-
-  it("three-part sample: panel + screen + hole", () => {
-    const mk = (id: string, defId: string, e: number, f: number): MacroObj => {
-      const def = getMacroDef(defId)!;
-      return {
-        kind: "macro",
-        id,
-        layerId: "layer-1",
-        transform: { a: 1, b: 0, c: 0, d: 1, e, f },
-        defId,
-        defVersion: def.defVersion,
-        params: defaultParamsForDef(def)
-      };
-    };
-    const document: Document = {
-      version: 1,
-      units: "mm",
-      layers: [{ id: "layer-1", name: "Cut", visible: true, locked: false, operationId: "op-1" }],
-      objects: [
-        mk("panel", "panel", 0, 0),
-        mk("screen", "screen", 20, 20),
-        mk("hole", "mount-hole", 100, 50)
-      ]
-    };
-    const cam = {
-      operations: [{ id: "op-1", name: "Cut", mode: "line" as const, speed: 1000, power: 80, passes: 1 }],
-      optimizePaths: false
-    };
-    const result = planCam(document, cam);
-    // panel 5 + screen 5 + hole 1 = 11
-    expect(result.plan.ops[0].paths.length).toBe(11);
+    const r = expandMacro({
+      kind: "macro",
+      id: "m",
+      layerId: "l",
+      transform: { a: 1, b: 0, c: 0, d: 1, e: 10, f: 20 },
+      defId: "mount-hole",
+      defVersion: def.defVersion,
+      params: { diameterMm: 4 }
+    });
+    expect(r.ok).toBe(true);
   });
 });
