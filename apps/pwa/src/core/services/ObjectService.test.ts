@@ -84,8 +84,8 @@ describe("ObjectService", () => {
         expect(obj).not.toBeNull();
         expect(obj!.kind).toBe("macro");
         expect(obj!.defId).toBe("mount-hole");
-        expect(obj!.defVersion).toBe(1);
-        expect(obj!.params.diameterMm).toBe(3);
+        expect(obj!.defVersion).toBe(3);
+        expect(obj!.params.diameterMm).toBe(10);
 
         expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({
             type: "ADD_OBJECT",
