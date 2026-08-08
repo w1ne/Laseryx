@@ -19,6 +19,8 @@ import { PropertiesPanel } from "./panels/PropertiesPanel";
 import { LayersPanel } from "./panels/LayersPanel";
 import { PreviewPanel } from "./panels/PreviewPanel";
 import { TemplateLibrary } from "./components/TemplateLibrary";
+import { ModifyToolbar } from "./components/ModifyToolbar";
+import { duplicateObject, nudgeObject } from "../core/objectEdit";
 import { DonateButton } from "./DonateButton";
 import { AboutDialog } from "./AboutDialog";
 import { MaterialManagerDialog } from "./dialogs/MaterialManagerDialog";
@@ -89,9 +91,18 @@ export function App() {
     return () => window.removeEventListener("beforeinstallprompt", handler as EventListener);
   }, []);
 
-  // --- Keyboard Shortcuts ---
+  // --- Keyboard Shortcuts (CAD-style edit) ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const typing =
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable);
+      if (typing) return;
+
       const isZ = e.key.toLowerCase() === "z";
       const isY = e.key.toLowerCase() === "y";
       const isMod = e.ctrlKey || e.metaKey;
@@ -100,9 +111,45 @@ export function App() {
         e.preventDefault();
         if (e.shiftKey) dispatch({ type: "REDO" });
         else dispatch({ type: "UNDO" });
-      } else if (isMod && isY) {
+        return;
+      }
+      if (isMod && isY) {
         e.preventDefault();
         dispatch({ type: "REDO" });
+        return;
+      }
+
+      const selectedId = stateRef.current.selectedObjectId;
+      const selected = stateRef.current.document.objects.find((o) => o.id === selectedId);
+
+      if (isMod && e.key.toLowerCase() === "d" && selected) {
+        e.preventDefault();
+        const copy = duplicateObject(selected, 10);
+        dispatch({ type: "ADD_OBJECT", payload: copy });
+        dispatch({ type: "SELECT_OBJECT", payload: copy.id });
+        return;
+      }
+
+      if ((e.key === "Delete" || e.key === "Backspace") && selectedId) {
+        e.preventDefault();
+        dispatch({ type: "DELETE_OBJECT", payload: selectedId });
+        return;
+      }
+
+      if (selected && ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
+        e.preventDefault();
+        const step = e.shiftKey ? 10 : 1;
+        let dx = 0;
+        let dy = 0;
+        if (e.key === "ArrowLeft") dx = -step;
+        if (e.key === "ArrowRight") dx = step;
+        if (e.key === "ArrowUp") dy = -step;
+        if (e.key === "ArrowDown") dy = step;
+        const patch = nudgeObject(selected, dx, dy);
+        dispatch({
+          type: "UPDATE_OBJECT",
+          payload: { id: selected.id, changes: patch }
+        });
       }
     };
 
@@ -579,6 +626,7 @@ export function App() {
             <section className="app__canvas-zone" aria-label="Workspace" data-mobile-panel="canvas">
               <div className="app__preview-area">
                 <div className="app__canvas-toolbar">
+                  {previewMode === "design" && <ModifyToolbar />}
                   <div className="preview-mode-switch" role="group" aria-label="View mode">
                     <button
                       className={`segmented-button ${previewMode === "design" ? "is-active" : ""}`}

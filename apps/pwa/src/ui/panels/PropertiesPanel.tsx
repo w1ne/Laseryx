@@ -4,6 +4,8 @@ import { ObjectService } from "../../core/services/ObjectService";
 import { ImageObj, MacroObj } from "../../core/model";
 import { getMacroDef } from "../../core/macros/catalog";
 import type { MacroParamSpec } from "../../core/macros/types";
+import { getObjectSize, setObjectPosition, setObjectSize } from "../../core/objectEdit";
+import { boundsOf } from "../../core/objectEdit";
 
 export function PropertiesPanel() {
     const { state, dispatch } = useStore();
@@ -23,26 +25,28 @@ export function PropertiesPanel() {
     }
 
     const f = (n?: number) => n !== undefined ? Number(n.toFixed(2)) : "";
+    const bbox = boundsOf(selectedObject);
+    const size = getObjectSize(selectedObject);
 
     return (
         <div className="panel props">
             <div className="panel__header"><h2>Properties</h2></div>
             <div className="panel__body">
                 <div className="props__form">
+                    <p className="props__name">Position &amp; size (mm)</p>
                     <div className="props__row">
                         <label className="props__field">
                             X
                             <input
                                 type="number"
                                 className="props__input"
-                                value={f(selectedObject.transform.e)}
+                                step={0.1}
+                                value={f(bbox?.minX)}
                                 onChange={e => {
                                     const v = e.target.valueAsNumber;
-                                    if (!isNaN(v)) {
-                                        ObjectService.updateObject(dispatch, selectedObject.id, {
-                                            transform: { ...selectedObject.transform, e: v }
-                                        });
-                                    }
+                                    if (isNaN(v) || !bbox) return;
+                                    const patch = setObjectPosition(selectedObject, v, bbox.minY);
+                                    if (patch) ObjectService.updateObject(dispatch, selectedObject.id, patch);
                                 }}
                             />
                         </label>
@@ -51,14 +55,48 @@ export function PropertiesPanel() {
                             <input
                                 type="number"
                                 className="props__input"
-                                value={f(selectedObject.transform.f)}
+                                step={0.1}
+                                value={f(bbox?.minY)}
                                 onChange={e => {
                                     const v = e.target.valueAsNumber;
-                                    if (!isNaN(v)) {
-                                        ObjectService.updateObject(dispatch, selectedObject.id, {
-                                            transform: { ...selectedObject.transform, f: v }
-                                        });
-                                    }
+                                    if (isNaN(v) || !bbox) return;
+                                    const patch = setObjectPosition(selectedObject, bbox.minX, v);
+                                    if (patch) ObjectService.updateObject(dispatch, selectedObject.id, patch);
+                                }}
+                            />
+                        </label>
+                    </div>
+
+                    <div className="props__row">
+                        <label className="props__field">
+                            W
+                            <input
+                                type="number"
+                                className="props__input"
+                                step={0.1}
+                                min={0.1}
+                                value={f(size?.w)}
+                                onChange={e => {
+                                    const v = e.target.valueAsNumber;
+                                    if (isNaN(v) || !size) return;
+                                    const patch = setObjectSize(selectedObject, v, size.h);
+                                    if (patch) ObjectService.updateObject(dispatch, selectedObject.id, patch);
+                                }}
+                            />
+                        </label>
+                        <label className="props__field">
+                            H
+                            <input
+                                type="number"
+                                className="props__input"
+                                step={0.1}
+                                min={0.1}
+                                value={f(size?.h)}
+                                onChange={e => {
+                                    const v = e.target.valueAsNumber;
+                                    if (isNaN(v) || !size) return;
+                                    const patch = setObjectSize(selectedObject, size.w, v);
+                                    if (patch) ObjectService.updateObject(dispatch, selectedObject.id, patch);
                                 }}
                             />
                         </label>
@@ -76,49 +114,6 @@ export function PropertiesPanel() {
                             ))}
                         </select>
                     </label>
-
-                    {(selectedObject.kind === "shape" || selectedObject.kind === "image") && (
-                        <div className="props__row">
-                            <label className="props__field">
-                                W
-                                <input
-                                    type="number"
-                                    className="props__input"
-                                    value={f(selectedObject.kind === "shape" ? selectedObject.shape?.width : (selectedObject as ImageObj).width)}
-                                    onChange={e => {
-                                        const v = e.target.valueAsNumber;
-                                        if (isNaN(v)) return;
-                                        if (selectedObject.kind === "shape") {
-                                            ObjectService.updateObject(dispatch, selectedObject.id, {
-                                                shape: { ...selectedObject.shape, width: v }
-                                            });
-                                        } else {
-                                            ObjectService.updateObject(dispatch, selectedObject.id, { width: v });
-                                        }
-                                    }}
-                                />
-                            </label>
-                            <label className="props__field">
-                                H
-                                <input
-                                    type="number"
-                                    className="props__input"
-                                    value={f(selectedObject.kind === "shape" ? selectedObject.shape?.height : (selectedObject as ImageObj).height)}
-                                    onChange={e => {
-                                        const v = e.target.valueAsNumber;
-                                        if (isNaN(v)) return;
-                                        if (selectedObject.kind === "shape") {
-                                            ObjectService.updateObject(dispatch, selectedObject.id, {
-                                                shape: { ...selectedObject.shape, height: v }
-                                            });
-                                        } else {
-                                            ObjectService.updateObject(dispatch, selectedObject.id, { height: v });
-                                        }
-                                    }}
-                                />
-                            </label>
-                        </div>
-                    )}
 
                     {selectedObject.kind === "macro" && (
                         <MacroFields
