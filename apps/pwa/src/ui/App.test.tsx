@@ -182,7 +182,7 @@ describe("App", () => {
     it("renders desktop workbench zones for design mode", () => {
         render(<App />);
 
-        expect(screen.getByRole("region", { name: "Create and objects" })).toHaveClass("app__left-zone");
+        expect(screen.getByRole("region", { name: "Tools and objects" })).toHaveClass("app__left-zone");
         expect(screen.getByRole("region", { name: "Workspace" })).toHaveClass("app__canvas-zone");
         expect(screen.getByRole("region", { name: "Inspector and operations" })).toHaveClass("app__right-zone");
     });
@@ -190,7 +190,7 @@ describe("App", () => {
     it("places design panels into left and right desktop zones", () => {
         render(<App />);
 
-        const leftZone = screen.getByRole("region", { name: "Create and objects" });
+        const leftZone = screen.getByRole("region", { name: "Tools and objects" });
         const rightZone = screen.getByRole("region", { name: "Inspector and operations" });
 
         expect(within(leftZone).getByTestId("design-panel-document")).toBeInTheDocument();
@@ -201,7 +201,7 @@ describe("App", () => {
     it("marks desktop wrapper zones with mobile panel state", () => {
         render(<App />);
 
-        const leftZone = screen.getByRole("region", { name: "Create and objects" });
+        const leftZone = screen.getByRole("region", { name: "Tools and objects" });
         const canvasZone = screen.getByRole("region", { name: "Workspace" });
         const rightZone = screen.getByRole("region", { name: "Inspector and operations" });
 
@@ -237,7 +237,7 @@ describe("App", () => {
 
         expect(screen.getByRole("region", { name: "Machine controls" })).toHaveAttribute("data-mobile-panel", "active");
         expect(screen.getByRole("region", { name: "Workspace" })).toHaveAttribute("data-mobile-panel", "canvas");
-        expect(screen.queryByRole("region", { name: "Create and objects" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("region", { name: "Tools and objects" })).not.toBeInTheDocument();
         expect(screen.queryByRole("region", { name: "Inspector and operations" })).not.toBeInTheDocument();
     });
 

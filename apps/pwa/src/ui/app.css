@@ -257,9 +257,9 @@ body {
 
 .app__main {
   display: grid;
-  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr) minmax(280px, 360px);
+  grid-template-columns: minmax(200px, 240px) minmax(0, 1fr) minmax(260px, 320px);
   align-items: start;
-  gap: 16px;
+  gap: 12px;
 }
 
 .app__left-zone,
@@ -268,11 +268,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-
-/* Template library + objects on the left (CAD block browser style) */
-.app__create-dock {
-  min-width: 0;
 }
 
 .app__canvas-zone {

@@ -18,7 +18,6 @@ import { DocumentPanel } from "./panels/DocumentPanel";
 import { PropertiesPanel } from "./panels/PropertiesPanel";
 import { LayersPanel } from "./panels/LayersPanel";
 import { PreviewPanel } from "./panels/PreviewPanel";
-import { TemplateLibrary } from "./components/TemplateLibrary";
 import { ModifyToolbar } from "./components/ModifyToolbar";
 import { duplicateObject, nudgeObject } from "../core/objectEdit";
 import { MaterialManagerDialog } from "./dialogs/MaterialManagerDialog";
@@ -588,14 +587,9 @@ export function App() {
           <>
             <section
               className="app__left-zone"
-              aria-label="Create and objects"
+              aria-label="Tools and objects"
               data-mobile-panel={designPanel === "document" ? "active" : "inactive"}
             >
-              {previewMode === "design" && (
-                <div className="app__create-dock" data-testid="template-library">
-                  <TemplateLibrary />
-                </div>
-              )}
               <div
                 id="design-panel-document"
                 className="app__panel-slot"
