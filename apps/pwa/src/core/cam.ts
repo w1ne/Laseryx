@@ -8,6 +8,7 @@ import type {
   PolylinePath,
   PreviewGeom
 } from "./model";
+import { isConstruction } from "./model";
 import { computeBounds, polygonArea, rectToPolyline, transformPoints } from "./geom";
 import { expandMacro } from "./macros/expand";
 
@@ -56,6 +57,10 @@ export function planCam(document: Document, cam: CamSettings, images?: Map<strin
       }
       const layer = layerMap.get(obj.layerId);
       if (!layer || !layer.visible) {
+        continue;
+      }
+      // Construction geometry is decorative / reference only — never cut or engrave
+      if (isConstruction(obj)) {
         continue;
       }
 

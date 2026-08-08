@@ -14,22 +14,22 @@ export function DocumentPanel() {
     const f = (n: number) => n.toFixed(1);
 
     const objectLabel = (obj: (typeof document.objects)[number]): string => {
-        if (obj.kind === "shape") return `Rect ${f(obj.shape.width)}×${f(obj.shape.height)}`;
-        if (obj.kind === "image") return `Image ${f(obj.width)}×${f(obj.height)}`;
-        if (obj.kind === "path") return "Path";
-        if (obj.kind === "macro") {
-            const def = getMacroDef(obj.defId);
-            if (!def) return `Missing: ${obj.defId}`;
+        let base: string;
+        if (obj.kind === "shape") base = `Rect ${f(obj.shape.width)}×${f(obj.shape.height)}`;
+        else if (obj.kind === "image") base = `Image ${f(obj.width)}×${f(obj.height)}`;
+        else if (obj.kind === "path") base = obj.closed ? "Path" : "Line";
+        else if (obj.kind === "macro") {
             if (obj.defId === "mount-hole" || obj.defId === "button") {
-                return `Circle Ø${f(Number(obj.params.diameterMm))}`;
+                base = `Circle Ø${f(Number(obj.params.diameterMm))}`;
+            } else {
+                base = getMacroDef(obj.defId)?.name ?? obj.defId;
             }
-            // legacy frame/cutout macros
-            if (obj.defId === "panel" || obj.defId === "screen") {
-                return `${obj.defId === "panel" ? "Frame" : "Cutout"} (legacy)`;
-            }
-            return def.name;
+        } else base = obj.id;
+
+        if (obj.kind !== "image" && obj.construction) {
+            return `${base} (construction)`;
         }
-        return obj.id;
+        return base;
     };
 
     return (

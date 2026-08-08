@@ -1,8 +1,8 @@
 import type { TemplateEntry } from "./types";
 
 /**
- * Fusion-style sketch primitives only.
- * One rectangle, one circle — set size after place. No frame/cutout clones.
+ * Fusion-style sketch tools.
+ * Construction geometry is decorative — never burned.
  */
 export const TEMPLATE_LIBRARY: TemplateEntry[] = [
   {
@@ -10,7 +10,7 @@ export const TEMPLATE_LIBRARY: TemplateEntry[] = [
     name: "Rectangle",
     category: "shape",
     icon: "rect",
-    tags: ["rect", "box", "square", "frame", "cutout", "plate"],
+    tags: ["rect", "box", "square"],
     description: "Rectangle — set W × H after place",
     place: { kind: "rect" }
   },
@@ -19,9 +19,27 @@ export const TEMPLATE_LIBRARY: TemplateEntry[] = [
     name: "Circle",
     category: "hole",
     icon: "hole",
-    tags: ["circle", "hole", "round", "diameter"],
+    tags: ["circle", "hole", "round"],
     description: "Circle — set diameter after place",
     place: { kind: "macro", defId: "mount-hole" }
+  },
+  {
+    id: "line",
+    name: "Line",
+    category: "line",
+    icon: "line",
+    tags: ["line", "path", "cut"],
+    description: "Line segment — will be cut",
+    place: { kind: "line", construction: false }
+  },
+  {
+    id: "construction",
+    name: "Construction",
+    category: "line",
+    icon: "construction",
+    tags: ["construction", "reference", "guide", "decorative", "not cut"],
+    description: "Guide line — not burned by the laser",
+    place: { kind: "line", construction: true }
   },
   {
     id: "import",
@@ -39,5 +57,5 @@ export function getTemplate(id: string): TemplateEntry | undefined {
 }
 
 export function listTemplateCategories(): TemplateEntry["category"][] {
-  return ["shape", "hole", "import"];
+  return ["shape", "hole", "line", "import"];
 }

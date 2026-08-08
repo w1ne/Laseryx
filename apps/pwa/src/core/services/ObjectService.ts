@@ -1,15 +1,16 @@
 import { AppState } from "../state/types";
 import { Action } from "../state/actions";
-import { ShapeObj, Obj, ImageObj, MacroObj } from "../model";
+import { ShapeObj, Obj, ImageObj, MacroObj, PathObj } from "../model";
 import {
     defaultParamsForDef,
     getMacroDef,
     nextCascadeTransform,
     revalidateMacroParams
 } from "../macros";
+import { roundMm } from "../util";
 
 export const ObjectService = {
-    addRectangle: (state: AppState, dispatch: React.Dispatch<Action>) => {
+    addRectangle: (state: AppState, dispatch: React.Dispatch<Action>, opts?: { construction?: boolean }) => {
         const uniqueId = `shape-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
         // Ensure a layer exists using the shared helper
@@ -20,11 +21,41 @@ export const ObjectService = {
             kind: "shape",
             shape: { type: "rect", width: 80, height: 50 },
             transform: { a: 1, b: 0, c: 0, d: 1, e: 20, f: 20 },
-            layerId: layerId
+            layerId: layerId,
+            ...(opts?.construction ? { construction: true } : {})
         };
 
         dispatch({ type: "ADD_OBJECT", payload: newObj });
         dispatch({ type: "SELECT_OBJECT", payload: newObj.id });
+    },
+
+    /** Open polyline (2-point line by default). Construction lines are not burned. */
+    addLine: (state: AppState, dispatch: React.Dispatch<Action>, opts?: { construction?: boolean; lengthMm?: number }) => {
+        const layerId = ObjectService.findOrCreateLayer(state, dispatch, "line", "Layer");
+        const len = roundMm(opts?.lengthMm ?? 50);
+        const transform = nextCascadeTransform(state.document, state.machineProfile?.bedMm);
+        const newObj: PathObj = {
+            kind: "path",
+            id: `path-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            layerId,
+            closed: false,
+            transform,
+            points: [
+                { x: 0, y: 0 },
+                { x: len, y: 0 }
+            ],
+            ...(opts?.construction ? { construction: true } : {})
+        };
+        dispatch({ type: "ADD_OBJECT", payload: newObj });
+        dispatch({ type: "SELECT_OBJECT", payload: newObj.id });
+        return newObj;
+    },
+
+    setConstruction: (dispatch: React.Dispatch<Action>, objectId: string, construction: boolean) => {
+        dispatch({
+            type: "UPDATE_OBJECT",
+            payload: { id: objectId, changes: { construction } as Partial<Obj> }
+        });
     },
 
     addMacro: (

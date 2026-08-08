@@ -1,6 +1,6 @@
 import type { TemplateIcon } from "../../core/templates";
 
-/** Sketch tool icons (Fusion-style simple glyphs). */
+/** Sketch tool icons. */
 export function TemplateIconSvg({ name }: { name: TemplateIcon }) {
   const common = {
     width: 32,
@@ -27,6 +27,18 @@ export function TemplateIconSvg({ name }: { name: TemplateIcon }) {
           <circle cx="16" cy="16" r="8" />
         </svg>
       );
+    case "line":
+      return (
+        <svg {...common}>
+          <line x1="6" y1="24" x2="26" y2="8" />
+        </svg>
+      );
+    case "construction":
+      return (
+        <svg {...common}>
+          <line x1="6" y1="24" x2="26" y2="8" strokeDasharray="3 2.5" />
+        </svg>
+      );
     case "import":
       return (
         <svg {...common}>
@@ -35,7 +47,6 @@ export function TemplateIconSvg({ name }: { name: TemplateIcon }) {
           <path d="M7 26h18" />
         </svg>
       );
-    // legacy icons fall back to rect
     case "frame":
     case "cutout":
       return (

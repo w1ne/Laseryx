@@ -80,6 +80,10 @@ function placeTemplate(
     ObjectService.addRectangle(state, dispatch);
     return;
   }
+  if (place.kind === "line") {
+    ObjectService.addLine(state, dispatch, { construction: place.construction === true });
+    return;
+  }
   if (place.kind === "import") {
     importFile(state, dispatch);
     return;
@@ -125,7 +129,9 @@ export function TemplateLibrary() {
         {results.length === 0 && <p className="sketch__empty">No match</p>}
       </div>
 
-      <p className="sketch__tip">Place → drag to move → set size in Properties</p>
+      <p className="sketch__tip">
+        Construction lines are guides only — not burned. Toggle on any shape in Properties.
+      </p>
 
       <style>{`
         .sketch,

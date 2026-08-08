@@ -1,10 +1,18 @@
 import React, { useEffect, useRef } from "react";
-import { Obj } from "../../../core/model";
+import { isConstruction, Obj } from "../../../core/model";
 import { expandMacro } from "../../../core/macros/expand";
 import { roundMm } from "../../../core/util";
 import { clientToSvgPoint, objectBounds, type BBox } from "./designGeometry";
 
 const r = (n: number) => roundMm(n);
+
+/** CAD-style construction: dashed, not cut. */
+function strokeFor(obj: Obj, isSelected: boolean): { stroke: string; dash?: string } {
+  if (isConstruction(obj)) {
+    return { stroke: isSelected ? "#0ea5e9" : "#38bdf8", dash: "4 3" };
+  }
+  return { stroke: isSelected ? "#3b82f6" : "#0f172a" };
+}
 
 export type ObjectTransformPatch = {
   transform?: Obj["transform"];
@@ -307,6 +315,7 @@ export function DesignView({ objects, selectedId, onSelect, onPatchObject }: Des
         if (obj.kind === "path") {
           const t = obj.transform;
           const points = obj.points.map((p) => `${p.x},${p.y}`).join(" ");
+          const { stroke, dash } = strokeFor(obj, isSelected);
           return (
             <g
               key={obj.id}
@@ -318,16 +327,18 @@ export function DesignView({ objects, selectedId, onSelect, onPatchObject }: Des
                 <polygon
                   points={points}
                   fill="transparent"
-                  stroke={isSelected ? "#3b82f6" : "#0f172a"}
+                  stroke={stroke}
                   strokeWidth={strokeWidth}
+                  strokeDasharray={dash}
                   vectorEffect="non-scaling-stroke"
                 />
               ) : (
                 <polyline
                   points={points}
                   fill="none"
-                  stroke={isSelected ? "#3b82f6" : "#0f172a"}
+                  stroke={stroke}
                   strokeWidth={Math.max(2, Number(strokeWidth))}
+                  strokeDasharray={dash}
                   vectorEffect="non-scaling-stroke"
                 />
               )}
@@ -337,6 +348,8 @@ export function DesignView({ objects, selectedId, onSelect, onPatchObject }: Des
 
         if (obj.kind === "shape" && obj.shape.type === "rect") {
           const t = obj.transform;
+          const { stroke, dash } = strokeFor(obj, isSelected);
+          const construct = isConstruction(obj);
           return (
             <g
               key={obj.id}
@@ -347,9 +360,10 @@ export function DesignView({ objects, selectedId, onSelect, onPatchObject }: Des
               <rect
                 width={obj.shape.width}
                 height={obj.shape.height}
-                fill={isSelected ? "rgba(59, 130, 246, 0.12)" : "rgba(15, 23, 42, 0.04)"}
-                stroke={isSelected ? "#3b82f6" : "#0f172a"}
+                fill={construct ? "none" : isSelected ? "rgba(59, 130, 246, 0.12)" : "rgba(15, 23, 42, 0.04)"}
+                stroke={stroke}
                 strokeWidth={strokeWidth}
+                strokeDasharray={dash}
                 vectorEffect="non-scaling-stroke"
               />
             </g>
@@ -358,6 +372,8 @@ export function DesignView({ objects, selectedId, onSelect, onPatchObject }: Des
 
         if (obj.kind === "macro") {
           const expanded = expandMacro(obj);
+          const { stroke, dash } = strokeFor(obj, isSelected);
+          const construct = isConstruction(obj);
           if (!expanded.ok) {
             const t = obj.transform;
             return (
@@ -377,7 +393,6 @@ export function DesignView({ objects, selectedId, onSelect, onPatchObject }: Des
             );
           }
 
-          const stroke = isSelected ? "#3b82f6" : "#0f172a";
           return (
             <g key={obj.id} onPointerDown={(e) => beginMove(e, obj)} style={{ cursor }}>
               {expanded.paths.map((path, i) => {
@@ -386,9 +401,10 @@ export function DesignView({ objects, selectedId, onSelect, onPatchObject }: Des
                   <polygon
                     key={i}
                     points={pts}
-                    fill={isSelected ? "rgba(59, 130, 246, 0.1)" : "rgba(15, 23, 42, 0.03)"}
+                    fill={construct ? "none" : isSelected ? "rgba(59, 130, 246, 0.1)" : "rgba(15, 23, 42, 0.03)"}
                     stroke={stroke}
                     strokeWidth={strokeWidth}
+                    strokeDasharray={dash}
                     vectorEffect="non-scaling-stroke"
                   />
                 ) : (
@@ -398,6 +414,7 @@ export function DesignView({ objects, selectedId, onSelect, onPatchObject }: Des
                     fill="none"
                     stroke={stroke}
                     strokeWidth={strokeWidth}
+                    strokeDasharray={dash}
                     vectorEffect="non-scaling-stroke"
                   />
                 );

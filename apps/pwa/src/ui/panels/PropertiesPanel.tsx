@@ -115,6 +115,19 @@ export function PropertiesPanel() {
                         </select>
                     </label>
 
+                    {selectedObject.kind !== "image" && (
+                        <label className="props__check">
+                            <input
+                                type="checkbox"
+                                checked={selectedObject.construction === true}
+                                onChange={(e) =>
+                                    ObjectService.setConstruction(dispatch, selectedObject.id, e.target.checked)
+                                }
+                            />
+                            Construction (guide only — not burned)
+                        </label>
+                    )}
+
                     {selectedObject.kind === "macro" && (
                         <MacroFields
                             key={selectedObject.id}
