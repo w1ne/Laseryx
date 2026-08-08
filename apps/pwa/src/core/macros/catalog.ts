@@ -20,7 +20,7 @@ const numParam = (
   unit: "mm" as const,
   min,
   max,
-  step: 0.1,
+  step: 0.1, // 0.1 mm — lasers are not more accurate
   default: def,
   breaksPreset: true
 });

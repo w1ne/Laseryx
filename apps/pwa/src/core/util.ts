@@ -1,7 +1,22 @@
 import { Operation, Layer } from "./model";
 
+/** Geometry resolution for laser work (mm). 0.1 mm is plenty. */
+export const MM_DECIMALS = 1;
+
+/** Round a length/position to laser-friendly mm. */
+export function roundMm(value: number, decimals: number = MM_DECIMALS): number {
+    if (!Number.isFinite(value)) return 0;
+    const f = 10 ** decimals;
+    return Math.round(value * f) / f;
+}
+
+export function formatMm(value: number, decimals: number = MM_DECIMALS): string {
+    return roundMm(value, decimals).toFixed(decimals);
+}
+
+/** @deprecated prefer formatMm — kept for call sites expecting 2-digit strings historically */
 export function formatNumber(value: number) {
-    return Number.isFinite(value) ? value.toFixed(2) : "0.00";
+    return formatMm(value);
 }
 
 export function updateOperation(

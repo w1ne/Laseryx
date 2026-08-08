@@ -4,8 +4,8 @@ import { ObjectService } from "../../core/services/ObjectService";
 import { ImageObj, MacroObj } from "../../core/model";
 import { getMacroDef } from "../../core/macros/catalog";
 import type { MacroParamSpec } from "../../core/macros/types";
-import { getObjectSize, setObjectPosition, setObjectSize } from "../../core/objectEdit";
-import { boundsOf } from "../../core/objectEdit";
+import { getObjectSize, setObjectPosition, setObjectSize, boundsOf } from "../../core/objectEdit";
+import { formatMm, roundMm } from "../../core/util";
 
 export function PropertiesPanel() {
     const { state, dispatch } = useStore();
@@ -24,7 +24,7 @@ export function PropertiesPanel() {
         );
     }
 
-    const f = (n?: number) => n !== undefined ? Number(n.toFixed(2)) : "";
+    const f = (n?: number) => (n !== undefined && Number.isFinite(n) ? formatMm(n) : "");
     const bbox = boundsOf(selectedObject);
     const size = getObjectSize(selectedObject);
 
@@ -43,8 +43,8 @@ export function PropertiesPanel() {
                                 step={0.1}
                                 value={f(bbox?.minX)}
                                 onChange={e => {
-                                    const v = e.target.valueAsNumber;
-                                    if (isNaN(v) || !bbox) return;
+                                    const v = roundMm(e.target.valueAsNumber);
+                                    if (!Number.isFinite(v) || !bbox) return;
                                     const patch = setObjectPosition(selectedObject, v, bbox.minY);
                                     if (patch) ObjectService.updateObject(dispatch, selectedObject.id, patch);
                                 }}
@@ -58,8 +58,8 @@ export function PropertiesPanel() {
                                 step={0.1}
                                 value={f(bbox?.minY)}
                                 onChange={e => {
-                                    const v = e.target.valueAsNumber;
-                                    if (isNaN(v) || !bbox) return;
+                                    const v = roundMm(e.target.valueAsNumber);
+                                    if (!Number.isFinite(v) || !bbox) return;
                                     const patch = setObjectPosition(selectedObject, bbox.minX, v);
                                     if (patch) ObjectService.updateObject(dispatch, selectedObject.id, patch);
                                 }}
@@ -77,8 +77,8 @@ export function PropertiesPanel() {
                                 min={0.1}
                                 value={f(size?.w)}
                                 onChange={e => {
-                                    const v = e.target.valueAsNumber;
-                                    if (isNaN(v) || !size) return;
+                                    const v = roundMm(e.target.valueAsNumber);
+                                    if (!Number.isFinite(v) || !size) return;
                                     const patch = setObjectSize(selectedObject, v, size.h);
                                     if (patch) ObjectService.updateObject(dispatch, selectedObject.id, patch);
                                 }}
@@ -93,8 +93,8 @@ export function PropertiesPanel() {
                                 min={0.1}
                                 value={f(size?.h)}
                                 onChange={e => {
-                                    const v = e.target.valueAsNumber;
-                                    if (isNaN(v) || !size) return;
+                                    const v = roundMm(e.target.valueAsNumber);
+                                    if (!Number.isFinite(v) || !size) return;
                                     const patch = setObjectSize(selectedObject, size.w, v);
                                     if (patch) ObjectService.updateObject(dispatch, selectedObject.id, patch);
                                 }}
@@ -148,7 +148,7 @@ function MacroFields({
     }
 
     const commitNumber = (spec: MacroParamSpec, raw: string) => {
-        const v = Number(raw);
+        const v = roundMm(Number(raw));
         if (!Number.isFinite(v)) return;
         onCommit({ [spec.key]: v });
     };

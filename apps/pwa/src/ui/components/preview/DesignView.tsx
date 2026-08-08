@@ -1,7 +1,10 @@
 import React, { useEffect, useRef } from "react";
 import { Obj } from "../../../core/model";
 import { expandMacro } from "../../../core/macros/expand";
+import { roundMm } from "../../../core/util";
 import { clientToSvgPoint, objectBounds, type BBox } from "./designGeometry";
+
+const r = (n: number) => roundMm(n);
 
 export type ObjectTransformPatch = {
   transform?: Obj["transform"];
@@ -74,8 +77,8 @@ export function DesignView({ objects, selectedId, onSelect, onPatchObject }: Des
           {
             transform: {
               ...obj.transform,
-              e: drag.originE + dx,
-              f: drag.originF + dy
+              e: r(drag.originE + dx),
+              f: r(drag.originF + dy)
             }
           },
           { skipHistory: true }
@@ -97,8 +100,10 @@ export function DesignView({ objects, selectedId, onSelect, onPatchObject }: Des
       if (corner.includes("s")) maxY = Math.max(minY + 1, b.maxY + dy);
       if (corner.includes("n")) minY = Math.min(maxY - 1, b.minY + dy);
 
-      const newW = maxX - minX;
-      const newH = maxY - minY;
+      const newW = r(Math.max(0.1, maxX - minX));
+      const newH = r(Math.max(0.1, maxY - minY));
+      minX = r(minX);
+      minY = r(minY);
       const live = { skipHistory: true as const };
 
       if (startObj.kind === "shape" && startObj.shape.type === "rect") {
@@ -128,14 +133,14 @@ export function DesignView({ objects, selectedId, onSelect, onPatchObject }: Des
 
       if (startObj.kind === "macro") {
         if (startObj.defId === "mount-hole" || startObj.defId === "button") {
-          const d = Math.max(0.5, Math.min(newW, newH));
+          const d = r(Math.max(0.5, Math.min(newW, newH)));
           onPatchRef.current(
             drag.id,
             {
               transform: {
                 ...startObj.transform,
-                e: minX + d / 2,
-                f: minY + d / 2
+                e: r(minX + d / 2),
+                f: r(minY + d / 2)
               },
               params: { ...startObj.params, diameterMm: d }
             },
@@ -166,8 +171,8 @@ export function DesignView({ objects, selectedId, onSelect, onPatchObject }: Des
           {
             transform: {
               ...startObj.transform,
-              e: startObj.transform.e + (minX - b.minX),
-              f: startObj.transform.f + (minY - b.minY)
+              e: r(startObj.transform.e + (minX - b.minX)),
+              f: r(startObj.transform.f + (minY - b.minY))
             }
           },
           live
@@ -181,8 +186,8 @@ export function DesignView({ objects, selectedId, onSelect, onPatchObject }: Des
           {
             transform: {
               ...startObj.transform,
-              e: startObj.transform.e + (minX - b.minX),
-              f: startObj.transform.f + (minY - b.minY)
+              e: r(startObj.transform.e + (minX - b.minX)),
+              f: r(startObj.transform.f + (minY - b.minY))
             }
           },
           live

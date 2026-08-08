@@ -10,6 +10,7 @@ import {
   setObjectSize,
   nudgeObject
 } from "../../core/objectEdit";
+import { formatMm, roundMm } from "../../core/util";
 
 /**
  * CAD-style modify tools for the selection: size, mirror, rotate, duplicate, nudge.
@@ -24,8 +25,8 @@ export function ModifyToolbar() {
 
   useEffect(() => {
     if (size) {
-      setW(size.w.toFixed(2));
-      setH(size.h.toFixed(2));
+      setW(formatMm(size.w));
+      setH(formatMm(size.h));
     } else {
       setW("");
       setH("");
@@ -47,8 +48,8 @@ export function ModifyToolbar() {
   };
 
   const applySize = () => {
-    const nw = Number(w);
-    const nh = Number(h);
+    const nw = roundMm(Number(w));
+    const nh = roundMm(Number(h));
     if (!Number.isFinite(nw) || !Number.isFinite(nh) || nw <= 0 || nh <= 0) return;
     const patch = setObjectSize(selected, nw, nh);
     applyPatch(patch);
