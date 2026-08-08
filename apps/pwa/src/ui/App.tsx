@@ -18,7 +18,6 @@ import { DocumentPanel } from "./panels/DocumentPanel";
 import { PropertiesPanel } from "./panels/PropertiesPanel";
 import { LayersPanel } from "./panels/LayersPanel";
 import { PreviewPanel } from "./panels/PreviewPanel";
-import { ModifyToolbar } from "./components/ModifyToolbar";
 import { duplicateObject, nudgeObject } from "../core/objectEdit";
 import { useSketchTool } from "./sketch/SketchContext";
 import { MaterialManagerDialog } from "./dialogs/MaterialManagerDialog";
@@ -612,7 +611,6 @@ export function App() {
             <section className="app__canvas-zone" aria-label="Workspace" data-mobile-panel="canvas">
               <div className="app__preview-area">
                 <div className="app__canvas-toolbar">
-                  {previewMode === "design" && <ModifyToolbar />}
                   <div className="preview-mode-switch" role="group" aria-label="View mode">
                     <button
                       className={`segmented-button ${previewMode === "design" ? "is-active" : ""}`}

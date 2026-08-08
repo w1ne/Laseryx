@@ -4,7 +4,17 @@ import { ObjectService } from "../../core/services/ObjectService";
 import { MacroObj } from "../../core/model";
 import { getMacroDef } from "../../core/macros/catalog";
 import type { MacroParamSpec } from "../../core/macros/types";
-import { getObjectSize, setObjectPosition, setObjectSize, boundsOf } from "../../core/objectEdit";
+import {
+  getObjectSize,
+  setObjectPosition,
+  setObjectSize,
+  boundsOf,
+  mirrorHorizontal,
+  mirrorVertical,
+  rotate90,
+  duplicateObject,
+  nudgeObject
+} from "../../core/objectEdit";
 import { formatMm, roundMm } from "../../core/util";
 
 /**
@@ -160,6 +170,61 @@ export function PropertiesPanel() {
             </label>
           )}
 
+          <div className="props__section">Transform</div>
+          <div className="props__actions" data-testid="modify-toolbar">
+            <button
+              type="button"
+              className="props__btn"
+              title="Mirror left ↔ right"
+              onClick={() => {
+                const p = mirrorHorizontal(selectedObject);
+                if (p) ObjectService.updateObject(dispatch, selectedObject.id, p);
+              }}
+            >
+              Mirror H
+            </button>
+            <button
+              type="button"
+              className="props__btn"
+              title="Mirror top ↔ bottom"
+              onClick={() => {
+                const p = mirrorVertical(selectedObject);
+                if (p) ObjectService.updateObject(dispatch, selectedObject.id, p);
+              }}
+            >
+              Mirror V
+            </button>
+            <button
+              type="button"
+              className="props__btn"
+              title="Rotate 90° clockwise"
+              onClick={() => {
+                const p = rotate90(selectedObject, 1);
+                if (p) ObjectService.updateObject(dispatch, selectedObject.id, p);
+              }}
+            >
+              Rotate 90°
+            </button>
+            <button
+              type="button"
+              className="props__btn"
+              title="Duplicate"
+              onClick={() => {
+                const copy = duplicateObject(selectedObject, 10);
+                dispatch({ type: "ADD_OBJECT", payload: copy });
+                dispatch({ type: "SELECT_OBJECT", payload: copy.id });
+              }}
+            >
+              Duplicate
+            </button>
+          </div>
+          <div className="props__actions">
+            <button type="button" className="props__btn" title="Nudge 1mm" onClick={() => ObjectService.updateObject(dispatch, selectedObject.id, nudgeObject(selectedObject, -1, 0))}>←</button>
+            <button type="button" className="props__btn" title="Nudge 1mm" onClick={() => ObjectService.updateObject(dispatch, selectedObject.id, nudgeObject(selectedObject, 1, 0))}>→</button>
+            <button type="button" className="props__btn" title="Nudge 1mm" onClick={() => ObjectService.updateObject(dispatch, selectedObject.id, nudgeObject(selectedObject, 0, -1))}>↑</button>
+            <button type="button" className="props__btn" title="Nudge 1mm" onClick={() => ObjectService.updateObject(dispatch, selectedObject.id, nudgeObject(selectedObject, 0, 1))}>↓</button>
+          </div>
+
           <div className="props__section">Options</div>
 
           {selectedObject.kind !== "image" && (
@@ -219,6 +284,27 @@ function PropsStyles() {
       }
       .props__check {
         display: flex; align-items: center; gap: 8px; color: #334155; font: inherit; cursor: pointer;
+      }
+      .props__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .props__btn {
+        margin: 0;
+        padding: 6px 10px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        background: #f8fafc;
+        color: #0f172a;
+        font: inherit;
+        font-weight: 600;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .props__btn:hover {
+        border-color: #3b82f6;
+        background: #eff6ff;
       }
     `}</style>
   );
