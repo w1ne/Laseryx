@@ -28,8 +28,10 @@ export function MaterialManagerDialog({ isOpen, onClose }: MaterialManagerDialog
                     <h2>Material Library</h2>
                     <div style={{ display: "flex", gap: "8px" }}>
                         <button
+                            type="button"
                             className="button button--small"
                             style={{ background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0" }}
+                            title="Create a new material preset with default cut settings"
                             onClick={async () => {
                                 const name = prompt("New Material Name:", "My Material");
                                 if (!name) return;
@@ -47,7 +49,7 @@ export function MaterialManagerDialog({ isOpen, onClose }: MaterialManagerDialog
                         >
                             + New
                         </button>
-                        <button className="close-button" onClick={onClose}>×</button>
+                        <button type="button" className="close-button" title="Close material library" onClick={onClose}>×</button>
                     </div>
                 </div>
                 <div className="modal-body" style={{ maxHeight: "400px", overflowY: "auto" }}>
@@ -72,8 +74,10 @@ export function MaterialManagerDialog({ isOpen, onClose }: MaterialManagerDialog
                                         </div>
                                     </div>
                                     <button
+                                        type="button"
                                         className="button button--danger"
                                         style={{ fontSize: "11px", padding: "4px 8px", minHeight: "auto", background: "#fff5f5", color: "#d32f2f" }}
+                                        title={`Delete material preset “${p.name}”`}
                                         onClick={(e) => handleDelete(p.id, e)}
                                     >
                                         Delete
@@ -84,7 +88,7 @@ export function MaterialManagerDialog({ isOpen, onClose }: MaterialManagerDialog
                     )}
                 </div>
                 <div className="modal-footer">
-                    <button className="button" onClick={onClose}>Close</button>
+                    <button type="button" className="button" title="Close material library" onClick={onClose}>Close</button>
                 </div>
             </div>
             <style>{`

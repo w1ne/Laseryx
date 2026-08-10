@@ -42,6 +42,8 @@ export type PathObj = {
   transform: Transform;
   points: Point[];
   construction?: boolean;
+  /** User-visible name (list / properties). */
+  name?: string;
 };
 
 export type ShapeObj = {
@@ -51,6 +53,7 @@ export type ShapeObj = {
   transform: Transform;
   shape: Shape;
   construction?: boolean;
+  name?: string;
 };
 
 export type ImageObj = {
@@ -62,6 +65,7 @@ export type ImageObj = {
   height: number;
   // Data URI or blob URL
   src: string;
+  name?: string;
 };
 
 /** Parametric sketch element (e.g. circle). */
@@ -75,6 +79,7 @@ export type MacroObj = {
   defVersion: number;
   params: Record<string, number | string | boolean>;
   construction?: boolean;
+  name?: string;
 };
 
 /** True if object is reference-only (not burned). */
@@ -88,11 +93,28 @@ export type Obj = PathObj | ShapeObj | ImageObj | MacroObj;
 /** Alias used by some UI components. */
 export type DocumentObject = Obj;
 
+/** Imported loosely to avoid circular deps in types-only consumers. */
+export type DocumentSketch = import("./sketch/types").SketchDocument;
+
+/** Named selection of object ids (move/select as one unit). */
+export type ObjectGroup = {
+  id: string;
+  name: string;
+  /** Member object ids (including sketch:* bake ids). */
+  memberIds: string[];
+};
+
 export type Document = {
   version: number;
   units: Units;
   layers: Layer[];
   objects: Obj[];
+  /** Primary constrained sketch (optional until first draw). */
+  sketch?: DocumentSketch | null;
+  /** Last solve status for UI badge. */
+  sketchStatus?: import("./sketch/types").SolveStatus | null;
+  /** Object groups for multi-select / move-as-one. */
+  groups?: ObjectGroup[];
 };
 
 export type OperationOrder = "insideOut" | "shortestTravel" | "topDown";

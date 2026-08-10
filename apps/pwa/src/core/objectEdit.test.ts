@@ -3,6 +3,9 @@ import {
   boundsOf,
   getObjectSize,
   setObjectSize,
+  pathLength,
+  setPathLength,
+  padSelectionBounds,
   mirrorHorizontal,
   mirrorVertical,
   rotate90,
@@ -21,9 +24,41 @@ function rect(e: number, f: number, w: number, h: number): Obj {
   };
 }
 
+function openLine(x1: number, y1: number, x2: number, y2: number): Obj {
+  return {
+    kind: "path",
+    id: "line1",
+    layerId: "l1",
+    closed: false,
+    transform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 },
+    points: [
+      { x: x1, y: y1 },
+      { x: x2, y: y2 }
+    ]
+  };
+}
+
 describe("objectEdit", () => {
   it("getObjectSize for rect", () => {
     expect(getObjectSize(rect(10, 20, 30, 40))).toEqual({ w: 30, h: 40 });
+  });
+
+  it("pathLength and setPathLength for horizontal line", () => {
+    const line = openLine(0, 0, 50, 0);
+    expect(pathLength(line)).toBe(50);
+    const patch = setPathLength(line, 80);
+    expect(patch && "points" in patch && patch.points).toEqual([
+      { x: 0, y: 0 },
+      { x: 80, y: 0 }
+    ]);
+  });
+
+  it("padSelectionBounds expands degenerate line bbox", () => {
+    const b = boundsOf(openLine(10, 20, 60, 20))!;
+    expect(b.maxY - b.minY).toBe(0);
+    const p = padSelectionBounds(b, 4);
+    expect(p.maxY - p.minY).toBe(4);
+    expect(p.maxX - p.minX).toBe(50);
   });
 
   it("setObjectSize keeps top-left", () => {

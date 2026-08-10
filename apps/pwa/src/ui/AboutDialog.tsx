@@ -13,7 +13,7 @@ export function AboutDialog({ isOpen, onClose }: AboutDialogProps) {
             <div className="modal-content" onClick={e => e.stopPropagation()}>
                 <div className="modal-header">
                     <h2>About Laseryx</h2>
-                    <button className="close-button" onClick={onClose}>×</button>
+                    <button type="button" className="close-button" title="Close about dialog" onClick={onClose}>×</button>
                 </div>
                 <div className="modal-body" style={{ lineHeight: "1.6", color: "#333" }}>
                     <p>
@@ -47,7 +47,7 @@ export function AboutDialog({ isOpen, onClose }: AboutDialogProps) {
                     </p>
                 </div>
                 <div className="modal-footer">
-                    <button className="button" onClick={onClose}>Close</button>
+                    <button type="button" className="button" title="Close about dialog" onClick={onClose}>Close</button>
                 </div>
             </div>
             <style>{`

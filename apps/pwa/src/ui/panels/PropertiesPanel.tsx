@@ -8,17 +8,17 @@ import {
   getObjectSize,
   setObjectPosition,
   setObjectSize,
-  boundsOf,
-  mirrorHorizontal,
-  mirrorVertical,
-  rotate90,
-  duplicateObject,
-  nudgeObject
+  pathLength,
+  setPathLength,
+  boundsOf
 } from "../../core/objectEdit";
 import { formatMm, roundMm } from "../../core/util";
+import { SketchService } from "../../core/services/SketchService";
+import { isSketchObjectId, entityIdFromObjectId } from "../../core/sketch/bake";
+import { objectListLabel } from "../../core/objectLabels";
 
 /**
- * Fusion-style sketch properties: dimensions first, then options.
+ * Properties: name, dimensions, layer, construction (not transform / group — those live in Edit).
  */
 export function PropertiesPanel() {
   const { state, dispatch } = useStore();
@@ -60,10 +60,45 @@ export function PropertiesPanel() {
   return (
     <div className="panel props">
       <div className="panel__header">
-        <h2>{typeLabel}</h2>
+        <h2>{selectedObject.name?.trim() || typeLabel}</h2>
       </div>
       <div className="panel__body">
         <div className="props__form">
+          <div className="props__section">Name</div>
+          <label className="props__field">
+            Label
+            <input
+              type="text"
+              className="props__input"
+              placeholder={objectListLabel(selectedObject, document)}
+              value={selectedObject.name ?? ""}
+              onChange={(e) => {
+                const name = e.target.value;
+                ObjectService.updateObject(dispatch, selectedObject.id, { name });
+                // Keep sketch entity name in sync so re-bake preserves it
+                if (isSketchObjectId(selectedObject.id) && document.sketch) {
+                  const eid = entityIdFromObjectId(selectedObject.id);
+                  if (eid && document.sketch.entities[eid]) {
+                    const ent = document.sketch.entities[eid];
+                    const sketch = {
+                      ...document.sketch,
+                      entities: {
+                        ...document.sketch.entities,
+                        [eid]: { ...ent, name: name.trim() || undefined }
+                      }
+                    };
+                    dispatch({
+                      type: "SET_DOCUMENT",
+                      payload: { ...document, sketch },
+                      skipHistory: true
+                    });
+                  }
+                }
+              }}
+            />
+          </label>
+          <p className="props__hint">{objectListLabel(selectedObject, document)}</p>
+
           <div className="props__section">Dimensions</div>
           <div className="props__row">
             <label className="props__field">
@@ -98,8 +133,47 @@ export function PropertiesPanel() {
             </label>
           </div>
 
-          {selectedObject.kind === "macro" &&
-          (selectedObject.defId === "mount-hole" || selectedObject.defId === "button") ? (
+          {selectedObject.kind === "path" && !selectedObject.closed ? (
+            <label className="props__field">
+              Length
+              <input
+                type="number"
+                className="props__input"
+                step={0.1}
+                min={0.1}
+                value={f(pathLength(selectedObject) ?? undefined)}
+                onChange={(e) => {
+                  const v = roundMm(e.target.valueAsNumber);
+                  if (!Number.isFinite(v)) return;
+                  if (isSketchObjectId(selectedObject.id)) {
+                    SketchService.setDimLiteral(state, dispatch, selectedObject.id, "length", v);
+                    return;
+                  }
+                  const patch = setPathLength(selectedObject, v);
+                  if (patch) ObjectService.updateObject(dispatch, selectedObject.id, patch);
+                }}
+              />
+            </label>
+          ) : selectedObject.kind === "path" &&
+            selectedObject.closed &&
+            isSketchObjectId(selectedObject.id) ? (
+            <label className="props__field">
+              Diameter
+              <input
+                type="number"
+                className="props__input"
+                step={0.1}
+                min={0.5}
+                value={f(size ? Math.min(size.w, size.h) : undefined)}
+                onChange={(e) => {
+                  const v = roundMm(e.target.valueAsNumber);
+                  if (!Number.isFinite(v)) return;
+                  SketchService.setDimLiteral(state, dispatch, selectedObject.id, "diameter", v);
+                }}
+              />
+            </label>
+          ) : selectedObject.kind === "macro" &&
+            (selectedObject.defId === "mount-hole" || selectedObject.defId === "button") ? (
             <label className="props__field">
               Diameter
               <input
@@ -170,65 +244,13 @@ export function PropertiesPanel() {
             </label>
           )}
 
-          <div className="props__section">Transform</div>
-          <div className="props__actions" data-testid="modify-toolbar">
-            <button
-              type="button"
-              className="props__btn"
-              title="Mirror left ↔ right"
-              onClick={() => {
-                const p = mirrorHorizontal(selectedObject);
-                if (p) ObjectService.updateObject(dispatch, selectedObject.id, p);
-              }}
-            >
-              Mirror H
-            </button>
-            <button
-              type="button"
-              className="props__btn"
-              title="Mirror top ↔ bottom"
-              onClick={() => {
-                const p = mirrorVertical(selectedObject);
-                if (p) ObjectService.updateObject(dispatch, selectedObject.id, p);
-              }}
-            >
-              Mirror V
-            </button>
-            <button
-              type="button"
-              className="props__btn"
-              title="Rotate 90° clockwise"
-              onClick={() => {
-                const p = rotate90(selectedObject, 1);
-                if (p) ObjectService.updateObject(dispatch, selectedObject.id, p);
-              }}
-            >
-              Rotate 90°
-            </button>
-            <button
-              type="button"
-              className="props__btn"
-              title="Duplicate"
-              onClick={() => {
-                const copy = duplicateObject(selectedObject, 10);
-                dispatch({ type: "ADD_OBJECT", payload: copy });
-                dispatch({ type: "SELECT_OBJECT", payload: copy.id });
-              }}
-            >
-              Duplicate
-            </button>
-          </div>
-          <div className="props__actions">
-            <button type="button" className="props__btn" title="Nudge 1mm" onClick={() => ObjectService.updateObject(dispatch, selectedObject.id, nudgeObject(selectedObject, -1, 0))}>←</button>
-            <button type="button" className="props__btn" title="Nudge 1mm" onClick={() => ObjectService.updateObject(dispatch, selectedObject.id, nudgeObject(selectedObject, 1, 0))}>→</button>
-            <button type="button" className="props__btn" title="Nudge 1mm" onClick={() => ObjectService.updateObject(dispatch, selectedObject.id, nudgeObject(selectedObject, 0, -1))}>↑</button>
-            <button type="button" className="props__btn" title="Nudge 1mm" onClick={() => ObjectService.updateObject(dispatch, selectedObject.id, nudgeObject(selectedObject, 0, 1))}>↓</button>
-          </div>
-
           <div className="props__section">Options</div>
 
           {selectedObject.kind !== "image" && (
-            <label className="props__check">
+            <label
+              className="props__check"
+              title="Construction geometry is drawn dashed and skipped by CAM (not burned). Shortcut: X"
+            >
               <input
                 type="checkbox"
                 checked={selectedObject.construction === true}
@@ -254,6 +276,34 @@ export function PropertiesPanel() {
               ))}
             </select>
           </label>
+
+          {document.sketch && Object.keys(document.sketch.parameters).length > 0 && (
+            <>
+              <div className="props__section">Parameters</div>
+              {Object.values(document.sketch.parameters).map((p) => (
+                <label key={p.id} className="props__field">
+                  {p.name}
+                  <input
+                    type="number"
+                    className="props__input"
+                    step={0.1}
+                    value={formatMm(p.value)}
+                    onChange={(e) => {
+                      const v = roundMm(e.target.valueAsNumber);
+                      if (!Number.isFinite(v)) return;
+                      SketchService.setParameter(state, dispatch, p.name, v);
+                    }}
+                  />
+                </label>
+              ))}
+            </>
+          )}
+
+          {isSketchObjectId(selectedObject.id) && (
+            <p className="props__hint">
+              Sketch entity — size updates re-solve. Constraints show as glyphs (H, V, L…) on the canvas.
+            </p>
+          )}
         </div>
       </div>
       <PropsStyles />
@@ -267,6 +317,7 @@ function PropsStyles() {
       .props, .props * { font-size: 13px; line-height: 1.4; }
       .props .panel__header h2 { font-size: 15px; font-weight: 600; }
       .props__empty { margin: 0; color: #64748b; }
+      .props__hint { margin: 4px 0 0; font-size: 11px; color: #94a3b8; }
       .props__form { display: flex; flex-direction: column; gap: 10px; }
       .props__section {
         margin: 4px 0 0;

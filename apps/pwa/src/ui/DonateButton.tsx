@@ -9,6 +9,7 @@ export const DonateButton: React.FC = () => {
             target="_blank"
             rel="noopener noreferrer"
             className="donate-button"
+            title="Support Laseryx development"
             style={{
                 display: "inline-flex",
                 alignItems: "center",

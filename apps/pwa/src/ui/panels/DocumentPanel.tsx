@@ -1,12 +1,12 @@
 import { useStore } from "../../core/state/store";
-import { ObjectService } from "../../core/services/ObjectService";
-import { getMacroDef } from "../../core/macros/catalog";
+import { buildObjectListRows, listGroups } from "../../core/groups";
+import { GroupService } from "../../core/services/GroupService";
 import { UndoToolbar } from "../components/UndoToolbar";
 import { TEMPLATE_LIBRARY } from "../../core/templates";
 import { TemplateIconSvg } from "../components/TemplateIcons";
 import { placeTemplate } from "../components/placeTemplate";
-import { formatMm } from "../../core/util";
 import { useSketchTool, type SketchToolId } from "../sketch/SketchContext";
+import { groupListLabel, objectListLabel } from "../../core/objectLabels";
 
 const TOOL_BY_TEMPLATE: Record<string, SketchToolId> = {
   rect: "rect",
@@ -19,34 +19,12 @@ const TOOL_BY_TEMPLATE: Record<string, SketchToolId> = {
 
 /**
  * Fusion-style left rail: pick tool (or Select), then draw on canvas.
+ * Object list is compact: groups collapse members so you don't get 4 lines per rect.
  */
 export function DocumentPanel() {
   const { state, dispatch } = useStore();
-  const { document, selectedObjectId } = state;
+  const { document, selectedObjectId, selectedObjectIds } = state;
   const { tool, setTool } = useSketchTool();
-
-  const objectLabel = (obj: (typeof document.objects)[number]): string => {
-    let base: string;
-    if (obj.kind === "shape") base = `Rect ${formatMm(obj.shape.width)}×${formatMm(obj.shape.height)}`;
-    else if (obj.kind === "image") base = `Image ${formatMm(obj.width)}×${formatMm(obj.height)}`;
-    else if (obj.kind === "path") base = obj.closed ? "Path" : "Line";
-    else if (obj.kind === "macro") {
-      if (obj.defId === "mount-hole" || obj.defId === "button") {
-        base = `Circle Ø${formatMm(Number(obj.params.diameterMm))}`;
-      } else if (obj.defId === "slot") {
-        base = `Slot ${formatMm(Number(obj.params.lengthMm))}×${formatMm(Number(obj.params.widthMm))}`;
-      } else if (obj.defId === "round-rect") {
-        base = `Round ${formatMm(Number(obj.params.widthMm))}×${formatMm(Number(obj.params.heightMm))}`;
-      } else {
-        base = getMacroDef(obj.defId)?.name ?? obj.defId;
-      }
-    } else base = obj.id;
-
-    if (obj.kind !== "image" && obj.construction) {
-      return `${base} · construction`;
-    }
-    return base;
-  };
 
   const onToolClick = (templateId: string) => {
     const t = TOOL_BY_TEMPLATE[templateId] ?? "select";
@@ -59,13 +37,22 @@ export function DocumentPanel() {
     setTool(t);
   };
 
+  const rows = buildObjectListRows(document);
+  const selSet = new Set(
+    selectedObjectIds.length > 0
+      ? selectedObjectIds
+      : selectedObjectId
+        ? [selectedObjectId]
+        : []
+  );
+
   return (
     <div className="side">
       <div className="side__tools" role="toolbar" aria-label="Sketch tools" data-testid="template-library">
         <button
           type="button"
           className={`side__tool ${tool === "select" ? "is-active" : ""}`}
-          title="Select and move"
+          title="Select — click objects to select; drag free shapes; Shift+click multi-select. Esc also returns here."
           onClick={() => setTool("select")}
         >
           <SelectIcon />
@@ -74,16 +61,20 @@ export function DocumentPanel() {
         {TEMPLATE_LIBRARY.map((t) => {
           const tid = TOOL_BY_TEMPLATE[t.id] ?? "select";
           const active = tid !== "import" && tool === tid;
+          const toolTips: Record<string, string> = {
+            rect: "Rectangle — drag on the bed to draw a constrained box (auto-grouped). Esc = Select.",
+            circle: "Circle / hole — drag from center to set diameter. Esc = Select.",
+            line: "Line — drag endpoints; snap joins with coincident. Hold Shift for ortho. Esc = Select.",
+            slot: "Slot (stadium hole) — drag to set length × width; edit in Properties.",
+            "round-rect": "Rounded rectangle — drag size; set corner radius in Properties.",
+            import: "Import SVG paths or a PNG/JPEG image onto the bed."
+          };
           return (
             <button
               key={t.id}
               type="button"
               className={`side__tool ${active ? "is-active" : ""}`}
-              title={
-                t.id === "import"
-                  ? t.description
-                  : `${t.description} — drag on the bed to draw`
-              }
+              title={toolTips[t.id] ?? t.description}
               onClick={() => onToolClick(t.id)}
             >
               <TemplateIconSvg name={t.icon} />
@@ -99,30 +90,97 @@ export function DocumentPanel() {
       </div>
 
       <div className="side__list">
-        {document.objects.length === 0 ? (
+        {rows.length === 0 ? (
           <p className="side__empty">
             {tool === "select" ? "Pick a tool, drag on the bed" : "Drag on the bed to draw"}
           </p>
         ) : (
-          document.objects.map((obj) => {
-            const isSelected = obj.id === selectedObjectId;
+          rows.map((row) => {
+            if (row.kind === "group") {
+              const isSelected = row.memberIds.some((id) => selSet.has(id));
+              return (
+                <div
+                  key={row.groupId}
+                  className={`side__row side__row--group ${isSelected ? "is-selected" : ""}`}
+                >
+                  <button
+                    type="button"
+                    className="side__row-main"
+                    title={`Select group “${row.name}” (${row.memberIds.length} parts). Drag on canvas to move together.`}
+                    onClick={(e) => {
+                      setTool("select");
+                      if (e.shiftKey) {
+                        // add all members
+                        dispatch({
+                          type: "SET_SELECTION",
+                          payload: [...new Set([...selectedObjectIds, ...row.memberIds])]
+                        });
+                      } else {
+                        dispatch({ type: "SET_SELECTION", payload: [...row.memberIds] });
+                      }
+                    }}
+                  >
+                    <span className="side__group-mark" aria-hidden>
+                      ▣
+                    </span>
+                    {(() => {
+                      const g = listGroups(document).find((x) => x.id === row.groupId);
+                      return g
+                        ? groupListLabel(g, document)
+                        : `${row.name} · ${row.memberIds.length}`;
+                    })()}
+                  </button>
+                  <button
+                    type="button"
+                    className="side__row-del"
+                    title={`Delete entire group “${row.name}” and all of its members (Delete key also works when selected)`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      GroupService.deleteGroup(state, dispatch, row.groupId);
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              );
+            }
+
+            const obj = document.objects.find((o) => o.id === row.objectId);
+            if (!obj) return null;
+            const isSelected = selSet.has(obj.id);
+            const label = objectListLabel(obj, document);
             return (
               <div key={obj.id} className={`side__row ${isSelected ? "is-selected" : ""}`}>
                 <button
                   type="button"
                   className="side__row-main"
-                  onClick={() => {
+                  title={`Select “${label}”. Shift+click adds to multi-select.`}
+                  onClick={(e) => {
                     setTool("select");
-                    dispatch({ type: "SELECT_OBJECT", payload: obj.id });
+                    GroupService.selectWithGroup(state, dispatch, obj.id, {
+                      additive: e.shiftKey
+                    });
                   }}
                 >
-                  {objectLabel(obj)}
+                  {label}
                 </button>
                 <button
                   type="button"
                   className="side__row-del"
-                  title="Remove"
-                  onClick={() => ObjectService.deleteObject(dispatch, obj.id)}
+                  title={
+                    selSet.has(obj.id) && selSet.size > 1
+                      ? `Delete ${selSet.size} selected objects (Delete key)`
+                      : `Delete “${label}” (Delete key)`
+                  }
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // If this object is currently multi-selected, delete whole selection
+                    if (selSet.has(obj.id) && selSet.size > 1) {
+                      GroupService.deleteSelection(state, dispatch);
+                    } else {
+                      GroupService.deleteObjects(state, dispatch, [obj.id]);
+                    }
+                  }}
                 >
                   ×
                 </button>
@@ -221,6 +279,15 @@ export function DocumentPanel() {
         .side__row.is-selected .side__row-main {
           color: #1d4ed8;
           font-weight: 600;
+        }
+        .side__row--group .side__row-main {
+          font-weight: 600;
+        }
+        .side__group-mark {
+          display: inline-block;
+          margin-right: 6px;
+          color: #64748b;
+          font-size: 12px;
         }
         .side__row-main {
           flex: 1;

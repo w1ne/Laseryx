@@ -3,7 +3,7 @@ import { MachineStatus, MachineConnectionState, MachineStreamState } from "./typ
 
 export type Action =
     // Document Actions
-    | { type: "SET_DOCUMENT"; payload: Document }
+    | { type: "SET_DOCUMENT"; payload: Document; skipHistory?: boolean }
     | { type: "ADD_LAYER"; payload: Layer }
     | { type: "DELETE_LAYER"; payload: string } // layerId
     | { type: "ADD_OBJECT"; payload: Obj }
@@ -12,6 +12,13 @@ export type Action =
     | { type: "COMMIT_HISTORY" }
     | { type: "DELETE_OBJECT"; payload: string } // objectId
     | { type: "SELECT_OBJECT"; payload: string | null }
+    /** Shift+click multi-select toggle. */
+    | { type: "TOGGLE_OBJECT_SELECTION"; payload: string }
+    | { type: "SET_SELECTION"; payload: string[] }
+    /** Select a sketch dimension/constraint (or null to clear). */
+    | { type: "SELECT_CONSTRAINT"; payload: string | null }
+    /** Full sketch replace (caller already solved+baked or SET_DOCUMENT preferred). */
+    | { type: "SET_SKETCH"; payload: NonNullable<Document["sketch"]> }
 
     // CAM Actions
     | { type: "SET_CAM_SETTINGS"; payload: CamSettings }

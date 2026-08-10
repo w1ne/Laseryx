@@ -11,7 +11,7 @@ export const TEMPLATE_LIBRARY: TemplateEntry[] = [
     category: "shape",
     icon: "rect",
     tags: ["rect", "box", "square"],
-    description: "Rectangle — set W × H",
+    description: "Rectangle — drag on the bed; edit W × H in Properties",
     place: { kind: "rect" }
   },
   {
@@ -20,7 +20,7 @@ export const TEMPLATE_LIBRARY: TemplateEntry[] = [
     category: "shape",
     icon: "hole",
     tags: ["circle", "hole", "round"],
-    description: "Circle — set diameter",
+    description: "Circle / hole — drag from center; set diameter in Properties",
     place: { kind: "macro", defId: "mount-hole" }
   },
   {

@@ -89,6 +89,70 @@ export function getObjectSize(obj: Obj): Size2 | null {
   return { w: r(b.maxX - b.minX), h: r(b.maxY - b.minY) };
 }
 
+/** Open path polyline length in mm (world space). */
+export function pathLength(obj: Obj): number | null {
+  if (obj.kind !== "path" || obj.closed || obj.points.length < 2) return null;
+  const t = obj.transform;
+  let len = 0;
+  for (let i = 1; i < obj.points.length; i++) {
+    const a = obj.points[i - 1];
+    const b = obj.points[i];
+    const ax = a.x * t.a + a.y * t.c + t.e;
+    const ay = a.x * t.b + a.y * t.d + t.f;
+    const bx = b.x * t.a + b.y * t.c + t.e;
+    const by = b.x * t.b + b.y * t.d + t.f;
+    len += Math.hypot(bx - ax, by - ay);
+  }
+  return r(len);
+}
+
+/**
+ * Set length of an open path, keeping the first point fixed and scaling along the path direction.
+ * For multi-segment paths, scales all segments uniformly from the start.
+ */
+export function setPathLength(obj: Obj, lengthMm: number): Partial<Obj> | null {
+  if (obj.kind !== "path" || obj.closed || obj.points.length < 2) return null;
+  const cur = pathLength(obj);
+  if (cur == null || cur < 1e-6) return null;
+  const target = Math.max(0.1, r(lengthMm));
+  const scale = target / cur;
+  const t = obj.transform;
+  const p0 = obj.points[0];
+  const oX = p0.x * t.a + p0.y * t.c + t.e;
+  const oY = p0.x * t.b + p0.y * t.d + t.f;
+
+  const points = obj.points.map((p) => {
+    const wx = p.x * t.a + p.y * t.c + t.e;
+    const wy = p.x * t.b + p.y * t.d + t.f;
+    const nx = oX + (wx - oX) * scale;
+    const ny = oY + (wy - oY) * scale;
+    // store as world points under identity-like local if transform is identity;
+    // invert simple transform for general case (assume no shear for laser sketches)
+    const det = t.a * t.d - t.b * t.c || 1;
+    const lx = (t.d * (nx - t.e) - t.c * (ny - t.f)) / det;
+    const ly = (-t.b * (nx - t.e) + t.a * (ny - t.f)) / det;
+    return { x: r(lx), y: r(ly) };
+  });
+
+  return { points } as Partial<Obj>;
+}
+
+/** Expand near-zero width/height bbox so line selection chrome stays clickable. */
+export function padSelectionBounds(b: BBox, minSpan = 4): BBox {
+  let { minX, minY, maxX, maxY } = b;
+  if (maxX - minX < minSpan) {
+    const m = (minX + maxX) / 2;
+    minX = m - minSpan / 2;
+    maxX = m + minSpan / 2;
+  }
+  if (maxY - minY < minSpan) {
+    const m = (minY + maxY) / 2;
+    minY = m - minSpan / 2;
+    maxY = m + minSpan / 2;
+  }
+  return { minX, minY, maxX, maxY };
+}
+
 /** Set width/height in mm (keeps top-left of bbox fixed when possible). */
 export function setObjectSize(obj: Obj, w: number, h: number): Partial<Obj> | null {
   w = r(w);

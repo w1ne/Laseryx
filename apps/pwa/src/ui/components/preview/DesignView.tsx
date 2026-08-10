@@ -2,10 +2,20 @@ import React, { useEffect, useRef } from "react";
 import { isConstruction, Obj } from "../../../core/model";
 import { expandMacro } from "../../../core/macros/expand";
 import { formatMm, roundMm } from "../../../core/util";
-import { getObjectSize } from "../../../core/objectEdit";
+import { getObjectSize, padSelectionBounds, pathLength } from "../../../core/objectEdit";
 import { clientToSvgPoint, objectBounds, type BBox } from "./designGeometry";
-
+import { entityIdFromObjectId, isSketchObjectId } from "../../../core/sketch/bake";
+import type { SketchDocument } from "../../../core/sketch/types";
+import {
+  entityGlyphPoint,
+  listAllConstraints,
+  listConstraintsForEntities,
+  objectIdsToEntityIds
+} from "../../../core/sketch/constraintDisplay";
 const r = (n: number) => roundMm(n);
+
+/** Invisible wide stroke so thin laser lines are easy to select (screen px via non-scaling-stroke). */
+const HIT_STROKE = 14;
 
 /** Fusion-style construction: orange dashed, not cut. */
 function strokeFor(obj: Obj, isSelected: boolean): { stroke: string; dash?: string } {
@@ -26,11 +36,26 @@ export type ObjectTransformPatch = {
 type DesignViewProps = {
   objects: Obj[];
   selectedId?: string;
-  onSelect: (id: string | null) => void;
+  /** Multi-select set (for highlight + constraints). */
+  selectedIds?: string[];
+  sketch?: SketchDocument | null;
+  /** World Y is flipped (front-left origin) — keep size/glyph labels upright. */
+  yFlipped?: boolean;
+  /** Returns resulting selection ids when known (for group multi-move). */
+  onSelect: (id: string | null, opts?: { additive?: boolean }) => string[] | void;
   onPatchObject: (
     id: string,
     patch: ObjectTransformPatch,
     opts?: { skipHistory?: boolean; commit?: boolean }
+  ) => void;
+  /** Live drag of a sketch point (skipSolve). */
+  onMoveSketchPoint?: (pointId: string, x: number, y: number, live: boolean) => void;
+  /** Translate whole selection/group by delta (mm). live=true during drag. */
+  onTranslateSelection?: (
+    dx: number,
+    dy: number,
+    live: boolean,
+    memberIds: string[]
   ) => void;
 };
 
@@ -43,12 +68,22 @@ type DragState =
       originF: number;
     }
   | {
+      mode: "multi-move";
+      startWorld: { x: number; y: number };
+      memberIds: string[];
+    }
+  | {
       mode: "resize";
       id: string;
       corner: "se" | "sw" | "ne" | "nw";
       startWorld: { x: number; y: number };
       startBounds: BBox;
       startObj: Obj;
+    }
+  | {
+      mode: "sketch-point";
+      pointId: string;
+      objectId: string;
     };
 
 function pathToPointsAttr(points: { x: number; y: number }[]): string {
@@ -56,11 +91,25 @@ function pathToPointsAttr(points: { x: number; y: number }[]): string {
 }
 
 const HANDLE = 2.5;
+const END_HANDLE = 2.2;
 
-export function DesignView({ objects, selectedId, onSelect, onPatchObject }: DesignViewProps) {
+export function DesignView({
+  objects,
+  selectedId,
+  selectedIds,
+  sketch,
+  yFlipped = true,
+  onSelect,
+  onPatchObject,
+  onMoveSketchPoint,
+  onTranslateSelection
+}: DesignViewProps) {
   const dragRef = useRef<DragState | null>(null);
   const objectsRef = useRef(objects);
   const onPatchRef = useRef(onPatchObject);
+  const onMoveSketchPointRef = useRef(onMoveSketchPoint);
+  const onTranslateSelectionRef = useRef(onTranslateSelection);
+  const selSet = new Set(selectedIds?.length ? selectedIds : selectedId ? [selectedId] : []);
 
   useEffect(() => {
     objectsRef.current = objects;
@@ -68,6 +117,12 @@ export function DesignView({ objects, selectedId, onSelect, onPatchObject }: Des
   useEffect(() => {
     onPatchRef.current = onPatchObject;
   }, [onPatchObject]);
+  useEffect(() => {
+    onMoveSketchPointRef.current = onMoveSketchPoint;
+  }, [onMoveSketchPoint]);
+  useEffect(() => {
+    onTranslateSelectionRef.current = onTranslateSelection;
+  }, [onTranslateSelection]);
 
   useEffect(() => {
     const applyDrag = (svg: SVGSVGElement, clientX: number, clientY: number) => {
@@ -75,6 +130,19 @@ export function DesignView({ objects, selectedId, onSelect, onPatchObject }: Des
       if (!drag) return;
       const world = clientToSvgPoint(svg, clientX, clientY);
       if (!world) return;
+
+      if (drag.mode === "sketch-point") {
+        onMoveSketchPointRef.current?.(drag.pointId, r(world.x), r(world.y), true);
+        return;
+      }
+
+      if (drag.mode === "multi-move") {
+        // Absolute delta from drag start — parent applies against a snapshot
+        const dx = r(world.x - drag.startWorld.x);
+        const dy = r(world.y - drag.startWorld.y);
+        onTranslateSelectionRef.current?.(dx, dy, true, drag.memberIds);
+        return;
+      }
 
       if (drag.mode === "move") {
         const dx = world.x - drag.startWorld.x;
@@ -241,9 +309,24 @@ export function DesignView({ objects, selectedId, onSelect, onPatchObject }: Des
     };
     const onDocUp = (e: PointerEvent) => {
       if (!dragRef.current) return;
+      const drag = dragRef.current;
       dragRef.current = null;
-      // One undo step for the whole drag
-      onPatchRef.current("", {}, { commit: true });
+      if (drag.mode === "sketch-point") {
+        const svg = document.querySelector(".preview-svg") as SVGSVGElement | null;
+        if (svg) {
+          const world = clientToSvgPoint(svg, e.clientX, e.clientY);
+          if (world) {
+            onMoveSketchPointRef.current?.(drag.pointId, r(world.x), r(world.y), false);
+          }
+        }
+      } else if (drag.mode === "multi-move") {
+        // Commit one history step for the group drag (zero delta finalize)
+        onTranslateSelectionRef.current?.(0, 0, false, drag.memberIds);
+        onPatchRef.current("", {}, { commit: true });
+      } else {
+        // One undo step for the whole free-object drag
+        onPatchRef.current("", {}, { commit: true });
+      }
       const svg = document.querySelector(".preview-svg") as SVGSVGElement | null;
       if (svg) {
         try {
@@ -276,7 +359,34 @@ export function DesignView({ objects, selectedId, onSelect, onPatchObject }: Des
     const world = clientToSvgPoint(svg, e.clientX, e.clientY);
     if (!world) return;
 
-    onSelect(obj.id);
+    const result = onSelect(obj.id, { additive: e.shiftKey });
+    const nextIds =
+      result && result.length > 0
+        ? result
+        : e.shiftKey
+          ? selSet.has(obj.id)
+            ? [...selSet].filter((id) => id !== obj.id)
+            : [...selSet, obj.id]
+          : selSet.has(obj.id) && selSet.size > 1
+            ? [...selSet]
+            : [obj.id];
+
+    const multi = nextIds.length > 1;
+    if (multi && onTranslateSelection) {
+      dragRef.current = {
+        mode: "multi-move",
+        startWorld: world,
+        memberIds: nextIds
+      };
+      svg.setPointerCapture(e.pointerId);
+      return;
+    }
+
+    // Single sketch entity: endpoint handles only (unless part of multi above)
+    if (isSketchObjectId(obj.id)) {
+      return;
+    }
+
     dragRef.current = {
       mode: "move",
       id: obj.id,
@@ -284,6 +394,21 @@ export function DesignView({ objects, selectedId, onSelect, onPatchObject }: Des
       originE: obj.transform.e,
       originF: obj.transform.f
     };
+    svg.setPointerCapture(e.pointerId);
+  };
+
+  const beginSketchPoint = (
+    e: React.PointerEvent,
+    pointId: string,
+    objectId: string
+  ) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    e.preventDefault();
+    const svg = (e.currentTarget as SVGElement).ownerSVGElement;
+    if (!svg) return;
+    onSelect(objectId);
+    dragRef.current = { mode: "sketch-point", pointId, objectId };
     svg.setPointerCapture(e.pointerId);
   };
 
@@ -314,14 +439,16 @@ export function DesignView({ objects, selectedId, onSelect, onPatchObject }: Des
   };
 
   const selected = objects.find((o) => o.id === selectedId);
-  const selectedBBox = selected ? objectBounds(selected) : null;
+  const rawSelectedBBox = selected ? objectBounds(selected) : null;
+  // Lines often have zero height/width — pad so chrome + handles remain usable
+  const selectedBBox = rawSelectedBBox ? padSelectionBounds(rawSelectedBBox) : null;
 
   return (
     <g>
       {objects.map((obj) => {
-        const isSelected = obj.id === selectedId;
+        const isSelected = selSet.has(obj.id);
         const strokeWidth = isSelected ? "2" : "1";
-        const cursor = "move";
+        const cursor = isSketchObjectId(obj.id) ? "pointer" : "move";
 
         if (obj.kind === "image") {
           return (
@@ -353,23 +480,49 @@ export function DesignView({ objects, selectedId, onSelect, onPatchObject }: Des
               style={{ cursor }}
             >
               {obj.closed ? (
-                <polygon
-                  points={points}
-                  fill="transparent"
-                  stroke={stroke}
-                  strokeWidth={strokeWidth}
-                  strokeDasharray={dash}
-                  vectorEffect="non-scaling-stroke"
-                />
+                <>
+                  <polygon
+                    points={points}
+                    fill="transparent"
+                    stroke="transparent"
+                    strokeWidth={HIT_STROKE}
+                    vectorEffect="non-scaling-stroke"
+                    pointerEvents="all"
+                  />
+                  <polygon
+                    points={points}
+                    fill="transparent"
+                    stroke={stroke}
+                    strokeWidth={strokeWidth}
+                    strokeDasharray={dash}
+                    vectorEffect="non-scaling-stroke"
+                    pointerEvents="none"
+                  />
+                </>
               ) : (
-                <polyline
-                  points={points}
-                  fill="none"
-                  stroke={stroke}
-                  strokeWidth={Math.max(2, Number(strokeWidth))}
-                  strokeDasharray={dash}
-                  vectorEffect="non-scaling-stroke"
-                />
+                <>
+                  {/* Fat hit strip — lines are otherwise 1–2 screen px and nearly unselectable */}
+                  <polyline
+                    points={points}
+                    fill="none"
+                    stroke="transparent"
+                    strokeWidth={HIT_STROKE}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    vectorEffect="non-scaling-stroke"
+                    pointerEvents="stroke"
+                  />
+                  <polyline
+                    points={points}
+                    fill="none"
+                    stroke={stroke}
+                    strokeWidth={isSelected ? 2.5 : 1.5}
+                    strokeDasharray={dash}
+                    strokeLinecap="round"
+                    vectorEffect="non-scaling-stroke"
+                    pointerEvents="none"
+                  />
+                </>
               )}
             </g>
           );
@@ -427,25 +580,46 @@ export function DesignView({ objects, selectedId, onSelect, onPatchObject }: Des
               {expanded.paths.map((path, i) => {
                 const pts = pathToPointsAttr(path.points);
                 return path.closed ? (
-                  <polygon
-                    key={i}
-                    points={pts}
-                    fill={construct ? "none" : isSelected ? "rgba(59, 130, 246, 0.1)" : "rgba(15, 23, 42, 0.03)"}
-                    stroke={stroke}
-                    strokeWidth={strokeWidth}
-                    strokeDasharray={dash}
-                    vectorEffect="non-scaling-stroke"
-                  />
+                  <g key={i}>
+                    <polygon
+                      points={pts}
+                      fill="transparent"
+                      stroke="transparent"
+                      strokeWidth={HIT_STROKE}
+                      vectorEffect="non-scaling-stroke"
+                      pointerEvents="all"
+                    />
+                    <polygon
+                      points={pts}
+                      fill={construct ? "none" : isSelected ? "rgba(59, 130, 246, 0.1)" : "rgba(15, 23, 42, 0.03)"}
+                      stroke={stroke}
+                      strokeWidth={strokeWidth}
+                      strokeDasharray={dash}
+                      vectorEffect="non-scaling-stroke"
+                      pointerEvents="none"
+                    />
+                  </g>
                 ) : (
-                  <polyline
-                    key={i}
-                    points={pts}
-                    fill="none"
-                    stroke={stroke}
-                    strokeWidth={strokeWidth}
-                    strokeDasharray={dash}
-                    vectorEffect="non-scaling-stroke"
-                  />
+                  <g key={i}>
+                    <polyline
+                      points={pts}
+                      fill="none"
+                      stroke="transparent"
+                      strokeWidth={HIT_STROKE}
+                      strokeLinecap="round"
+                      vectorEffect="non-scaling-stroke"
+                      pointerEvents="stroke"
+                    />
+                    <polyline
+                      points={pts}
+                      fill="none"
+                      stroke={stroke}
+                      strokeWidth={strokeWidth}
+                      strokeDasharray={dash}
+                      vectorEffect="non-scaling-stroke"
+                      pointerEvents="none"
+                    />
+                  </g>
                 );
               })}
             </g>
@@ -454,6 +628,31 @@ export function DesignView({ objects, selectedId, onSelect, onPatchObject }: Des
 
         return null;
       })}
+
+      {/* Multi-select secondary highlights */}
+      {Array.from(selSet)
+        .filter((id) => id !== selectedId)
+        .map((id) => {
+          const obj = objects.find((o) => o.id === id);
+          const b = obj ? objectBounds(obj) : null;
+          if (!b) return null;
+          const pb = padSelectionBounds(b);
+          return (
+            <rect
+              key={`ms-${id}`}
+              x={pb.minX}
+              y={pb.minY}
+              width={Math.max(0, pb.maxX - pb.minX)}
+              height={Math.max(0, pb.maxY - pb.minY)}
+              fill="none"
+              stroke="#93c5fd"
+              strokeWidth={1}
+              strokeDasharray="3 2"
+              vectorEffect="non-scaling-stroke"
+              pointerEvents="none"
+            />
+          );
+        })}
 
       {selected && selectedBBox && (
         <g className="selection-chrome">
@@ -469,58 +668,173 @@ export function DesignView({ objects, selectedId, onSelect, onPatchObject }: Des
             vectorEffect="non-scaling-stroke"
             pointerEvents="none"
           />
-          {(
-            [
-              ["nw", selectedBBox.minX, selectedBBox.minY],
-              ["ne", selectedBBox.maxX, selectedBBox.minY],
-              ["sw", selectedBBox.minX, selectedBBox.maxY],
-              ["se", selectedBBox.maxX, selectedBBox.maxY]
-            ] as const
-          ).map(([corner, x, y]) => (
-            <rect
-              key={corner}
-              x={x - HANDLE}
-              y={y - HANDLE}
-              width={HANDLE * 2}
-              height={HANDLE * 2}
-              fill="#fff"
-              stroke="#3b82f6"
-              strokeWidth={1}
-              vectorEffect="non-scaling-stroke"
-              style={{
-                cursor: corner === "nw" || corner === "se" ? "nwse-resize" : "nesw-resize"
-              }}
-              onPointerDown={(e) => beginResize(e, selected, corner)}
-            />
-          ))}
+          {/* Free objects: corner resize. Sketch lines: endpoint drag instead. */}
+          {!isSketchObjectId(selected.id) &&
+            (
+              [
+                ["nw", selectedBBox.minX, selectedBBox.minY],
+                ["ne", selectedBBox.maxX, selectedBBox.minY],
+                ["sw", selectedBBox.minX, selectedBBox.maxY],
+                ["se", selectedBBox.maxX, selectedBBox.maxY]
+              ] as const
+            ).map(([corner, x, y]) => (
+              <rect
+                key={corner}
+                x={x - HANDLE}
+                y={y - HANDLE}
+                width={HANDLE * 2}
+                height={HANDLE * 2}
+                fill="#fff"
+                stroke="#3b82f6"
+                strokeWidth={1}
+                vectorEffect="non-scaling-stroke"
+                style={{
+                  cursor: corner === "nw" || corner === "se" ? "nwse-resize" : "nesw-resize"
+                }}
+                onPointerDown={(e) => beginResize(e, selected, corner)}
+              />
+            ))}
+          {isSketchObjectId(selected.id) &&
+            sketch &&
+            (() => {
+              const eid = entityIdFromObjectId(selected.id);
+              if (!eid) return null;
+              const ent = sketch.entities[eid];
+              if (!ent) return null;
+              const pts: { id: string; x: number; y: number }[] = [];
+              if (ent.kind === "line") {
+                const p1 = sketch.points[ent.p1];
+                const p2 = sketch.points[ent.p2];
+                if (p1) pts.push({ id: p1.id, x: p1.x, y: p1.y });
+                if (p2) pts.push({ id: p2.id, x: p2.x, y: p2.y });
+              } else if (ent.kind === "circle") {
+                const c = sketch.points[ent.center];
+                if (c) pts.push({ id: c.id, x: c.x, y: c.y });
+              }
+              return pts.map((p) => (
+                <circle
+                  key={p.id}
+                  cx={p.x}
+                  cy={p.y}
+                  r={END_HANDLE}
+                  fill="#fff"
+                  stroke="#2563eb"
+                  strokeWidth={1}
+                  vectorEffect="non-scaling-stroke"
+                  style={{ cursor: "crosshair" }}
+                  onPointerDown={(e) => beginSketchPoint(e, p.id, selected.id)}
+                />
+              ));
+            })()}
           {/* Fusion-like dimension readout on selection */}
           {(() => {
-            const size = getObjectSize(selected);
-            if (!size) return null;
             const midX = (selectedBBox.minX + selectedBBox.maxX) / 2;
-            const midY = (selectedBBox.minY + selectedBBox.maxY) / 2;
             const isCircle =
               selected.kind === "macro" &&
               (selected.defId === "mount-hole" || selected.defId === "button");
-            const label = isCircle
-              ? `Ø${formatMm(size.w)}`
-              : `${formatMm(size.w)} × ${formatMm(size.h)}`;
+            const sketchCircle =
+              selected.kind === "path" && selected.closed && isSketchObjectId(selected.id);
+            const lineLen =
+              selected.kind === "path" && !selected.closed ? pathLength(selected) : null;
+            let label: string | null = null;
+            if (isCircle || sketchCircle) {
+              const size = getObjectSize(selected);
+              if (size) label = `Ø${formatMm(size.w)}`;
+            } else if (lineLen != null) {
+              label = `${formatMm(lineLen)} mm`;
+            } else {
+              const size = getObjectSize(selected);
+              if (size) label = `${formatMm(size.w)} × ${formatMm(size.h)}`;
+            }
+            if (!label) return null;
+            const lx = midX;
+            const ly = selectedBBox.minY - 2;
             return (
-              <text
-                x={midX}
-                y={selectedBBox.minY - 2}
-                fill="#1d4ed8"
-                fontSize="3.2"
-                textAnchor="middle"
+              <g
+                transform={
+                  yFlipped ? `translate(${lx} ${ly}) scale(1 -1)` : `translate(${lx} ${ly})`
+                }
                 pointerEvents="none"
-                style={{ userSelect: "none" }}
               >
-                {label}
-              </text>
+                <text
+                  x={0}
+                  y={0}
+                  fill="#1d4ed8"
+                  fontSize="3.2"
+                  textAnchor="middle"
+                  style={{ userSelect: "none" }}
+                >
+                  {label}
+                </text>
+              </g>
             );
           })()}
         </g>
       )}
+
+      {/* Geometric constraint glyphs only (H, V, ∥…) — not dimensions */}
+      {sketch &&
+        (() => {
+          const eids = objectIdsToEntityIds([...selSet]);
+          const list = (
+            eids.length > 0
+              ? listConstraintsForEntities(sketch, eids)
+              : listAllConstraints(sketch)
+          ).filter(
+            (c) =>
+              c.type !== "length" &&
+              c.type !== "distance" &&
+              c.type !== "pointLineDistance" &&
+              c.type !== "diameter" &&
+              c.type !== "radius"
+          );
+          const toShow = eids.length > 0 ? list : list.slice(0, 40);
+          const offsets = new Map<string, number>();
+          return (
+            <g className="constraint-glyphs" pointerEvents="none">
+              {toShow.map((c) => {
+                const eid = c.entityIds[0];
+                if (!eid) return null;
+                const pt = entityGlyphPoint(sketch, eid);
+                if (!pt) return null;
+                const n = offsets.get(eid) ?? 0;
+                offsets.set(eid, n + 1);
+                const x = pt.x + n * 3.2;
+                const y = pt.y - 2.5;
+                return (
+                  <g
+                    key={c.id}
+                    transform={
+                      yFlipped ? `translate(${x},${y}) scale(1 -1)` : `translate(${x},${y})`
+                    }
+                  >
+                    <title>{c.label}</title>
+                    <rect
+                      x={-1.6}
+                      y={-2.4}
+                      width={3.2 + (c.glyph.length > 1 ? 1.5 : 0)}
+                      height={3.2}
+                      rx={0.5}
+                      fill="#0ea5e9"
+                      opacity={0.92}
+                    />
+                    <text
+                      x={0}
+                      y={0.2}
+                      fill="#fff"
+                      fontSize="2.4"
+                      fontWeight="700"
+                      textAnchor="middle"
+                      style={{ userSelect: "none" }}
+                    >
+                      {c.glyph}
+                    </text>
+                  </g>
+                );
+              })}
+            </g>
+          );
+        })()}
     </g>
   );
 }

@@ -97,13 +97,16 @@ describe("App", () => {
         expect(screen.getByRole("tab", { name: "Operations" })).toHaveAttribute("aria-selected", "false");
     });
 
-    it("renders a compact workbench top bar with mode controls", () => {
+    it("renders a workbench top bar with branding and project actions", () => {
         render(<App />);
 
         expect(screen.getByRole("banner")).toHaveClass("app__topbar");
+        expect(screen.getByRole("heading", { name: /Laseryx Workspace/i })).toBeInTheDocument();
+        expect(screen.getByText(/Release/i)).toBeInTheDocument();
         expect(screen.getByRole("group", { name: "Workspace mode" })).toBeInTheDocument();
         expect(screen.getByRole("group", { name: "Project actions" })).toBeInTheDocument();
-        expect(screen.getByText(/^Laseryx$/i)).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "About" })).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: /Buy me a coffee/i })).toBeInTheDocument();
     });
 
     it("hides agent control when no local bridge is attached", () => {

@@ -40,16 +40,18 @@ export function LayersPanel({
                 <h2>Operations</h2>
                 <div style={{ display: "flex", gap: "8px" }}>
                     <button
+                        type="button"
                         className="button button--small"
                         onClick={onOpenMaterialManager}
-                        title="Open Material Library"
+                        title="Material library — manage cut/engrave presets for materials"
                     >
                         📚 Materials
                     </button>
                     <button
+                        type="button"
                         className="button button--small"
                         onClick={() => LayerService.addLayer(state, dispatch)}
-                        title="Create a new Operation Layer"
+                        title="Add a new operation layer (separate speed/power settings)"
                     >
                         Add Layer
                     </button>
@@ -68,10 +70,11 @@ export function LayersPanel({
                                         {layer.name}
                                     </span>
                                     <button
+                                        type="button"
                                         className="button button--small"
                                         style={{ background: "#fee2e2", color: "#991b1b", border: "1px solid #fecaca" }}
                                         onClick={() => LayerService.deleteLayer(state, dispatch, layer.id)}
-                                        title="Delete Layer"
+                                        title={`Delete layer “${layer.name}” and its operation settings`}
                                     >
                                         Delete
                                     </button>
@@ -103,8 +106,9 @@ export function LayersPanel({
                                         ))}
                                     </select>
                                     <button
+                                        type="button"
                                         className="button button--small"
-                                        title="Save as Preset"
+                                        title="Save this layer’s speed/power/passes as a reusable material preset"
                                         onClick={async () => {
                                             const name = prompt("Preset Name:", "My Preset");
                                             if (!name) return;
@@ -217,18 +221,32 @@ export function LayersPanel({
                 <div className="form__group" style={{ marginTop: "16px", display: "flex", flexDirection: "column", gap: "10px" }}>
                     <div style={{ display: "flex", gap: "12px" }}>
                         <button
+                            type="button"
                             className="button button--primary"
                             onClick={onGenerate}
                             disabled={!isWorkerReady || generationState.status === "working"}
                             style={{ flex: 1 }}
+                            title={
+                              !isWorkerReady
+                                ? "CAM worker not ready yet — wait a moment"
+                                : generationState.status === "working"
+                                  ? "Generating G-code…"
+                                  : "Generate G-code toolpaths from the current design"
+                            }
                         >
                             {generationState.status === "working" ? "Wait..." : "Generate"}
                         </button>
                         <button
+                            type="button"
                             className="button"
                             onClick={onDownload}
                             disabled={!hasGcode}
                             style={{ flex: 1 }}
+                            title={
+                              hasGcode
+                                ? "Download the last generated G-code file"
+                                : "Generate G-code first, then download"
+                            }
                         >
                             Download
                         </button>

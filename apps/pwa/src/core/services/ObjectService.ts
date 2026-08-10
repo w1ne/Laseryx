@@ -8,6 +8,7 @@ import {
     revalidateMacroParams
 } from "../macros";
 import { roundMm } from "../util";
+import { nextAutoName } from "../objectLabels";
 
 function lineLayer(state: AppState, dispatch: React.Dispatch<Action>) {
     return ObjectService.findOrCreateLayer(state, dispatch, "line", "Layer");
@@ -23,6 +24,7 @@ export const ObjectService = {
             shape: { type: "rect", width: 40, height: 30 },
             transform: { a: 1, b: 0, c: 0, d: 1, e: t.e, f: t.f },
             layerId,
+            name: nextAutoName(state.document, "Rect"),
             ...(opts?.construction ? { construction: true } : {})
         };
         dispatch({ type: "ADD_OBJECT", payload: newObj });
@@ -46,7 +48,8 @@ export const ObjectService = {
             kind: "shape",
             shape: { type: "rect", width: w, height: h },
             transform: { a: 1, b: 0, c: 0, d: 1, e: x, f: y },
-            layerId
+            layerId,
+            name: nextAutoName(state.document, "Rect")
         };
         dispatch({ type: "ADD_OBJECT", payload: newObj });
         dispatch({ type: "SELECT_OBJECT", payload: newObj.id });
@@ -67,6 +70,7 @@ export const ObjectService = {
                 { x: 0, y: 0 },
                 { x: len, y: 0 }
             ],
+            name: nextAutoName(state.document, "Line"),
             ...(opts?.construction ? { construction: true } : {})
         };
         dispatch({ type: "ADD_OBJECT", payload: newObj });
@@ -95,7 +99,8 @@ export const ObjectService = {
             points: [
                 { x: x1, y: y1 },
                 { x: x2, y: y2 }
-            ]
+            ],
+            name: nextAutoName(state.document, "Line")
         };
         dispatch({ type: "ADD_OBJECT", payload: newObj });
         dispatch({ type: "SELECT_OBJECT", payload: newObj.id });
@@ -119,6 +124,14 @@ export const ObjectService = {
             defaultParamsForDef(def);
         const transform = nextCascadeTransform(state.document, state.machineProfile?.bedMm);
 
+        const typeWord =
+            def.id === "mount-hole" || def.id === "button"
+                ? "Circle"
+                : def.id === "slot"
+                  ? "Slot"
+                  : def.id === "round-rect"
+                    ? "Round"
+                    : def.name || "Macro";
         const newObj: MacroObj = {
             kind: "macro",
             id: `macro-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -126,7 +139,8 @@ export const ObjectService = {
             transform,
             defId: def.id,
             defVersion: def.defVersion,
-            params
+            params,
+            name: nextAutoName(state.document, typeWord)
         };
 
         dispatch({ type: "ADD_OBJECT", payload: newObj });
@@ -158,7 +172,8 @@ export const ObjectService = {
             },
             defId: def.id,
             defVersion: def.defVersion,
-            params: { diameterMm: d }
+            params: { diameterMm: d },
+            name: nextAutoName(state.document, "Circle")
         };
         dispatch({ type: "ADD_OBJECT", payload: newObj });
         dispatch({ type: "SELECT_OBJECT", payload: newObj.id });
@@ -187,7 +202,8 @@ export const ObjectService = {
             transform: { a: 1, b: 0, c: 0, d: 1, e: x, f: y },
             defId: def.id,
             defVersion: def.defVersion,
-            params: { lengthMm, widthMm }
+            params: { lengthMm, widthMm },
+            name: nextAutoName(state.document, "Slot")
         };
         dispatch({ type: "ADD_OBJECT", payload: newObj });
         dispatch({ type: "SELECT_OBJECT", payload: newObj.id });
@@ -214,7 +230,8 @@ export const ObjectService = {
             transform: { a: 1, b: 0, c: 0, d: 1, e: x, f: y },
             defId: def.id,
             defVersion: def.defVersion,
-            params: { widthMm: w, heightMm: h, radiusMm: rad }
+            params: { widthMm: w, heightMm: h, radiusMm: rad },
+            name: nextAutoName(state.document, "Round")
         };
         dispatch({ type: "ADD_OBJECT", payload: newObj });
         dispatch({ type: "SELECT_OBJECT", payload: newObj.id });
@@ -266,9 +283,9 @@ export const ObjectService = {
     },
 
     deleteObject: (dispatch: React.Dispatch<Action>, objectId: string) => {
-        if (confirm("Delete this object?")) {
-            dispatch({ type: "DELETE_OBJECT", payload: objectId });
-        }
+        // Prefer GroupService.deleteObjects from UI (handles sketch + groups).
+        // Keep simple path for free objects without confirm dialogs.
+        dispatch({ type: "DELETE_OBJECT", payload: objectId });
     },
 
     addObjects: (dispatch: React.Dispatch<Action>, state: AppState, objects: Obj[]) => {
@@ -291,7 +308,8 @@ export const ObjectService = {
             transform: { a: 1, b: 0, c: 0, d: 1, e: 10, f: 10 },
             width: roundMm(width),
             height: roundMm(height),
-            src
+            src,
+            name: nextAutoName(state.document, "Image")
         };
         dispatch({ type: "ADD_OBJECT", payload: newObj });
         dispatch({ type: "SELECT_OBJECT", payload: uniqueId });
