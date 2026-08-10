@@ -77,7 +77,7 @@ describe("App", () => {
 
     it("renders the main title", () => {
         render(<App />);
-        expect(screen.getByText(/Laseryx Workspace/i)).toBeInTheDocument();
+        expect(screen.getByText(/Laseryx/i)).toBeInTheDocument();
     });
 
     it("renders the workspace mode controls", () => {
@@ -97,13 +97,16 @@ describe("App", () => {
         expect(screen.getByRole("tab", { name: "Operations" })).toHaveAttribute("aria-selected", "false");
     });
 
-    it("renders a compact workbench top bar with mode controls", () => {
+    it("renders a workbench top bar with branding and project actions", () => {
         render(<App />);
 
         expect(screen.getByRole("banner")).toHaveClass("app__topbar");
+        expect(screen.getByRole("heading", { name: /Laseryx Workspace/i })).toBeInTheDocument();
+        expect(screen.getByText(/Release/i)).toBeInTheDocument();
         expect(screen.getByRole("group", { name: "Workspace mode" })).toBeInTheDocument();
         expect(screen.getByRole("group", { name: "Project actions" })).toBeInTheDocument();
-        expect(screen.getByText(/Release/i)).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "About" })).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: /Buy me a coffee/i })).toBeInTheDocument();
     });
 
     it("hides agent control when no local bridge is attached", () => {
@@ -182,15 +185,15 @@ describe("App", () => {
     it("renders desktop workbench zones for design mode", () => {
         render(<App />);
 
-        expect(screen.getByRole("region", { name: "Document navigation" })).toHaveClass("app__left-zone");
-        expect(screen.getByRole("region", { name: "Laser bed workspace" })).toHaveClass("app__canvas-zone");
+        expect(screen.getByRole("region", { name: "Tools and objects" })).toHaveClass("app__left-zone");
+        expect(screen.getByRole("region", { name: "Workspace" })).toHaveClass("app__canvas-zone");
         expect(screen.getByRole("region", { name: "Inspector and operations" })).toHaveClass("app__right-zone");
     });
 
     it("places design panels into left and right desktop zones", () => {
         render(<App />);
 
-        const leftZone = screen.getByRole("region", { name: "Document navigation" });
+        const leftZone = screen.getByRole("region", { name: "Tools and objects" });
         const rightZone = screen.getByRole("region", { name: "Inspector and operations" });
 
         expect(within(leftZone).getByTestId("design-panel-document")).toBeInTheDocument();
@@ -201,8 +204,8 @@ describe("App", () => {
     it("marks desktop wrapper zones with mobile panel state", () => {
         render(<App />);
 
-        const leftZone = screen.getByRole("region", { name: "Document navigation" });
-        const canvasZone = screen.getByRole("region", { name: "Laser bed workspace" });
+        const leftZone = screen.getByRole("region", { name: "Tools and objects" });
+        const canvasZone = screen.getByRole("region", { name: "Workspace" });
         const rightZone = screen.getByRole("region", { name: "Inspector and operations" });
 
         expect(leftZone).toHaveAttribute("data-mobile-panel", "active");
@@ -236,8 +239,8 @@ describe("App", () => {
         render(<App />);
 
         expect(screen.getByRole("region", { name: "Machine controls" })).toHaveAttribute("data-mobile-panel", "active");
-        expect(screen.getByRole("region", { name: "Laser bed workspace" })).toHaveAttribute("data-mobile-panel", "canvas");
-        expect(screen.queryByRole("region", { name: "Document navigation" })).not.toBeInTheDocument();
+        expect(screen.getByRole("region", { name: "Workspace" })).toHaveAttribute("data-mobile-panel", "canvas");
+        expect(screen.queryByRole("region", { name: "Tools and objects" })).not.toBeInTheDocument();
         expect(screen.queryByRole("region", { name: "Inspector and operations" })).not.toBeInTheDocument();
     });
 

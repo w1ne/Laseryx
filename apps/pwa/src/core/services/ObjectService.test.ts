@@ -75,4 +75,28 @@ describe("ObjectService", () => {
         const addOpCall = calls.find(c => c[0].type === "ADD_OPERATION");
         expect(addOpCall![0].payload.mode).toBe("fill");
     });
+
+    it("addMacro places a versioned macro on a line layer with cascade", () => {
+        const dispatch = vi.fn();
+        const state: AppState = JSON.parse(JSON.stringify(INITIAL_STATE));
+
+        const obj = ObjectService.addMacro(state, dispatch, "mount-hole");
+        expect(obj).not.toBeNull();
+        expect(obj!.kind).toBe("macro");
+        expect(obj!.defId).toBe("mount-hole");
+        expect(obj!.defVersion).toBe(3);
+        expect(obj!.params.diameterMm).toBe(10);
+
+        expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({
+            type: "ADD_OBJECT",
+            payload: expect.objectContaining({ kind: "macro", defId: "mount-hole" })
+        }));
+    });
+
+    it("addMacro returns null for unknown def", () => {
+        const dispatch = vi.fn();
+        const state: AppState = JSON.parse(JSON.stringify(INITIAL_STATE));
+        expect(ObjectService.addMacro(state, dispatch, "nope")).toBeNull();
+        expect(dispatch).not.toHaveBeenCalled();
+    });
 });

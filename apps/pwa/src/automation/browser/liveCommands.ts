@@ -199,6 +199,9 @@ export function createLiveCommandExecutor(options: LiveCommandExecutorOptions) {
           return wrap(request, okResponse<LiveResponseData>("document.selectObject", { selectedObjectId: objectId }));
         }
         case "document.addRect":
+        case "document.addMacro":
+        case "document.updateMacroParams":
+        case "macros.listDefs":
         case "document.updateObjectTransform":
         case "document.setObjectLayer":
         case "document.deleteObject":

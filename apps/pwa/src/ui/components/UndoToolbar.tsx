@@ -10,7 +10,7 @@ export function UndoToolbar() {
         <div className="undo-toolbar" style={{ display: "flex", gap: "4px" }}>
             <button
                 className="button button--icon"
-                title="Undo (Ctrl+Z)"
+                title="Undo last change (⌘/Ctrl+Z)"
                 disabled={!canUndo(history)}
                 onClick={() => dispatch({ type: "UNDO" })}
                 style={{
@@ -27,7 +27,7 @@ export function UndoToolbar() {
             </button>
             <button
                 className="button button--icon"
-                title="Redo (Ctrl+Y)"
+                title="Redo (⌘/Ctrl+Y or ⌘/Ctrl+Shift+Z)"
                 disabled={!canRedo(history)}
                 onClick={() => dispatch({ type: "REDO" })}
                 style={{

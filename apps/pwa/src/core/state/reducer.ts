@@ -14,6 +14,7 @@ const UNDOABLE_ACTIONS = new Set([
     "UPDATE_OBJECT",
     "DELETE_OBJECT",
     "SELECT_OBJECT",
+    "SET_SKETCH",
     "SET_CAM_SETTINGS",
     "ADD_OPERATION"
 ]);
@@ -38,11 +39,27 @@ export function appReducer(state: AppState, action: Action): AppState {
         };
     }
 
+    if (action.type === "COMMIT_HISTORY") {
+        const nextUndoable: UndoableState = {
+            document: state.document,
+            camSettings: state.camSettings,
+            selectedObjectId: state.selectedObjectId
+        };
+        return {
+            ...state,
+            history: pushState(state.history, nextUndoable)
+        };
+    }
+
     // 2. Perform the internal reduction
     const newState = internalReducer(state, action);
 
-    // 3. If action was undoable, update history
-    if (UNDOABLE_ACTIONS.has(action.type)) {
+    // 3. If action was undoable, update history (canvas drag uses skipHistory + COMMIT_HISTORY)
+    if (
+        UNDOABLE_ACTIONS.has(action.type) &&
+        !(action.type === "UPDATE_OBJECT" && action.skipHistory) &&
+        !(action.type === "SET_DOCUMENT" && action.skipHistory)
+    ) {
         const nextUndoable: UndoableState = {
             document: newState.document,
             camSettings: newState.camSettings,
@@ -103,18 +120,71 @@ function internalReducer(state: AppState, action: Action): AppState {
                 }
             };
 
-        case "DELETE_OBJECT":
+        case "DELETE_OBJECT": {
+            const selectedObjectIds = state.selectedObjectIds.filter((id) => id !== action.payload);
             return {
                 ...state,
                 document: {
                     ...state.document,
                     objects: state.document.objects.filter(o => o.id !== action.payload)
                 },
-                selectedObjectId: state.selectedObjectId === action.payload ? null : state.selectedObjectId
+                selectedObjectId:
+                    state.selectedObjectId === action.payload
+                        ? selectedObjectIds[selectedObjectIds.length - 1] ?? null
+                        : state.selectedObjectId,
+                selectedObjectIds
             };
+        }
 
         case "SELECT_OBJECT":
-            return { ...state, selectedObjectId: action.payload };
+            return {
+                ...state,
+                selectedObjectId: action.payload,
+                selectedObjectIds: action.payload ? [action.payload] : [],
+                selectedConstraintId: null
+            };
+
+        case "TOGGLE_OBJECT_SELECTION": {
+            const id = action.payload;
+            const has = state.selectedObjectIds.includes(id);
+            const selectedObjectIds = has
+                ? state.selectedObjectIds.filter((x) => x !== id)
+                : [...state.selectedObjectIds, id];
+            const selectedObjectId =
+                selectedObjectIds.length === 0
+                    ? null
+                    : has
+                      ? selectedObjectIds[selectedObjectIds.length - 1] ?? null
+                      : id;
+            return { ...state, selectedObjectId, selectedObjectIds, selectedConstraintId: null };
+        }
+
+        case "SET_SELECTION": {
+            const selectedObjectIds = action.payload;
+            const selectedObjectId =
+                selectedObjectIds.length > 0
+                    ? selectedObjectIds[selectedObjectIds.length - 1]
+                    : null;
+            return { ...state, selectedObjectId, selectedObjectIds, selectedConstraintId: null };
+        }
+
+        case "SELECT_CONSTRAINT":
+            return {
+                ...state,
+                selectedConstraintId: action.payload,
+                // Clear object selection so Delete removes the dim, not a shape
+                selectedObjectId: action.payload ? null : state.selectedObjectId,
+                selectedObjectIds: action.payload ? [] : state.selectedObjectIds
+            };
+
+        case "SET_SKETCH":
+            return {
+                ...state,
+                document: {
+                    ...state.document,
+                    sketch: action.payload
+                }
+            };
 
         case "SET_CAM_SETTINGS":
             return { ...state, camSettings: action.payload };

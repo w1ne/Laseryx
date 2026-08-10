@@ -1,158 +1,332 @@
 import { useStore } from "../../core/state/store";
-import { ObjectService } from "../../core/services/ObjectService";
-import { parseSvg } from "../../core/svgImport";
-import { PathObj, Transform } from "../../core/model";
+import { buildObjectListRows, listGroups } from "../../core/groups";
+import { GroupService } from "../../core/services/GroupService";
 import { UndoToolbar } from "../components/UndoToolbar";
+import { TEMPLATE_LIBRARY } from "../../core/templates";
+import { TemplateIconSvg } from "../components/TemplateIcons";
+import { placeTemplate } from "../components/placeTemplate";
+import { useSketchTool, type SketchToolId } from "../sketch/SketchContext";
+import { groupListLabel, objectListLabel } from "../../core/objectLabels";
 
+const TOOL_BY_TEMPLATE: Record<string, SketchToolId> = {
+  rect: "rect",
+  circle: "circle",
+  line: "line",
+  slot: "slot",
+  "round-rect": "round-rect",
+  import: "import"
+};
+
+/**
+ * Fusion-style left rail: pick tool (or Select), then draw on canvas.
+ * Object list is compact: groups collapse members so you don't get 4 lines per rect.
+ */
 export function DocumentPanel() {
-    const { state, dispatch } = useStore();
-    const { document, selectedObjectId } = state;
+  const { state, dispatch } = useStore();
+  const { document, selectedObjectId, selectedObjectIds } = state;
+  const { tool, setTool } = useSketchTool();
 
-    // Helper to format numbers for display
-    const f = (n: number) => n.toFixed(2);
+  const onToolClick = (templateId: string) => {
+    const t = TOOL_BY_TEMPLATE[templateId] ?? "select";
+    if (t === "import") {
+      const entry = TEMPLATE_LIBRARY.find((x) => x.id === "import");
+      if (entry) placeTemplate(entry, state, dispatch);
+      setTool("select");
+      return;
+    }
+    setTool(t);
+  };
 
-    const handleAddRectangle = () => {
-        ObjectService.addRectangle(state, dispatch);
-    };
+  const rows = buildObjectListRows(document);
+  const selSet = new Set(
+    selectedObjectIds.length > 0
+      ? selectedObjectIds
+      : selectedObjectId
+        ? [selectedObjectId]
+        : []
+  );
 
-    const handleImportFile = () => {
-        const input = window.document.createElement("input");
-        input.type = "file";
-        input.accept = "image/png, image/jpeg, image/svg+xml, .svg";
-        input.onchange = async () => {
-            const file = input.files?.[0];
-            if (!file) return;
+  return (
+    <div className="side">
+      <div className="side__tools" role="toolbar" aria-label="Sketch tools" data-testid="template-library">
+        <button
+          type="button"
+          className={`side__tool ${tool === "select" ? "is-active" : ""}`}
+          title="Select — click objects to select; drag free shapes; Shift+click multi-select. Esc also returns here."
+          onClick={() => setTool("select")}
+        >
+          <SelectIcon />
+          <span className="side__tool-label">Select</span>
+        </button>
+        {TEMPLATE_LIBRARY.map((t) => {
+          const tid = TOOL_BY_TEMPLATE[t.id] ?? "select";
+          const active = tid !== "import" && tool === tid;
+          const toolTips: Record<string, string> = {
+            rect: "Rectangle — drag on the bed to draw a constrained box (auto-grouped). Esc = Select.",
+            circle: "Circle / hole — drag from center to set diameter. Esc = Select.",
+            line: "Line — drag endpoints; snap joins with coincident. Hold Shift for ortho. Esc = Select.",
+            slot: "Slot (stadium hole) — drag to set length × width; edit in Properties.",
+            "round-rect": "Rounded rectangle — drag size; set corner radius in Properties.",
+            import: "Import SVG paths or a PNG/JPEG image onto the bed."
+          };
+          return (
+            <button
+              key={t.id}
+              type="button"
+              className={`side__tool ${active ? "is-active" : ""}`}
+              title={toolTips[t.id] ?? t.description}
+              onClick={() => onToolClick(t.id)}
+            >
+              <TemplateIconSvg name={t.icon} />
+              <span className="side__tool-label">{t.name}</span>
+            </button>
+          );
+        })}
+      </div>
 
-            if (file.name.toLowerCase().endsWith(".svg")) {
-                try {
-                    const text = await file.text();
-                    const importedObjects = parseSvg(text);
+      <div className="side__list-head">
+        <span className="side__list-title">Objects</span>
+        <UndoToolbar />
+      </div>
 
-                    if (importedObjects.length === 0) {
-                        alert("No supported shapes found in SVG.");
-                        return;
-                    }
-
-                    // Normalize position (simple centering logic logic ported from App.tsx)
-                    const paths = importedObjects.filter(o => o.kind === "path") as PathObj[];
-
-                    if (paths.length > 0) {
-                        let minX = Infinity, minY = Infinity;
-                        const apply = (p: { x: number, y: number }, t: Transform) => ({
-                            x: p.x * t.a + p.y * t.c + t.e,
-                            y: p.x * t.b + p.y * t.d + t.f
+      <div className="side__list">
+        {rows.length === 0 ? (
+          <p className="side__empty">
+            {tool === "select" ? "Pick a tool, drag on the bed" : "Drag on the bed to draw"}
+          </p>
+        ) : (
+          rows.map((row) => {
+            if (row.kind === "group") {
+              const isSelected = row.memberIds.some((id) => selSet.has(id));
+              return (
+                <div
+                  key={row.groupId}
+                  className={`side__row side__row--group ${isSelected ? "is-selected" : ""}`}
+                >
+                  <button
+                    type="button"
+                    className="side__row-main"
+                    title={`Select group “${row.name}” (${row.memberIds.length} parts). Drag on canvas to move together.`}
+                    onClick={(e) => {
+                      setTool("select");
+                      if (e.shiftKey) {
+                        // add all members
+                        dispatch({
+                          type: "SET_SELECTION",
+                          payload: [...new Set([...selectedObjectIds, ...row.memberIds])]
                         });
-
-                        for (const p of paths) {
-                            for (const pt of p.points) {
-                                const t = apply(pt, p.transform);
-                                if (t.x < minX) minX = t.x;
-                                if (t.y < minY) minY = t.y;
-                            }
-                        }
-
-                        if (minX !== Infinity) {
-                            const shiftX = -minX + 10; // 10mm padding
-                            const shiftY = -minY + 10;
-
-                            paths.forEach(obj => {
-                                obj.transform.e += shiftX;
-                                obj.transform.f += shiftY;
-                            });
-                        }
-                    }
-
-                    ObjectService.addObjects(dispatch, state, importedObjects);
-
-                } catch (error) {
-                    console.error(error);
-                    alert("Failed to parse SVG");
-                }
-            } else {
-                // Image Import
-                const reader = new FileReader();
-                reader.onload = () => {
-                    const src = reader.result as string;
-                    const img = new Image();
-                    img.onload = () => {
-                        // Convert px to mm (assuming 96 DPI: 1 inch = 25.4mm)
-                        const mmW = img.width * 0.264583;
-                        const mmH = img.height * 0.264583;
-                        ObjectService.addImage(dispatch, state, src, mmW, mmH);
-                    };
-                    img.src = src;
-                };
-                reader.readAsDataURL(file);
+                      } else {
+                        dispatch({ type: "SET_SELECTION", payload: [...row.memberIds] });
+                      }
+                    }}
+                  >
+                    <span className="side__group-mark" aria-hidden>
+                      ▣
+                    </span>
+                    {(() => {
+                      const g = listGroups(document).find((x) => x.id === row.groupId);
+                      return g
+                        ? groupListLabel(g, document)
+                        : `${row.name} · ${row.memberIds.length}`;
+                    })()}
+                  </button>
+                  <button
+                    type="button"
+                    className="side__row-del"
+                    title={`Delete entire group “${row.name}” and all of its members (Delete key also works when selected)`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      GroupService.deleteGroup(state, dispatch, row.groupId);
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              );
             }
-        };
-        input.click();
-    };
 
-    return (
-        <div className="panel">
-            <div className="panel__header">
-                <h2>Document</h2>
-                <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="button" style={{ fontSize: "11px", padding: "4px 8px" }} onClick={handleAddRectangle}>Add Rect</button>
-                    <button className="button" style={{ fontSize: "11px", padding: "4px 8px" }} onClick={handleImportFile}>Import</button>
-                </div>
-            </div>
-            <div style={{ padding: "8px 12px", borderBottom: "1px solid #eee" }}>
-                <UndoToolbar />
-            </div>
-            <div className="panel__body">
-                <div className="list" style={{ gap: "4px", display: "flex", flexDirection: "column" }}>
-                    {document.objects.map(obj => {
-                        const isSelected = obj.id === selectedObjectId;
-                        let label = obj.id;
-                        if (obj.kind === "shape") label = `Rect ${f(obj.shape.width)}x${f(obj.shape.height)}`;
-                        if (obj.kind === "image") label = `Image ${f(obj.width)}x${f(obj.height)}`;
-                        if (obj.kind === "path") label = "Path";
+            const obj = document.objects.find((o) => o.id === row.objectId);
+            if (!obj) return null;
+            const isSelected = selSet.has(obj.id);
+            const label = objectListLabel(obj, document);
+            return (
+              <div key={obj.id} className={`side__row ${isSelected ? "is-selected" : ""}`}>
+                <button
+                  type="button"
+                  className="side__row-main"
+                  title={`Select “${label}”. Shift+click adds to multi-select.`}
+                  onClick={(e) => {
+                    setTool("select");
+                    GroupService.selectWithGroup(state, dispatch, obj.id, {
+                      additive: e.shiftKey
+                    });
+                  }}
+                >
+                  {label}
+                </button>
+                <button
+                  type="button"
+                  className="side__row-del"
+                  title={
+                    selSet.has(obj.id) && selSet.size > 1
+                      ? `Delete ${selSet.size} selected objects (Delete key)`
+                      : `Delete “${label}” (Delete key)`
+                  }
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // If this object is currently multi-selected, delete whole selection
+                    if (selSet.has(obj.id) && selSet.size > 1) {
+                      GroupService.deleteSelection(state, dispatch);
+                    } else {
+                      GroupService.deleteObjects(state, dispatch, [obj.id]);
+                    }
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            );
+          })
+        )}
+      </div>
 
-                        const layerName = document.layers.find(l => l.id === obj.layerId)?.name || obj.layerId;
+      <style>{`
+        .side {
+          display: flex;
+          flex-direction: column;
+          background: #fff;
+          border: 1px solid #e2e8f0;
+          border-radius: 12px;
+          overflow: hidden;
+          font-size: 13px;
+          line-height: 1.35;
+          color: #0f172a;
+        }
+        .side__tools {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 1px;
+          background: #e2e8f0;
+          border-bottom: 1px solid #e2e8f0;
+        }
+        .side__tool {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+          margin: 0;
+          padding: 10px 4px 8px;
+          border: none;
+          background: #fff;
+          color: #334155;
+          font: inherit;
+          font-size: 11px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .side__tool:hover {
+          background: #f1f5f9;
+          color: #0f172a;
+        }
+        .side__tool.is-active {
+          background: #0f172a;
+          color: #f8fafc;
+        }
+        .side__tool-label {
+          max-width: 100%;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .side__list-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          padding: 8px 10px;
+          border-bottom: 1px solid #f1f5f9;
+          background: #fafafa;
+        }
+        .side__list-title {
+          font-size: 11px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+          color: #64748b;
+        }
+        .side__list {
+          display: flex;
+          flex-direction: column;
+          max-height: min(50vh, 360px);
+          overflow-y: auto;
+        }
+        .side__empty {
+          margin: 0;
+          padding: 16px 12px;
+          color: #94a3b8;
+          text-align: center;
+          font-size: 12px;
+        }
+        .side__row {
+          display: flex;
+          align-items: stretch;
+          border-bottom: 1px solid #f1f5f9;
+        }
+        .side__row.is-selected {
+          background: #eff6ff;
+        }
+        .side__row.is-selected .side__row-main {
+          color: #1d4ed8;
+          font-weight: 600;
+        }
+        .side__row--group .side__row-main {
+          font-weight: 600;
+        }
+        .side__group-mark {
+          display: inline-block;
+          margin-right: 6px;
+          color: #64748b;
+          font-size: 12px;
+        }
+        .side__row-main {
+          flex: 1;
+          margin: 0;
+          padding: 9px 10px;
+          border: none;
+          background: transparent;
+          color: inherit;
+          font: inherit;
+          text-align: left;
+          cursor: pointer;
+        }
+        .side__row-del {
+          width: 36px;
+          margin: 0;
+          border: none;
+          border-left: 1px solid #f1f5f9;
+          background: transparent;
+          color: #94a3b8;
+          font-size: 16px;
+          cursor: pointer;
+        }
+        .side__row-del:hover {
+          color: #b91c1c;
+          background: #fef2f2;
+        }
+      `}</style>
+    </div>
+  );
+}
 
-                        return (
-                            <button key={obj.id}
-                                className={`list__item ${isSelected ? "is-active" : ""}`}
-                                onClick={() => dispatch({ type: "SELECT_OBJECT", payload: obj.id })}
-                                style={{
-                                    display: "flex",
-                                    justifyContent: "space-between",
-                                    alignItems: "center",
-                                    padding: "8px 12px",
-                                    background: isSelected ? "#e3f2fd" : "#fff",
-                                    border: isSelected ? "1px solid #2196f3" : "1px solid #eee",
-                                    borderRadius: "4px",
-                                    color: "#333",
-                                    cursor: "pointer",
-                                    textAlign: "left"
-                                }}
-                            >
-                                <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1 }}>
-                                    <span style={{ fontWeight: isSelected ? "600" : "400" }}>{label}</span>
-                                    <span className="list__meta" style={{ fontSize: "10px", color: "#888", background: "#f5f5f5", padding: "2px 6px", borderRadius: "10px" }}>
-                                        {layerName}
-                                    </span>
-                                </div>
-                                <div onClick={(e) => {
-                                    e.stopPropagation();
-                                    ObjectService.deleteObject(dispatch, obj.id);
-                                }} style={{
-                                    padding: "2px 6px",
-                                    fontSize: "10px",
-                                    color: "#d32f2f",
-                                    background: "#ffebee",
-                                    borderRadius: "4px",
-                                    border: "1px solid #ffcdd2",
-                                    cursor: "pointer"
-                                }}>
-                                    Del
-                                </div>
-                            </button>
-                        );
-                    })}
-                </div>
-            </div>
-        </div>
-    );
+function SelectIcon() {
+  return (
+    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden>
+      <path
+        d="M8 4l12 14-5 1 3 8-3 1-3-8-4 4V4z"
+        fill="currentColor"
+        opacity="0.9"
+      />
+    </svg>
+  );
 }

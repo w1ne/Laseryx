@@ -60,6 +60,8 @@ export function Toast({ id, type, message, duration = 3000, onDismiss }: ToastPr
             <div style={{ fontSize: "18px", fontWeight: "bold" }}>{style.icon}</div>
             <div style={{ flex: 1, fontSize: "14px", lineHeight: "1.4" }}>{message}</div>
             <button
+                type="button"
+                title="Dismiss this notification"
                 onClick={() => onDismiss(id)}
                 style={{
                     background: "transparent",

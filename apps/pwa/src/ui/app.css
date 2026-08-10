@@ -31,56 +31,42 @@ body {
 
 .app__topbar {
   position: relative;
-  z-index: 100;
-  display: grid;
-  grid-template-columns: minmax(180px, 1fr) auto minmax(260px, auto) auto;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 16px;
-  padding: 12px 16px;
-  border-radius: 14px;
-  background: linear-gradient(120deg, rgba(15, 23, 42, 0.95), rgba(30, 64, 175, 0.9));
+  gap: 12px 16px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: linear-gradient(120deg, rgba(15, 23, 42, 0.98), rgba(30, 64, 175, 0.92));
   color: #f8fafc;
-  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.22);
-  animation: riseIn 0.5s ease both;
-}
-
-.app__topbar h1 {
-  margin: 2px 0 0;
-  font-size: 20px;
-  line-height: 1.1;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.18);
 }
 
 .app__brand {
   min-width: 0;
+  margin-right: auto;
 }
 
 .app__eyebrow {
   margin: 0;
   text-transform: uppercase;
-  letter-spacing: 0.2em;
-  font-size: 12px;
-  color: rgba(248, 250, 252, 0.6);
+  letter-spacing: 0.16em;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.65);
+}
+
+.app__topbar h1 {
+  margin: 2px 0 0;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.15;
 }
 
 .app__mode-tabs {
   display: flex;
-  gap: 8px;
-}
-
-.app__worker {
-  justify-self: end;
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: rgba(148, 163, 184, 0.2);
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  white-space: nowrap;
-}
-
-.app__worker.is-ready {
-  background: rgba(34, 197, 94, 0.18);
-  color: #bbf7d0;
+  gap: 6px;
 }
 
 .app__commands {
@@ -88,11 +74,22 @@ body {
   flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
+  align-items: center;
   min-width: 0;
 }
 
 .app__commands .button {
   padding: 8px 14px;
+}
+
+.app__topbar .button--accent {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: rgba(125, 211, 252, 0.55);
+  color: #e0f2fe;
+}
+
+.app__topbar .button--accent:hover:not(:disabled) {
+  background: rgba(56, 189, 248, 0.32);
 }
 
 .app__commands .donate-button {
@@ -249,32 +246,46 @@ body {
 }
 
 .tab {
-  border: none;
-  background: rgba(255, 255, 255, 0.7);
-  color: #1f2937;
-  padding: 10px 18px;
-  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: transparent;
+  color: #cbd5e1;
+  padding: 6px 12px;
+  border-radius: 8px;
   font-weight: 600;
+  font-size: 13px;
   cursor: pointer;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
 .tab.is-active {
-  background: #0f172a;
-  color: #f8fafc;
+  background: #fff;
+  color: #0f172a;
+  border-color: #fff;
 }
 
-.tab:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.18);
+.tab:hover:not(.is-active) {
+  color: #fff;
+  border-color: rgba(248, 250, 252, 0.4);
+}
+
+.app__topbar .button {
+  padding: 6px 12px;
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.app__topbar .button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+  transform: none;
+  box-shadow: none;
 }
 
 .app__main {
   display: grid;
-  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr) minmax(280px, 360px);
+  grid-template-columns: minmax(200px, 240px) minmax(0, 1fr) minmax(260px, 320px);
   align-items: start;
-  gap: 16px;
+  gap: 12px;
 }
 
 .app__left-zone,
@@ -282,7 +293,7 @@ body {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .app__canvas-zone {
@@ -301,7 +312,19 @@ body {
   position: relative;
   display: flex;
   flex-direction: column;
+  gap: 10px;
   min-height: calc(100vh - 160px);
+}
+
+.app__canvas-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  position: relative;
+  z-index: 1;
+  margin-bottom: 8px;
 }
 
 .app__preview-area > .panel--preview {
@@ -667,18 +690,15 @@ select {
   background: linear-gradient(160deg, rgba(15, 23, 42, 0.08), rgba(148, 163, 184, 0.08));
 }
 
+/* In-flow switch — never float over the app header */
 .preview-mode-switch {
-  position: absolute;
-  top: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10;
+  position: static;
   display: flex;
   gap: 4px;
   padding: 4px;
   border-radius: 8px;
   background: #e2e8f0;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
 }
 
 .segmented-button {
@@ -1002,11 +1022,6 @@ select {
   .app__commands .donate-button {
     grid-column: span 2;
     min-height: 56px;
-  }
-
-  .app__worker {
-    max-width: 100%;
-    width: fit-content;
   }
 
   .app__panel-tabs {

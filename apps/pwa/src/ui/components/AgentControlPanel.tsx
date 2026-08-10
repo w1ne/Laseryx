@@ -59,6 +59,11 @@ export function AgentControlPanel({
         type="button"
         className="button agent-control__trigger"
         aria-expanded={isOpen}
+        title={
+          canEnable
+            ? "Enable remote agent control for automation"
+            : `Agent Control status: ${statusLabel}. Click for details.`
+        }
         onClick={handleTriggerClick}
       >
         {canEnable ? "Enable Agent Control" : `Agent Control: ${statusLabel}`}
@@ -71,13 +76,13 @@ export function AgentControlPanel({
               <p className="agent-control__label">Agent Control</p>
               <strong>{statusLabel}</strong>
             </div>
-            <button type="button" className="agent-control__close" aria-label="Close Agent Control" onClick={() => setIsOpen(false)}>
+            <button type="button" className="agent-control__close" aria-label="Close Agent Control" title="Close Agent Control panel" onClick={() => setIsOpen(false)}>
               x
             </button>
           </div>
 
           {canEnable ? (
-            <button type="button" className="button button--primary agent-control__full-button" onClick={onEnable}>
+            <button type="button" className="button button--primary agent-control__full-button" title="Turn on agent control and wait for a connected automation agent" onClick={onEnable}>
               Enable Agent Control
             </button>
           ) : null}
@@ -106,11 +111,17 @@ export function AgentControlPanel({
           </div>
 
           <div className="agent-control__actions">
-            <button type="button" className="button" onClick={onCopyConnection} disabled={!connectionLink}>
+            <button
+              type="button"
+              className="button"
+              title={connectionLink ? "Copy the agent connection link to the clipboard" : "No connection link available yet"}
+              onClick={onCopyConnection}
+              disabled={!connectionLink}
+            >
               Copy Link
             </button>
             {canDisconnect ? (
-              <button type="button" className="button button--danger" onClick={onDisconnect}>
+              <button type="button" className="button button--danger" title="Disconnect the agent and disable remote control" onClick={onDisconnect}>
                 Disconnect
               </button>
             ) : null}
@@ -120,7 +131,7 @@ export function AgentControlPanel({
             {copyState === "copied" ? "Copied" : copyState === "failed" ? "Unavailable" : ""}
           </p>
 
-          <button type="button" className="agent-control__transport-toggle" onClick={() => setTransportOpen((open) => !open)}>
+          <button type="button" className="agent-control__transport-toggle" title="Show or hide transport / session URL details" onClick={() => setTransportOpen((open) => !open)}>
             Transport Details
           </button>
           {transportOpen ? (

@@ -4,17 +4,18 @@ import { Operation, Layer } from "./model";
 
 describe("util", () => {
     describe("formatNumber", () => {
-        it("should format finite numbers to 2 decimal places", () => {
-            expect(formatNumber(10)).toBe("10.00");
-            expect(formatNumber(10.1)).toBe("10.10");
-            expect(formatNumber(10.123)).toBe("10.12");
-            expect(formatNumber(10.126)).toBe("10.13");
+        it("should format finite numbers to 1 decimal place (0.1 mm)", () => {
+            expect(formatNumber(10)).toBe("10.0");
+            expect(formatNumber(10.1)).toBe("10.1");
+            expect(formatNumber(10.14)).toBe("10.1");
+            expect(formatNumber(10.16)).toBe("10.2");
+            expect(formatNumber(117.52798461914062)).toBe("117.5");
         });
 
-        it("should return '0.00' for non-finite numbers", () => {
-            expect(formatNumber(NaN)).toBe("0.00");
-            expect(formatNumber(Infinity)).toBe("0.00");
-            expect(formatNumber(-Infinity)).toBe("0.00");
+        it("should return '0.0' for non-finite numbers", () => {
+            expect(formatNumber(NaN)).toBe("0.0");
+            expect(formatNumber(Infinity)).toBe("0.0");
+            expect(formatNumber(-Infinity)).toBe("0.0");
         });
     });
 

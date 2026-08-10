@@ -41,7 +41,12 @@ export type AppState = {
     machineStream: MachineStreamState;
     materialPresets: MaterialPreset[];
     activeMaterialPresetId: string | null;
+    /** Primary selection (last clicked) — drives Properties panel. */
     selectedObjectId: string | null;
+    /** Multi-select set (Shift+click). Includes primary when selected. */
+    selectedObjectIds: string[];
+    /** Selected sketch dimension / constraint (Fusion: click dim, Delete removes it). */
+    selectedConstraintId: string | null;
     ui: {
         activeTab: "design" | "machine";
         previewMode: "2d" | "3d"; // Future proofing
@@ -78,6 +83,8 @@ export const INITIAL_STATE: AppState = {
     materialPresets: [],
     activeMaterialPresetId: null,
     selectedObjectId: null,
+    selectedObjectIds: [],
+    selectedConstraintId: null,
     ui: {
         activeTab: "design",
         previewMode: "2d"

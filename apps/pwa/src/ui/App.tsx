@@ -18,16 +18,22 @@ import { DocumentPanel } from "./panels/DocumentPanel";
 import { PropertiesPanel } from "./panels/PropertiesPanel";
 import { LayersPanel } from "./panels/LayersPanel";
 import { PreviewPanel } from "./panels/PreviewPanel";
-import { DonateButton } from "./DonateButton";
-import { AboutDialog } from "./AboutDialog";
+import { ConstraintToolbar } from "./components/ConstraintToolbar";
+import { ModifyToolbar } from "./components/ModifyToolbar";
+import { duplicateObject, nudgeObject } from "../core/objectEdit";
+import { useSketchTool } from "./sketch/SketchContext";
+import { GroupService } from "../core/services/GroupService";
+import { SketchService } from "../core/services/SketchService";
+import { syncDocumentSketch } from "../core/sketch/sync";
 import { MaterialManagerDialog } from "./dialogs/MaterialManagerDialog";
+import { AboutDialog } from "./AboutDialog";
+import { DonateButton } from "./DonateButton";
 import { useToast } from "./hooks/useToast";
 import { useAgentSessionController } from "./hooks/useAgentSessionController";
 import { AgentControlPanel } from "./components/AgentControlPanel";
 import { ToastContainer } from "./components/Toast";
 import "./app.css";
 
-// --- PWA Types ---
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
@@ -39,6 +45,7 @@ export function App() {
   const { activeTab } = ui;
   const toast = useToast();
   const stateRef = useRef(state);
+  const { setTool } = useSketchTool();
 
   useEffect(() => {
     stateRef.current = state;
@@ -53,8 +60,8 @@ export function App() {
   const [showLoadDialog, setShowLoadDialog] = useState(false);
   const [savedProjects, setSavedProjects] = useState<ProjectSummary[]>([]);
 
-  const [showAbout, setShowAbout] = useState(false);
   const [showMaterialManager, setShowMaterialManager] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const agentSession = useAgentSessionController();
   const localBridgeConfigRef = useRef(readLocalBridgeConfig(window.location.search));
@@ -88,9 +95,18 @@ export function App() {
     return () => window.removeEventListener("beforeinstallprompt", handler as EventListener);
   }, []);
 
-  // --- Keyboard Shortcuts ---
+  // --- Keyboard Shortcuts (CAD-style edit) ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const typing =
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable);
+      if (typing) return;
+
       const isZ = e.key.toLowerCase() === "z";
       const isY = e.key.toLowerCase() === "y";
       const isMod = e.ctrlKey || e.metaKey;
@@ -99,15 +115,104 @@ export function App() {
         e.preventDefault();
         if (e.shiftKey) dispatch({ type: "REDO" });
         else dispatch({ type: "UNDO" });
-      } else if (isMod && isY) {
+        return;
+      }
+      if (isMod && isY) {
         e.preventDefault();
         dispatch({ type: "REDO" });
+        return;
+      }
+
+      const selectedId = stateRef.current.selectedObjectId;
+      const selected = stateRef.current.document.objects.find((o) => o.id === selectedId);
+
+      if (isMod && e.key.toLowerCase() === "d" && selected) {
+        e.preventDefault();
+        const copy = duplicateObject(selected, 10);
+        dispatch({ type: "ADD_OBJECT", payload: copy });
+        dispatch({ type: "SELECT_OBJECT", payload: copy.id });
+        return;
+      }
+
+      // Group / Ungroup
+      if (isMod && e.key.toLowerCase() === "g") {
+        e.preventDefault();
+        if (e.shiftKey) {
+          GroupService.ungroupSelection(stateRef.current, dispatch);
+        } else {
+          GroupService.groupSelection(stateRef.current, dispatch);
+        }
+        return;
+      }
+
+      if (e.key === "Escape") {
+        e.preventDefault();
+        // Fusion: Esc cancels current dimension step, then exits tool
+        setTool("select");
+        return;
+      }
+
+      // Sketch Dimension (Fusion hotkey D)
+      if ((e.key === "d" || e.key === "D") && !isMod) {
+        e.preventDefault();
+        setTool("dimension");
+        return;
+      }
+
+      // Fusion: X toggles construction on the selection
+      if ((e.key === "x" || e.key === "X") && selected) {
+        e.preventDefault();
+        if (selected.kind !== "image") {
+          const next = !selected.construction;
+          dispatch({
+            type: "UPDATE_OBJECT",
+            payload: { id: selected.id, changes: { construction: next } as typeof selected }
+          });
+        }
+        return;
+      }
+
+      if (e.key === "Delete" || e.key === "Backspace") {
+        const st = stateRef.current;
+        // Fusion: selected dimension → Delete removes the size constraint
+        if (st.selectedConstraintId) {
+          e.preventDefault();
+          SketchService.removeConstraint(st, dispatch, st.selectedConstraintId);
+          dispatch({ type: "SELECT_CONSTRAINT", payload: null });
+          return;
+        }
+        const ids =
+          st.selectedObjectIds.length > 0
+            ? st.selectedObjectIds
+            : st.selectedObjectId
+              ? [st.selectedObjectId]
+              : [];
+        if (ids.length === 0) return;
+        e.preventDefault();
+        GroupService.deleteSelection(st, dispatch);
+        return;
+      }
+
+      if (selected && ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
+        e.preventDefault();
+        const step = e.shiftKey ? 10 : 1;
+        let dx = 0;
+        let dy = 0;
+        if (e.key === "ArrowLeft") dx = -step;
+        if (e.key === "ArrowRight") dx = step;
+        if (e.key === "ArrowUp") dy = -step;
+        if (e.key === "ArrowDown") dy = step;
+        const patch = nudgeObject(selected, dx, dy);
+        dispatch({
+          type: "UPDATE_OBJECT",
+          payload: { id: selected.id, changes: patch }
+        });
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [dispatch]);
+  }, [dispatch, setTool]);
 
   const handleInstallClick = () => {
     if (!installPrompt) return;
@@ -118,6 +223,7 @@ export function App() {
       }
     });
   };
+
 
   // --- Machine Profile Init ---
   useEffect(() => {
@@ -378,9 +484,16 @@ export function App() {
     if (!clientRef.current) return;
     try {
       setGenerationState({ status: "working", message: "Generating..." });
+      // Ensure sketch constraints are solved and baked into objects for CAM
+      let docForCam = doc;
+      if (state.document.sketch) {
+        const { document: synced } = syncDocumentSketch(state.document);
+        docForCam = synced;
+        dispatch({ type: "SET_DOCUMENT", payload: synced });
+      }
       // Use implicit default dialect for now
       const dialect: GcodeDialect = { newline: "\n", useG0ForTravel: true, powerCommand: "S", enableLaser: "M4", disableLaser: "M5" };
-      const result = await clientRef.current.generateGcode(doc, camSettings, machineProfile, dialect);
+      const result = await clientRef.current.generateGcode(docForCam, camSettings, machineProfile, dialect);
       setGeneratedGcode(result.gcode);
       setJobStats(result.stats);
       setGenerationState({ status: "done", message: "Ready" });
@@ -465,17 +578,61 @@ export function App() {
           <h1>Laseryx Workspace</h1>
         </div>
         <div className="app__mode-tabs" role="group" aria-label="Workspace mode">
-          <button className={`tab ${activeTab === "design" ? "is-active" : ""}`} onClick={() => dispatch({ type: "SET_ACTIVE_TAB", payload: "design" })}>Design</button>
-          <button className={`tab ${activeTab === "machine" ? "is-active" : ""}`} onClick={() => dispatch({ type: "SET_ACTIVE_TAB", payload: "machine" })}>Machine</button>
+          <button
+            type="button"
+            className={`tab ${activeTab === "design" ? "is-active" : ""}`}
+            title="Design workspace — sketch, objects, layers, and G-code generate"
+            onClick={() => dispatch({ type: "SET_ACTIVE_TAB", payload: "design" })}
+          >
+            Design
+          </button>
+          <button
+            type="button"
+            className={`tab ${activeTab === "machine" ? "is-active" : ""}`}
+            title="Machine workspace — connect laser, jog, and run jobs"
+            onClick={() => dispatch({ type: "SET_ACTIVE_TAB", payload: "machine" })}
+          >
+            Machine
+          </button>
         </div>
         <div className="app__commands" role="group" aria-label="Project actions">
-          <button className="button" onClick={handleNewProject}>New</button>
-          <button className="button" onClick={handleListProjects}>Open</button>
-          <button className="button" onClick={handleSaveProject}>Save</button>
-          <button className="button" onClick={() => setShowAbout(true)}>About</button>
+          <button
+            type="button"
+            className="button"
+            title="Start a blank project (clears the current document)"
+            onClick={handleNewProject}
+          >
+            New
+          </button>
+          <button
+            type="button"
+            className="button"
+            title="Open a saved project from this browser"
+            onClick={handleListProjects}
+          >
+            Open
+          </button>
+          <button
+            type="button"
+            className="button"
+            title="Save the current project in this browser"
+            onClick={handleSaveProject}
+          >
+            Save
+          </button>
+          <button
+            type="button"
+            className="button"
+            title="About Laseryx — version, author, and links"
+            onClick={() => setShowAbout(true)}
+          >
+            About
+          </button>
           {installPrompt && (
             <button
+              type="button"
               className="button button--accent"
+              title="Install Laseryx as a desktop/home-screen app (PWA)"
               onClick={handleInstallClick}
             >
               Install App
@@ -493,9 +650,6 @@ export function App() {
           )}
           <DonateButton />
         </div>
-        <div className={`app__worker ${workerStatus.ready ? "is-ready" : ""}`}>
-          {workerStatus.ready ? "Worker Ready" : "Loading..."}
-        </div>
       </header>
 
       {/* Load Dialog Overlay */}
@@ -507,11 +661,24 @@ export function App() {
               {savedProjects.map(p => (
                 <div key={p.id} onClick={() => handleLoadProject(p.id)} style={{ padding: "10px", background: "#333", cursor: "pointer", display: "flex", justifyContent: "space-between" }}>
                   <span>{p.name}</span>
-                  <button onClick={(e) => handleDeleteProject(p.id, e)}>Del</button>
+                  <button
+                    type="button"
+                    title={`Delete saved project “${p.name}” permanently`}
+                    onClick={(e) => handleDeleteProject(p.id, e)}
+                  >
+                    Del
+                  </button>
                 </div>
               ))}
             </div>
-            <button style={{ marginTop: "10px" }} onClick={() => setShowLoadDialog(false)}>Cancel</button>
+            <button
+              type="button"
+              style={{ marginTop: "10px" }}
+              title="Close without opening a project"
+              onClick={() => setShowLoadDialog(false)}
+            >
+              Cancel
+            </button>
           </div>
         </div>
       )}
@@ -519,31 +686,37 @@ export function App() {
       {activeTab === "design" && (
         <nav className="app__panel-tabs" role="tablist" aria-label="Design panels">
           <button
+            type="button"
             id="design-panel-tab-document"
             className={`panel-tab ${designPanel === "document" ? "is-active" : ""}`}
             role="tab"
             aria-selected={designPanel === "document"}
             aria-controls="design-panel-document"
+            title="Sketch tools and object list (select, group, delete)"
             onClick={() => setDesignPanel("document")}
           >
             Objects
           </button>
           <button
+            type="button"
             id="design-panel-tab-properties"
             className={`panel-tab ${designPanel === "properties" ? "is-active" : ""}`}
             role="tab"
             aria-selected={designPanel === "properties"}
             aria-controls="design-panel-properties"
+            title="Edit name, size, position, and transforms for the selection"
             onClick={() => setDesignPanel("properties")}
           >
             Properties
           </button>
           <button
+            type="button"
             id="design-panel-tab-layers"
             className={`panel-tab ${designPanel === "layers" ? "is-active" : ""}`}
             role="tab"
             aria-selected={designPanel === "layers"}
             aria-controls="design-panel-layers"
+            title="Cut/engrave settings per layer, generate and download G-code"
             onClick={() => setDesignPanel("layers")}
           >
             Operations
@@ -556,7 +729,7 @@ export function App() {
           <>
             <section
               className="app__left-zone"
-              aria-label="Document navigation"
+              aria-label="Tools and objects"
               data-mobile-panel={designPanel === "document" ? "active" : "inactive"}
             >
               <div
@@ -570,22 +743,34 @@ export function App() {
                 <DocumentPanel />
               </div>
             </section>
-            <section className="app__canvas-zone" aria-label="Laser bed workspace" data-mobile-panel="canvas">
+            <section className="app__canvas-zone" aria-label="Workspace" data-mobile-panel="canvas">
               <div className="app__preview-area">
-                <div className="preview-mode-switch" role="group" aria-label="Preview mode">
-                  <button
-                    className={`segmented-button ${previewMode === "design" ? "is-active" : ""}`}
-                    onClick={() => setPreviewMode("design")}
-                  >
-                    Design
-                  </button>
-                  <button
-                    className={`segmented-button ${previewMode === "gcode" ? "is-active" : ""}`}
-                    disabled={!generatedGcode}
-                    onClick={() => generatedGcode && setPreviewMode("gcode")}
-                  >
-                    Preview
-                  </button>
+                <div className="app__canvas-toolbar">
+                  <div className="preview-mode-switch" role="group" aria-label="View mode">
+                    <button
+                      type="button"
+                      className={`segmented-button ${previewMode === "design" ? "is-active" : ""}`}
+                      title="Show design geometry on the bed (edit mode)"
+                      onClick={() => setPreviewMode("design")}
+                    >
+                      Design
+                    </button>
+                    <button
+                      type="button"
+                      className={`segmented-button ${previewMode === "gcode" ? "is-active" : ""}`}
+                      disabled={!generatedGcode}
+                      title={
+                        generatedGcode
+                          ? "Show toolpath preview from generated G-code"
+                          : "Generate G-code in Operations first"
+                      }
+                      onClick={() => generatedGcode && setPreviewMode("gcode")}
+                    >
+                      Preview
+                    </button>
+                  </div>
+                  <ModifyToolbar />
+                  <ConstraintToolbar />
                 </div>
                 <PreviewPanel
                   viewMode={previewMode}
@@ -641,7 +826,7 @@ export function App() {
                 isGcodeReady={!!generatedGcode}
               />
             </section>
-            <section className="app__canvas-zone app__canvas-zone--wide" aria-label="Laser bed workspace" data-mobile-panel="canvas">
+            <section className="app__canvas-zone app__canvas-zone--wide" aria-label="Workspace" data-mobile-panel="canvas">
               <div className="app__preview-area">
                 <PreviewPanel
                   showMachineHead={true}

@@ -1,4 +1,5 @@
 import React, { ReactNode } from "react";
+import { OriginAxes } from "./OriginAxes";
 
 type BedBackgroundProps = {
     width: number;
@@ -6,9 +7,21 @@ type BedBackgroundProps = {
     children?: ReactNode;
     onPanStart?: (e: React.PointerEvent) => void;
     isDragging?: boolean;
+    /** Show machine origin axes at (0,0). Default true. */
+    showOrigin?: boolean;
+    /** World Y is flipped for front-left machine origin. */
+    yFlipped?: boolean;
 };
 
-export function BedBackground({ width, height, children, onPanStart, isDragging }: BedBackgroundProps) {
+export function BedBackground({
+    width,
+    height,
+    children,
+    onPanStart,
+    isDragging,
+    showOrigin = true,
+    yFlipped = true
+}: BedBackgroundProps) {
     return (
         <>
             <defs>
@@ -17,7 +30,7 @@ export function BedBackground({ width, height, children, onPanStart, isDragging 
                 </pattern>
             </defs>
 
-            {/* Bed Background - Handle click for Pan */}
+            {/* Bed Background - Handle click for Pan (machine coords 0…w × 0…h) */}
             <rect
                 x="0" y="0"
                 width={width} height={height}
@@ -32,8 +45,8 @@ export function BedBackground({ width, height, children, onPanStart, isDragging 
                 pointerEvents="none"
             />
 
-            {/* Machine Origin Indicator (Bottom Left) */}
-            <path d="M 0 20 L 0 0 L 20 0" fill="none" stroke="#cbd5e1" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+            {/* Origin (0,0) — lower-left when world is Y-up flipped for frontLeft */}
+            {showOrigin && <OriginAxes yFlipped={yFlipped} />}
 
             {children}
         </>

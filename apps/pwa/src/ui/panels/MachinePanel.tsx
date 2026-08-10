@@ -51,7 +51,12 @@ export function MachinePanel({
                 <div className="machine-info">
                     <div className="machine-title-row">
                         <strong className="machine-name">{state.machineProfile?.name || "Unknown Machine"}</strong>
-                        <button className="icon-button" onClick={() => setShowManager(true)} title="Manage Machines">
+                        <button
+                            type="button"
+                            className="icon-button"
+                            onClick={() => setShowManager(true)}
+                            title="Manage machine profiles (bed size, origin, baud rate)"
+                        >
                             ⚙
                         </button>
                     </div>
@@ -84,14 +89,25 @@ export function MachinePanel({
                     </div>
                     {!isConnected ? (
                         <button
+                            type="button"
                             className="btn-connect"
                             onClick={onConnect}
                             disabled={machineConnection.status === "connecting"}
+                            title={
+                              machineConnection.status === "connecting"
+                                ? "Connecting to the laser controller…"
+                                : "Connect to the laser via serial / virtual machine"
+                            }
                         >
                             Connect
                         </button>
                     ) : (
-                        <button className="btn-disconnect" onClick={onDisconnect}>
+                        <button
+                            type="button"
+                            className="btn-disconnect"
+                            onClick={onDisconnect}
+                            title="Disconnect from the machine"
+                        >
                             Disconnect
                         </button>
                     )}
@@ -125,14 +141,14 @@ export function MachinePanel({
                         </div>
 
                         <div className="action-grid">
-                            <button onClick={MachineService.home} title="Homing Cycle ($H)">⌂ Home</button>
-                            <button onClick={MachineService.unlock} title="Unlock Alarm ($X)">🔓 Unlock</button>
-                            <button onClick={MachineService.softReset} className="btn-danger" title="Soft Reset (Ctrl-X)">⚠ Reset</button>
+                            <button type="button" onClick={MachineService.home} title="Run homing cycle ($H) — machine finds endstops">⌂ Home</button>
+                            <button type="button" onClick={MachineService.unlock} title="Clear alarm / unlock controller ($X)">🔓 Unlock</button>
+                            <button type="button" onClick={MachineService.softReset} className="btn-danger" title="Soft reset controller (Ctrl-X) — stops motion and clears state">⚠ Reset</button>
                         </div>
                         <div className="action-grid secondary">
-                            <button onClick={MachineService.zeroXY}>Zero XY</button>
-                            <button onClick={MachineService.zeroZ}>Zero Z</button>
-                            <button onClick={MachineService.goToZero}>Go to 0,0</button>
+                            <button type="button" onClick={MachineService.zeroXY} title="Set work zero for X and Y at the current position">Zero XY</button>
+                            <button type="button" onClick={MachineService.zeroZ} title="Set work zero for Z at the current position">Zero Z</button>
+                            <button type="button" onClick={MachineService.goToZero} title="Rapid move to work zero (0,0)">Go to 0,0</button>
                         </div>
                     </section>
 
@@ -141,13 +157,13 @@ export function MachinePanel({
                         <div className="jog-main">
                             <div className="d-pad">
                                 <div />
-                                <button className="d-btn" onClick={() => handleJog(0, jogStep)}>▲</button>
+                                <button type="button" className="d-btn" onClick={() => handleJog(0, jogStep)} title={`Jog +Y by ${jogStep} mm`}>▲</button>
                                 <div />
-                                <button className="d-btn" onClick={() => handleJog(-jogStep, 0)}>◀</button>
-                                <button className="d-btn center" onClick={MachineService.goToZero} title="Go to Zero">●</button>
-                                <button className="d-btn" onClick={() => handleJog(jogStep, 0)}>▶</button>
+                                <button type="button" className="d-btn" onClick={() => handleJog(-jogStep, 0)} title={`Jog −X by ${jogStep} mm`}>◀</button>
+                                <button type="button" className="d-btn center" onClick={MachineService.goToZero} title="Go to work zero (0,0)">●</button>
+                                <button type="button" className="d-btn" onClick={() => handleJog(jogStep, 0)} title={`Jog +X by ${jogStep} mm`}>▶</button>
                                 <div />
-                                <button className="d-btn" onClick={() => handleJog(0, -jogStep)}>▼</button>
+                                <button type="button" className="d-btn" onClick={() => handleJog(0, -jogStep)} title={`Jog −Y by ${jogStep} mm`}>▼</button>
                                 <div />
                             </div>
 
@@ -157,8 +173,10 @@ export function MachinePanel({
                                     <div className="step-toggles">
                                         {jogSteps.map(s => (
                                             <button
+                                                type="button"
                                                 key={s}
                                                 className={jogStep === s ? "active" : ""}
+                                                title={`Set jog step to ${s} mm`}
                                                 onClick={() => setJogStep(s)}
                                             >{s}</button>
                                         ))}
@@ -198,10 +216,19 @@ export function MachinePanel({
                             {(machineStream.state === "idle" || machineStream.state === "done" || machineStream.state === "error") ? (
                                 <>
                                     <button
+                                        type="button"
                                         className="btn-primary btn-large"
                                         disabled={!armLaser || status.state !== "IDLE" || !isGcodeReady}
                                         onClick={onStreamStart}
-                                        title={!isGcodeReady ? "Please Generate G-code in Design tab first" : ""}
+                                        title={
+                                          !isGcodeReady
+                                            ? "Generate G-code in Design → Operations first"
+                                            : !armLaser
+                                              ? "Check Arm Laser to enable cutting"
+                                              : status.state !== "IDLE"
+                                                ? "Machine must be IDLE before starting"
+                                                : "Start streaming the job to the laser"
+                                        }
                                     >
                                         Start Job
                                     </button>
@@ -210,13 +237,21 @@ export function MachinePanel({
                             ) : (
                                 <div className="active-job-controls">
                                     <button
+                                        type="button"
                                         className="btn-large"
+                                        title={
+                                          machineStream.state === "paused"
+                                            ? "Resume the paused job"
+                                            : "Pause the running job"
+                                        }
                                         onClick={machineStream.state === "paused" ? onStreamResume : onStreamPause}
                                     >
                                         {machineStream.state === "paused" ? "▶ Resume" : "⏸ Pause"}
                                     </button>
                                     <button
+                                        type="button"
                                         className="btn-danger btn-large"
+                                        title="Abort the job immediately and stop the machine"
                                         onClick={onStreamAbort}
                                     >
                                         ⏹ Abort

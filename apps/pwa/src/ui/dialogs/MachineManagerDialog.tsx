@@ -65,7 +65,7 @@ export function MachineManagerDialog({ isOpen, onClose }: Props) {
             <div className="modal">
                 <div className="modal-header">
                     <h3>Manage Machines</h3>
-                    <button onClick={onClose}>&times;</button>
+                    <button type="button" title="Close machine manager" onClick={onClose}>&times;</button>
                 </div>
                 <div className="modal-body">
                     {editingId && editForm ? (
@@ -127,27 +127,31 @@ export function MachineManagerDialog({ isOpen, onClose }: Props) {
                             </div>
 
                             <div className="form-actions">
-                                <button className="button" onClick={() => setEditingId(null)}>Cancel</button>
-                                <button className="button button--primary" onClick={handleSave}>Save</button>
+                                <button type="button" className="button" title="Discard changes and return to the machine list" onClick={() => setEditingId(null)}>Cancel</button>
+                                <button type="button" className="button button--primary" title="Save this machine profile" onClick={handleSave}>Save</button>
                             </div>
                         </div>
                     ) : (
                         <div className="machine-list">
                             {machineProfiles.map(p => (
                                 <div key={p.id} className={`machine-item ${p.id === activeMachineProfileId ? "active" : ""}`}>
-                                    <div className="machine-info" onClick={() => handleSelect(p.id)}>
+                                    <div
+                                      className="machine-info"
+                                      title={`Select “${p.name}” as the active machine (${p.bedMm.w}×${p.bedMm.h} mm)`}
+                                      onClick={() => handleSelect(p.id)}
+                                    >
                                         <div className="machine-name">{p.name}</div>
                                         <div className="machine-meta">{p.bedMm.w}x{p.bedMm.h}mm | {p.baudRate} baud</div>
                                     </div>
                                     <div className="machine-actions">
-                                        <button className="button button--small" onClick={() => handleEdit(p)}>Edit</button>
+                                        <button type="button" className="button button--small" title={`Edit profile “${p.name}”`} onClick={() => handleEdit(p)}>Edit</button>
                                         {machineProfiles.length > 1 && (
-                                            <button className="button button--small button--danger" onClick={() => handleDelete(p.id)}>Del</button>
+                                            <button type="button" className="button button--small button--danger" title={`Delete profile “${p.name}”`} onClick={() => handleDelete(p.id)}>Del</button>
                                         )}
                                     </div>
                                 </div>
                             ))}
-                            <button className="button button--full" onClick={handleCreate}>+ Add Machine</button>
+                            <button type="button" className="button button--full" title="Create a new machine profile" onClick={handleCreate}>+ Add Machine</button>
                         </div>
                     )}
                 </div>
