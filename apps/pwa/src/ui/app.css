@@ -618,22 +618,23 @@ body {
   border-radius: 8px;
 }
 
+/* Fit columns to the card, not the viewport: the right zone is a fixed 320px,
+   so a hard 4-up grid gave 50px columns — too narrow for a 4-digit speed and
+   forcing the "Power %" label onto two lines. auto-fit drops to 2-up here and
+   goes back to 4-up on a wider card. align-items:end keeps every input on one
+   baseline even if a label does wrap. */
 .layer-card__grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  align-items: end;
   gap: 12px;
-}
-
-@media (max-width: 480px) {
-  .layer-card__grid {
-    grid-template-columns: 1fr 1fr;
-  }
 }
 
 .layer-card__input-group {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
 }
 
 .layer-card__label {
