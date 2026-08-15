@@ -11,6 +11,9 @@ type BedBackgroundProps = {
     showOrigin?: boolean;
     /** World Y is flipped for front-left machine origin. */
     yFlipped?: boolean;
+    /** Visible viewport width in mm — keeps the origin marker a constant
+     *  on-screen size as the user zooms. Defaults to the bed width. */
+    viewMm?: number;
 };
 
 export function BedBackground({
@@ -20,7 +23,8 @@ export function BedBackground({
     onPanStart,
     isDragging,
     showOrigin = true,
-    yFlipped = true
+    yFlipped = true,
+    viewMm
 }: BedBackgroundProps) {
     return (
         <>
@@ -46,7 +50,7 @@ export function BedBackground({
             />
 
             {/* Origin (0,0) — lower-left when world is Y-up flipped for frontLeft */}
-            {showOrigin && <OriginAxes yFlipped={yFlipped} />}
+            {showOrigin && <OriginAxes yFlipped={yFlipped} viewMm={viewMm ?? width} />}
 
             {children}
         </>

@@ -2,24 +2,44 @@ import React from "react";
 import { ORIGIN_POINT_ID } from "../../../core/sketch/create";
 
 type Props = {
-  /** Axis arm length in mm */
+  /**
+   * Width of the visible viewport in mm (the viewBox width). Marker geometry is
+   * a fraction of this, so the origin keeps a constant on-screen size at any
+   * zoom instead of ballooning in and shrinking out with the bed.
+   */
+  viewMm?: number;
+  /** Axis arm length in mm. Overrides the viewport-derived size. */
   armMm?: number;
   /** When world group is Y-flipped, counter-flip labels so they stay upright. */
   yFlipped?: boolean;
 };
 
+/** Fractions of the visible viewport width. At the default 400mm fit-zoom these
+ *  reproduce the original fixed sizes, except labels, which were ~7px — too
+ *  small to read — and are now ~11px. */
+const ARM = 0.07;
+const LABEL = 0.0145;
+const HALO = 0.0125;
+const NODE = 0.0055;
+const HEAD = 0.008;
+
 /**
  * Machine origin at (0,0) — X right, Y along +Y (rear when Y-up display).
  * Pickable as a dim reference (Fusion-style origin).
  */
-export function OriginAxes({ armMm = 28, yFlipped = true }: Props) {
-  const a = armMm;
+export function OriginAxes({ viewMm = 400, armMm, yFlipped = true }: Props) {
+  const a = armMm ?? viewMm * ARM;
+  const label = viewMm * LABEL;
+  const halo = viewMm * HALO;
+  const node = viewMm * NODE;
+  const head = viewMm * HEAD;
+  const headW = head / 2;
   const upright = (x: number, y: number) =>
     yFlipped ? `translate(${x} ${y}) scale(1 -1)` : `translate(${x} ${y})`;
   return (
     <g className="origin-axes" data-testid="origin-axes" pointerEvents="none">
       {/* Soft halo so origin is obvious on the bed */}
-      <circle cx={0} cy={0} r={5} fill="#0ea5e9" fillOpacity={0.12} />
+      <circle cx={0} cy={0} r={halo} fill="#0ea5e9" fillOpacity={0.12} />
 
       {/* X axis — red */}
       <line
@@ -32,7 +52,7 @@ export function OriginAxes({ armMm = 28, yFlipped = true }: Props) {
         vectorEffect="non-scaling-stroke"
       />
       <polygon
-        points={`${a},0 ${a - 3.2},-1.6 ${a - 3.2},1.6`}
+        points={`${a},0 ${a - head},${-headW} ${a - head},${headW}`}
         fill="#ef4444"
       />
       {/* Y axis — green */}
@@ -46,7 +66,7 @@ export function OriginAxes({ armMm = 28, yFlipped = true }: Props) {
         vectorEffect="non-scaling-stroke"
       />
       <polygon
-        points={`0,${a} -1.6,${a - 3.2} 1.6,${a - 3.2}`}
+        points={`0,${a} ${-headW},${a - head} ${headW},${a - head}`}
         fill="#22c55e"
       />
 
@@ -54,7 +74,7 @@ export function OriginAxes({ armMm = 28, yFlipped = true }: Props) {
       <circle
         cx={0}
         cy={0}
-        r={2.2}
+        r={node}
         fill="#0ea5e9"
         stroke="#0369a1"
         strokeWidth={0.7}
@@ -67,25 +87,25 @@ export function OriginAxes({ armMm = 28, yFlipped = true }: Props) {
         <title>Origin (0, 0) — dimension to this point</title>
       </circle>
 
-      <g transform={upright(5, 5)} pointerEvents="none">
+      <g transform={upright(halo, halo)} pointerEvents="none">
         <text
           x={0}
           y={0}
           fill="#0369a1"
-          fontSize="3.4"
+          fontSize={label}
           fontWeight="800"
           style={{ userSelect: "none" }}
         >
           0,0
         </text>
       </g>
-      <g transform={upright(a + 2, 0)} pointerEvents="none">
-        <text x={0} y={1.2} fill="#ef4444" fontSize="3.2" fontWeight="800">
+      <g transform={upright(a + head / 2, 0)} pointerEvents="none">
+        <text x={0} y={label * 0.38} fill="#ef4444" fontSize={label} fontWeight="800">
           X
         </text>
       </g>
-      <g transform={upright(0, a + 2)} pointerEvents="none">
-        <text x={-1.2} y={0} fill="#22c55e" fontSize="3.2" fontWeight="800">
+      <g transform={upright(0, a + head / 2)} pointerEvents="none">
+        <text x={-label * 0.38} y={0} fill="#22c55e" fontSize={label} fontWeight="800">
           Y
         </text>
       </g>

@@ -149,6 +149,7 @@ export function PreviewPanel({
                         width={machineProfile.bedMm.w}
                         height={machineProfile.bedMm.h}
                         yFlipped={worldIsYFlipped(machineProfile.origin)}
+                        viewMm={viewport.w}
                         onPanStart={(e) => {
                             // Never pan with left button while creating geometry or dimensions
                             if (e.button === 0 && !drawing && !dimensioning) {
