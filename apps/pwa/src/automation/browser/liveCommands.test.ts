@@ -598,4 +598,32 @@ describe("liveCommands", () => {
       projects: [{ id: "project-1", name: "Project 1", updatedAt: 123 }]
     });
   });
+
+  describe("liveCommands routes layer.* to executeLayerCommand", () => {
+    it("returns a populated layer.list response", () => {
+      const { executor } = createHarness();
+
+      const response = executor.request({
+        protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+        requestId: "test-list",
+        command: "layer.list",
+        args: {}
+      });
+
+      expect(response.ok).toBe(true);
+    });
+  });
+
+  it("routes material.list through the live executor", () => {
+    const { executor } = createHarness();
+
+    const response = executor.request({
+      protocolVersion: AUTOMATION_PROTOCOL_VERSION,
+      requestId: "test-mat-list",
+      command: "material.list",
+      args: {}
+    });
+
+    expect(response.ok).toBe(true);
+  });
 });

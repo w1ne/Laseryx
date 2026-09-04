@@ -26,7 +26,16 @@ export type LiveAutomationCommand =
   | "project.delete"
   | "project.summary"
   | "project.exportJson"
-  | "project.importJson";
+  | "project.importJson"
+  | "layer.list"
+  | "layer.create"
+  | "layer.rename"
+  | "layer.delete"
+  | "layer.setVisibility"
+  | "layer.setLock"
+  | "layer.get"
+  | "material.list"
+  | "material.applyToLayer";
 
 export type AutomationProtocolCommand = AgentCommand | LiveAutomationCommand;
 
