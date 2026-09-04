@@ -11,9 +11,17 @@ fi
 
 echo "🚀 Starting Release Process ($VERSION_TYPE)..."
 
-# 1. Ensure we are on develop and clean
-git checkout develop
-git pull origin develop
+# 1. Ensure we are on the release trunk and clean
+CURRENT_BRANCH=$(git branch --show-current)
+if [ "$CURRENT_BRANCH" != "main" ]; then
+    echo "Releases must run from main (currently $CURRENT_BRANCH)."
+    exit 1
+fi
+if [ -n "$(git status --porcelain)" ]; then
+    echo "Working tree must be clean before release."
+    exit 1
+fi
+git pull --ff-only origin main
 
 # 2. Run Quality Checks
 echo "🧪 Running Tests & Lint..."
@@ -26,13 +34,7 @@ npm --prefix apps/pwa run mcp:build
 npm --prefix apps/pwa run hosted-mcp:build
 
 
-# 3. Merge to Master
-echo "🔀 Merging develop -> master..."
-git checkout master
-git pull origin master
-git merge develop
-
-# 4. Bump Version
+# 3. Bump Version
 echo "📦 Bumping Version..."
 # Bump root package (creates git tag)
 npm version $VERSION_TYPE --no-git-tag-version
@@ -57,13 +59,7 @@ git tag "v$NEW_VERSION"
 
 # 6. Push
 echo "⬆️ Pushing to GitHub..."
-git push origin master
+git push origin main
 git push origin "v$NEW_VERSION"
-
-# 7. Sync Develop
-echo "🔄 Syncing back to develop..."
-git checkout develop
-git merge master
-git push origin develop
 
 echo "✅ Release v$NEW_VERSION completed successfully!"
