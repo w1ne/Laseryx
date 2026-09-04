@@ -211,7 +211,7 @@ export const GroupService = {
     }
 
     const objects = state.document.objects.filter((o) => !idSet.has(o.id));
-    let groups = listGroups(state.document)
+    const groups = listGroups(state.document)
       .map((g) => ({
         ...g,
         memberIds: g.memberIds.filter((m) => !idSet.has(m))

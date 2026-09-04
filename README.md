@@ -1,5 +1,9 @@
 # Laseryx
 
+## Hackathon enclosure builder
+
+The web app now includes a first-class **⚡ Hackathon enclosure** workflow for the Budapest hardware kit: verified component cutouts, editable millimetre dimensions, a sloped six-panel finger-jointed box, fit calibration coupon, and automatic A5 sheet layout. See [the hackathon enclosure guide](docs/hackathon-enclosure-guide.md).
+
 [![Buy Me A Coffee](https://img.shields.io/badge/Support-Buy%20Me%20A%20Coffee-FFDD00?style=flat-square&logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/3qutj2ucoq)
 
 Laseryx is a tool for your laser cutter. It runs in your browser. You can design, plan, and cut without installing anything.

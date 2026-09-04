@@ -9,7 +9,7 @@ describe("util", () => {
             expect(formatNumber(10.1)).toBe("10.1");
             expect(formatNumber(10.14)).toBe("10.1");
             expect(formatNumber(10.16)).toBe("10.2");
-            expect(formatNumber(117.52798461914062)).toBe("117.5");
+            expect(formatNumber(Number("117.52798461914062"))).toBe("117.5");
         });
 
         it("should return '0.0' for non-finite numbers", () => {
