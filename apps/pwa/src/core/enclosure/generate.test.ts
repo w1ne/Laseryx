@@ -13,6 +13,10 @@ describe("enclosure generation", () => {
     expect(enclosure.slopeDegrees).toBeGreaterThan(17);
     expect(enclosure.slopeDegrees).toBeLessThan(18);
     expect(enclosure.panels.every((panel) => panel.paths[0].closed)).toBe(true);
+    expect(enclosure.panels.every((panel) => panel.paths[0].points.length > 12)).toBe(true);
+    expect(enclosure.panels.find((panel) => panel.id === "front")?.edgePattern.horizontal).toBe(
+      enclosure.panels.find((panel) => panel.id === "rear")?.edgePattern.horizontal
+    );
     expect(enclosure.panels.find((panel) => panel.id === "service-lid")?.removable).toBe(true);
   });
 });
