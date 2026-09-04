@@ -7,6 +7,8 @@ import { TemplateIconSvg } from "../components/TemplateIcons";
 import { placeTemplate } from "../components/placeTemplate";
 import { useSketchTool, type SketchToolId } from "../sketch/SketchContext";
 import { groupListLabel, objectListLabel } from "../../core/objectLabels";
+import { HackathonEnclosurePanel } from "../components/HackathonEnclosurePanel";
+import type { PathObj } from "../../core/model";
 
 const TOOL_BY_TEMPLATE: Record<string, SketchToolId> = {
   rect: "rect",
@@ -48,6 +50,15 @@ export function DocumentPanel() {
 
   return (
     <div className="side">
+      <HackathonEnclosurePanel addPaths={(drafts) => {
+        let layerId = state.document.layers.find((layer) => layer.name === "Enclosure")?.id;
+        if (!layerId) {
+          layerId = `layer-enclosure-${Date.now()}`;
+          dispatch({ type: "ADD_LAYER", payload: { id: layerId, name: "Enclosure", visible: true, locked: false } });
+        }
+        const stamp = Date.now();
+        drafts.forEach((draft, index) => dispatch({ type: "ADD_OBJECT", payload: { ...draft, id: `enclosure-${stamp}-${index}`, layerId: layerId! } as PathObj }));
+      }} />
       <div className="side__tools" role="toolbar" aria-label="Sketch tools" data-testid="template-library">
         <button
           type="button"

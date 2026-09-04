@@ -1079,3 +1079,15 @@ select {
     grid-template-columns: 1fr;
   }
 }
+.hack-kit { border-bottom: 1px solid #e2e8f0; background: #fff7ed; }
+.hack-kit__toggle { width: 100%; border: 0; padding: 12px; background: #ffedd5; color: #9a3412; font-weight: 800; cursor: pointer; text-align: left; }
+.hack-kit__body { padding: 10px; max-height: 52vh; overflow: auto; }
+.hack-kit__intro, .hack-kit__message { margin: 4px 0 10px; font-size: 11px; color: #475569; }
+.hack-kit__part { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 6px 0; border-bottom: 1px solid #fed7aa; }
+.hack-kit__part strong, .hack-kit__part small { display: block; font-size: 10px; }
+.hack-kit__part small { color: #64748b; }
+.hack-kit__part button { padding: 4px 7px; font-size: 10px; }
+.hack-kit__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.hack-kit__field { font-size: 10px; color: #475569; }
+.hack-kit__field input { width: 100%; box-sizing: border-box; padding: 5px; border: 1px solid #cbd5e1; border-radius: 5px; }
+.hack-kit__generate { width: 100%; margin-top: 10px; padding: 8px; border: 0; border-radius: 6px; background: #ea580c; color: white; font-weight: 700; cursor: pointer; }
