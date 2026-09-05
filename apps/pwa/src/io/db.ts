@@ -1,5 +1,6 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { CamSettings, Document, MachineProfile } from '../core/model';
+import type { ComponentPreset } from '../core/components/types';
 
 export interface ProjectRec {
     id: string;
@@ -27,13 +28,17 @@ export interface LaserDB extends DBSchema {
         key: string;
         value: AssetRec;
     };
+    componentPresets: {
+        key: string;
+        value: ComponentPreset;
+    };
 }
 
 let dbPromise: Promise<IDBPDatabase<LaserDB>>;
 
 export function getDb() {
     if (!dbPromise) {
-        dbPromise = openDB<LaserDB>('laseryx-db', 1, {
+        dbPromise = openDB<LaserDB>('laseryx-db', 2, {
             upgrade(db) {
                 if (!db.objectStoreNames.contains('projects')) {
                     const store = db.createObjectStore('projects', { keyPath: 'id' });
@@ -41,6 +46,9 @@ export function getDb() {
                 }
                 if (!db.objectStoreNames.contains('assets')) {
                     db.createObjectStore('assets', { keyPath: 'id' });
+                }
+                if (!db.objectStoreNames.contains('componentPresets')) {
+                    db.createObjectStore('componentPresets', { keyPath: 'id' });
                 }
             },
         });

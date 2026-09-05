@@ -115,6 +115,8 @@ export type Document = {
   sketchStatus?: import("./sketch/types").SolveStatus | null;
   /** Object groups for multi-select / move-as-one. */
   groups?: ObjectGroup[];
+  /** Optional generic component/panel/enclosure workflow state. */
+  enclosureWorkspace?: import("./enclosure/workspace").EnclosureWorkspace;
 };
 
 export type OperationOrder = "insideOut" | "shortestTravel" | "topDown";

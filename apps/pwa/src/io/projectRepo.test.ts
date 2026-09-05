@@ -49,6 +49,26 @@ describe('projectRepo', () => {
         expect(loaded?.document).toEqual(mockDoc);
     });
 
+    it('round-trips an enclosure workspace exactly without aliases', async () => {
+        const workspace = { version: 1 as const, presets: [{ id: "p", name: "Hole", kind: "circle" as const, dimensions: { diameter: 8 } }], sourcePanel: { id: "panel", name: "Panel", width: 100, height: 80, components: [], transform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 } }, enclosure: { id: "box", revision: 2, parameters: { frontHeight: 30, rearHeight: 35, thickness: 3, clearance: .15, fingerTarget: 8 } }, coupon: { confirmed: true, selectedClearance: .15 }, sheetLayout: { sheetSize: { width: 210, height: 148 }, orientation: "landscape" as const, margin: 5, gap: 2, parts: [], sheets: [], placements: [], unplacedPartIds: [] } };
+        const doc: Document = { ...mockDoc, enclosureWorkspace: workspace };
+        const id = await projectRepo.save(doc, new Map(), "Workspace");
+        workspace.sourcePanel.width = 999;
+        const loaded = await projectRepo.load(id);
+        expect(loaded?.document.enclosureWorkspace?.sourcePanel.width).toBe(100);
+        expect(loaded?.document.enclosureWorkspace).toEqual({ ...workspace, sourcePanel: { ...workspace.sourcePanel, width: 100 } });
+    });
+
+    it('loads old projects unchanged and safely omits malformed workspaces', async () => {
+        const oldId = await projectRepo.save(mockDoc, new Map(), "Old");
+        expect((await projectRepo.load(oldId))?.document).toEqual(mockDoc);
+        const db = await getDb();
+        await db.put('projects', { id: 'bad', name: 'Bad', updatedAt: 1, document: { ...mockDoc, enclosureWorkspace: { version: 99 } } as unknown as Document });
+        expect((await projectRepo.load('bad'))?.document).toEqual(mockDoc);
+        await db.put('projects', { id: 'nested-bad', name: 'Bad', updatedAt: 2, document: { ...mockDoc, enclosureWorkspace: { version: 1, presets: [{ id: 'x' }], sourcePanel: {}, enclosure: {}, coupon: {} } } as unknown as Document });
+        expect((await projectRepo.load('nested-bad'))?.document).toEqual(mockDoc);
+    });
+
     it('should save and load automation metadata', async () => {
         const camSettings = {
             operations: [

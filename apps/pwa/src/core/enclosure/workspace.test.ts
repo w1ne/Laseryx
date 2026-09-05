@@ -1,0 +1,59 @@
+import { describe, expect, it } from "vitest";
+import type { ComponentPreset } from "../components/types";
+import type { PanelDesign } from "../panel/types";
+import { addComponentInstance, createComponentInstanceFromPreset, regenerateEnclosureWorkspace, removeComponentInstance, sanitizeEnclosureWorkspace, updateComponentInstance, type EnclosureWorkspace } from "./workspace";
+
+const transform = { a: 1, b: 0, c: 0, d: 1, e: 12, f: 14 };
+const preset: ComponentPreset = { id: "display", name: "Display", kind: "rectangle", dimensions: { width: 20, height: 10 } };
+const panel = (components = [] as PanelDesign["components"]): PanelDesign => ({ id: "panel", name: "Panel", width: 100, height: 80, transform: { ...transform, e: 0, f: 0 }, components });
+const parameters = { frontHeight: 30, rearHeight: 35, thickness: 3, clearance: 0.15, fingerTarget: 8 };
+
+describe("enclosure workspace", () => {
+  it("creates an instance as a deep snapshot of preset dimensions and transform", () => {
+    const instance = createComponentInstanceFromPreset(preset, "instance", transform);
+    (preset.dimensions as { width: number }).width = 99;
+    transform.e = 99;
+    expect(instance).toMatchObject({ id: "instance", presetId: "display", dimensions: { width: 20, height: 10 }, transform: { e: 12 } });
+  });
+
+  it("adds, updates, and removes source-panel instances without mutating prior values", () => {
+    const instance = createComponentInstanceFromPreset(preset, "instance");
+    const original = panel();
+    const added = addComponentInstance(original, instance);
+    const updated = updateComponentInstance(added, "instance", { name: "Screen", transform: { ...transform, e: 12 } });
+    const removed = removeComponentInstance(updated, "instance");
+    expect(original.components).toEqual([]);
+    expect(added.components[0].name).toBe("Display");
+    expect(updated.components[0]).toMatchObject({ name: "Screen", transform: { e: 12, f: 14 } });
+    expect(removed.components).toEqual([]);
+  });
+
+  it("regenerates six stable faces, increments revision, and preserves only fitting unchanged placements", () => {
+    const first: EnclosureWorkspace = { version: 1, presets: [preset], sourcePanel: panel(), enclosure: { id: "box", revision: 0, parameters }, coupon: { confirmed: false }, sheetLayout: undefined };
+    const generated = regenerateEnclosureWorkspace(first);
+    expect(generated.ok).toBe(true);
+    if (!generated.ok) return;
+    expect(generated.workspace.enclosure.result?.panels.map(({ id }) => id)).toEqual(["source-panel", "rear", "left", "right", "base", "service-panel"]);
+    const parts = generated.workspace.enclosure.result!.panels.map(({ id, width, height }) => ({ id, width, height }));
+    const placed = { ...generated.workspace, sheetLayout: { sheetSize: { width: 210, height: 148 }, orientation: "landscape" as const, margin: 5, gap: 2, parts, sheets: [{ id: "s", x: 0, y: 0, width: 210, height: 148 }], placements: [{ partId: "source-panel", sheetId: "s", x: 8, y: 8, rotation: 0 as const }], unplacedPartIds: parts.slice(1).map(({ id }) => id) } };
+    const again = regenerateEnclosureWorkspace(placed);
+    expect(again.ok).toBe(true);
+    if (again.ok) {
+      expect(again.workspace.enclosure).toMatchObject({ id: "box", revision: 2 });
+      expect(again.workspace.sheetLayout?.placements).toEqual([{ partId: "source-panel", sheetId: "s", x: 8, y: 8, rotation: 0 }]);
+      expect(again.workspace.sheetLayout?.unplacedPartIds).toContain("rear");
+    }
+  });
+
+  it("rejects invalid source panels without changing the workspace", () => {
+    const workspace: EnclosureWorkspace = { version: 1, presets: [], sourcePanel: { ...panel(), width: 0 }, enclosure: { id: "box", revision: 0, parameters }, coupon: { confirmed: false } };
+    const result = regenerateEnclosureWorkspace(workspace);
+    expect(result).toMatchObject({ ok: false, issues: [{ code: "invalid-dimension" }] });
+    expect(workspace.enclosure.revision).toBe(0);
+  });
+
+  it("rejects malformed persisted generated results", () => {
+    const workspace: EnclosureWorkspace = { version: 1, presets: [], sourcePanel: panel(), enclosure: { id: "box", revision: 1, parameters, result: "corrupt" as unknown as EnclosureWorkspace["enclosure"]["result"] }, coupon: { confirmed: false } };
+    expect(sanitizeEnclosureWorkspace(workspace)).toBeUndefined();
+  });
+});

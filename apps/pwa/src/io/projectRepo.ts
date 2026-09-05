@@ -1,6 +1,7 @@
 import { getDb } from './db';
 import { CamSettings, Document, MachineProfile } from '../core/model';
 import { randomId } from '../core/util';
+import { sanitizeEnclosureWorkspace } from '../core/enclosure/workspace';
 
 export interface ProjectSummary {
     id: string;
@@ -74,8 +75,14 @@ export const projectRepo = {
         await Promise.all(promises);
         await assetTx.done;
 
+        const document = structuredClone(proj.document);
+        if ("enclosureWorkspace" in document) {
+            const workspace = sanitizeEnclosureWorkspace(document.enclosureWorkspace);
+            if (workspace) document.enclosureWorkspace = workspace;
+            else delete document.enclosureWorkspace;
+        }
         return {
-            document: proj.document,
+            document,
             name: proj.name,
             assets,
             camSettings: proj.camSettings,
