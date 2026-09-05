@@ -1,69 +1,22 @@
-import type { ComponentPreset } from "./types";
+import type { ComponentMechanics, ComponentPreset } from "./types";
 
-type DeepReadonly<T> = T extends object
-  ? { readonly [K in keyof T]: DeepReadonly<T[K]> }
-  : T;
+type HestoreDefinition = { sku: string; partNumber: string; name: string; mounting: "panel" | "internal"; mechanics: ComponentMechanics; preset?: ComponentPreset };
+const source = (sku: string, partNumber: string, url: string) => ({ vendor: "HESTORE", sku, partNumber, url, sourceType: "vendor" as const });
 
-function deepFreeze<T>(value: T): DeepReadonly<T> {
-  if (value && typeof value === "object") {
-    Object.values(value).forEach((nested) => deepFreeze(nested));
-    Object.freeze(value);
-  }
-  return value as DeepReadonly<T>;
-}
-
-export const EXAMPLE_COMPONENT_PRESETS: DeepReadonly<readonly ComponentPreset[]> = deepFreeze([
-  {
-    id: "hestore-100.491.54",
-    name: "1.9-inch IPS display",
-    kind: "rectangle",
-    dimensions: { width: 43.72, height: 23.695 },
-    source: { vendor: "HESTORE", sku: "100.491.54", partNumber: "IPS-1.9-ST7789-SPI-M" }
-  },
-  {
-    id: "hestore-100.355.72",
-    name: "Rotary encoder",
-    kind: "circle",
-    dimensions: { diameter: 7 },
-    source: { vendor: "HESTORE", sku: "100.355.72", partNumber: "ROT-1AB" }
-  },
-  {
-    id: "hestore-100.220.17",
-    name: "Two-position toggle switch",
-    kind: "circle",
-    dimensions: { diameter: 6 },
-    source: { vendor: "HESTORE", sku: "100.220.17", partNumber: "KNX1 (ST302, MTS-1)" }
-  },
-  {
-    id: "hestore-100.321.00",
-    name: "60 mm slide potentiometer",
-    kind: "slot",
-    dimensions: { length: 60, width: 4 },
-    source: { vendor: "HESTORE", sku: "100.321.00", partNumber: "CDE23N-60-B10K" }
-  }
+export const HESTORE_COMPONENTS: readonly HestoreDefinition[] = Object.freeze([
+  { sku: "100.491.54", partNumber: "IPS-1.9-ST7789-SPI-M", name: "1.9-inch IPS display", mounting: "panel", mechanics: { confidence: "verified", body: { width: 62, height: 29, depth: 10 }, warnings: ["Verify bezel and connector clearance on the physical module."] }, preset: { id: "hestore-100.491.54", name: "1.9-inch IPS display", kind: "rectangle", dimensions: { width: 43.72, height: 23.695 }, source: source("100.491.54", "IPS-1.9-ST7789-SPI-M", "https://www.hestore.hu/prod_10049154.html"), mechanics: { confidence: "verified", body: { width: 62, height: 29, depth: 10 }, warnings: ["Verify bezel and connector clearance on the physical module."] } } },
+  { sku: "100.357.19", partNumber: "RC-40-20/FF", name: "40-way ribbon cable", mounting: "internal", mechanics: { confidence: "verified", warnings: ["Internal wiring; no panel cutout required."] } },
+  { sku: "100.431.82", partNumber: "INMP441-M", name: "I²S microphone module", mounting: "internal", mechanics: { confidence: "required", missing: ["carrier board size", "acoustic port position"], warnings: ["The available IC datasheet does not define the carrier board geometry."] } },
+  { sku: "100.355.72", partNumber: "ROT-1AB", name: "Rotary encoder", mounting: "panel", mechanics: { confidence: "nominal", missing: ["retaining hardware clearance"] }, preset: { id: "hestore-100.355.72", name: "Rotary encoder", kind: "circle", dimensions: { diameter: 7 }, source: source("100.355.72", "ROT-1AB", "https://www.hestore.hu/prod_10035572.html"), mechanics: { confidence: "nominal", missing: ["retaining hardware clearance"], warnings: ["Vendor confirms a 6 mm shaft; the 7 mm cutout is an editable starting clearance."] } } },
+  { sku: "100.220.17", partNumber: "KNX1 (ST302, MTS-1)", name: "Two-position toggle switch", mounting: "panel", mechanics: { confidence: "verified", body: { width: 12.5, height: 6.5, depth: 9.5 }, frontProtrusion: 11 }, preset: { id: "hestore-100.220.17", name: "Two-position toggle switch", kind: "circle", dimensions: { diameter: 6 }, source: source("100.220.17", "KNX1 (ST302, MTS-1)", "https://www.hestore.hu/prod_10022017.html"), mechanics: { confidence: "verified", body: { width: 12.5, height: 6.5, depth: 9.5 }, frontProtrusion: 11 } } },
+  { sku: "100.321.00", partNumber: "CDE23N-60-B10K", name: "60 mm slide potentiometer", mounting: "panel", mechanics: { confidence: "required", body: { width: 88, height: 12.5, depth: 11 }, missing: ["mounting-hole positions"] }, preset: { id: "hestore-100.321.00", name: "60 mm slide potentiometer", kind: "slot", dimensions: { length: 60, width: 4 }, source: source("100.321.00", "CDE23N-60-B10K", "https://www.hestore.hu/prod_10032100.html"), mechanics: { confidence: "required", body: { width: 88, height: 12.5, depth: 11 }, missing: ["mounting-hole positions"], warnings: ["Slot width is editable; verify lever and mounting-hole geometry."] } } },
+  { sku: "100.519.82", partNumber: "TACTS-12MOD-4CH", name: "Four-button module", mounting: "panel", mechanics: { confidence: "required", missing: ["button diameter", "button pitch", "board envelope", "mounting-hole positions"] } }
 ]);
 
-// Ribbon and microphone modules are internal-only. The button module is omitted
-// until its diameter and pitch are measured, so this example data invents no cutout.
-export const EXCLUDED_HESTORE_CUTOUTS = {
-  "100.357.19": "internal-only",
-  "100.431.82": "internal-only",
-  "100.519.82": "button diameter and pitch require measurement"
-} as const;
+export const EXAMPLE_COMPONENT_PRESETS = Object.freeze(HESTORE_COMPONENTS.flatMap(({ preset }) => preset ? [structuredClone(preset)] : []));
+export const EXCLUDED_HESTORE_CUTOUTS = { "100.357.19": "internal-only", "100.431.82": "carrier geometry requires measurement", "100.519.82": "button and mounting geometry require measurement" } as const;
 
 export function getExampleComponentPresetBySku(sku: string): ComponentPreset | undefined {
-  const preset = EXAMPLE_COMPONENT_PRESETS.find((candidate) => candidate.source?.sku === sku);
-  if (!preset) return undefined;
-  const common = {
-    id: preset.id,
-    name: preset.name,
-    source: preset.source ? { ...preset.source } : undefined
-  };
-  switch (preset.kind) {
-    case "circle": return { ...common, kind: preset.kind, dimensions: { ...preset.dimensions } };
-    case "slot": return { ...common, kind: preset.kind, dimensions: { ...preset.dimensions } };
-    case "rectangle": return { ...common, kind: preset.kind, dimensions: { ...preset.dimensions } };
-    case "rounded-rectangle": return { ...common, kind: preset.kind, dimensions: { ...preset.dimensions } };
-    case "button-row": return { ...common, kind: preset.kind, dimensions: { ...preset.dimensions } };
-  }
+  const preset = HESTORE_COMPONENTS.find((candidate) => candidate.sku === sku)?.preset;
+  return preset ? structuredClone(preset) : undefined;
 }

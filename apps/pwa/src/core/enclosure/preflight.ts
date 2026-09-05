@@ -5,7 +5,7 @@ import { generateFitCoupon } from "./coupon";
 import { renderEnclosureWorkspace } from "./render";
 import type { Document } from "../model";
 
-export type EnclosureIssueCode = "INVALID_STOCK" | "MEASURE_REQUIRED" | "OUTSIDE_SHEET" | "PART_OVERLAP" | "COUPON_UNCONFIRMED" | "COMPONENT_DIMENSIONS_INVALID" | "COMPONENT_TRANSFORM_INVALID" | "CUTOUT_OUTSIDE_PANEL" | "CUTOUT_OVERLAP" | "JOINT_TOO_SHORT" | "JOINT_INFEASIBLE" | "CONTOUR_OPEN" | "CONTOUR_SELF_INTERSECTION" | "CUTOUT_JOINT_COLLISION" | "PART_UNPLACED" | "PLACEMENT_OUT_OF_BOUNDS" | "PLACEMENT_OVERLAP" | "PLACEMENT_DUPLICATE" | "LAYOUT_PART_MISMATCH" | "STALE_GENERATED_RESULT" | "RENDERED_GEOMETRY_STALE" | "STOCK_PROFILE_MISMATCH" | "STOCK_SIZE_EXCEEDED" | "MACHINE_BED_EXCEEDED" | "WORKSPACE_INCOMPLETE" | "REVIEW_WARNING";
+export type EnclosureIssueCode = "INVALID_STOCK" | "MEASURE_REQUIRED" | "BODY_CLEARANCE" | "BODY_OVERLAP" | "OUTSIDE_SHEET" | "PART_OVERLAP" | "COUPON_UNCONFIRMED" | "COMPONENT_DIMENSIONS_INVALID" | "COMPONENT_TRANSFORM_INVALID" | "CUTOUT_OUTSIDE_PANEL" | "CUTOUT_OVERLAP" | "JOINT_TOO_SHORT" | "JOINT_INFEASIBLE" | "CONTOUR_OPEN" | "CONTOUR_SELF_INTERSECTION" | "CUTOUT_JOINT_COLLISION" | "PART_UNPLACED" | "PLACEMENT_OUT_OF_BOUNDS" | "PLACEMENT_OVERLAP" | "PLACEMENT_DUPLICATE" | "LAYOUT_PART_MISMATCH" | "STALE_GENERATED_RESULT" | "RENDERED_GEOMETRY_STALE" | "STOCK_PROFILE_MISMATCH" | "STOCK_SIZE_EXCEEDED" | "MACHINE_BED_EXCEEDED" | "WORKSPACE_INCOMPLETE" | "REVIEW_WARNING";
 export type EnclosureIssue = { code: EnclosureIssueCode; severity: "error" | "warning"; message: string; objectIds?: string[] };
 export type LegacyEnclosurePreflightInput = { thickness: number; couponConfirmed: boolean; unknownMeasurements: string[]; overflowPartIds: string[]; overlappingPartIds: string[] };
 export type WorkspacePreflightInput = { workspace: EnclosureWorkspace; document?: Document; unknownMeasurements?: string[]; warnings?: string[]; stockWidth?: number; stockHeight?: number; stockThickness?: number; materialPreset?: { thickness?: number }; stockProfile?: { id?: string; thickness?: number; width?: number; height?: number }; machineProfile?: { id?: string; bedMm?: { w: number; h: number }; stockThickness?: number } };
@@ -15,6 +15,17 @@ const panelCode: Record<string, EnclosureIssueCode> = { "component-dimensions-in
 
 function workspaceIssues(input: WorkspacePreflightInput): EnclosureIssue[] {
   const { workspace } = input, issues: EnclosureIssue[] = [];
+  for (const component of workspace.sourcePanel.components) {
+    for (const missing of component.mechanics?.missing ?? []) issues.push({ code: "MEASURE_REQUIRED", severity: "error", message: `Measure ${missing} for ${component.name}.`, objectIds: [component.id] });
+    for (const warning of component.mechanics?.warnings ?? []) issues.push({ code: "REVIEW_WARNING", severity: "warning", message: `${component.name}: ${warning}`, objectIds: [component.id] });
+    const body = component.mechanics?.body;
+    if (body) {
+      const position = Math.max(0, Math.min(1, component.transform.f / workspace.sourcePanel.height));
+      const localHeight = workspace.enclosure.parameters.frontHeight + (workspace.enclosure.parameters.rearHeight - workspace.enclosure.parameters.frontHeight) * position;
+      const available = localHeight - workspace.enclosure.parameters.thickness;
+      if (body.depth > available) issues.push({ code: "BODY_CLEARANCE", severity: "error", message: `${component.name} needs ${body.depth} mm behind the panel; only ${available.toFixed(1)} mm is available here.`, objectIds: [component.id] });
+    }
+  }
   for (const issue of validatePanel(workspace.sourcePanel)) issues.push({ code: panelCode[issue.code], severity: "error", message: issue.message, objectIds: issue.componentIds });
   const generated = regenerateEnclosureWorkspace({ ...workspace, enclosure: { ...workspace.enclosure, result: undefined }, sheetLayout: undefined });
   if (!generated.ok) for (const issue of generated.issues) {
@@ -68,7 +79,7 @@ function workspaceIssues(input: WorkspacePreflightInput): EnclosureIssue[] {
   const stockWidth = input.stockWidth ?? input.stockProfile?.width, stockHeight = input.stockHeight ?? input.stockProfile?.height;
   if (layout && stockWidth !== undefined && stockHeight !== undefined && layout.sheets.some(({ width, height }) => !((width <= stockWidth + 1e-6 && height <= stockHeight + 1e-6) || (width <= stockHeight + 1e-6 && height <= stockWidth + 1e-6)))) issues.push({ code: "STOCK_SIZE_EXCEEDED", severity: "error", message: `The arranged sheets exceed the available ${stockWidth} × ${stockHeight} mm stock.` });
   if (layout && input.machineProfile?.bedMm && layout.sheets.some(({ width, height }) => width > input.machineProfile!.bedMm!.w + 1e-6 || height > input.machineProfile!.bedMm!.h + 1e-6)) issues.push({ code: "MACHINE_BED_EXCEEDED", severity: "error", message: `A physical sheet exceeds the ${input.machineProfile.bedMm.w} × ${input.machineProfile.bedMm.h} mm machine bed.` });
-  if (workspace.coupon.selectedClearance !== undefined && !workspace.coupon.confirmed) issues.push({ code: "COUPON_UNCONFIRMED", severity: "warning", message: "Confirm the included fit coupon result before cutting the enclosure." });
+  if (workspace.coupon.selectedClearance !== undefined) issues.push({ code: "COUPON_UNCONFIRMED", severity: "warning", message: "For a new material or machine setup, cut the optional fit coupon before the enclosure." });
   for (const name of input.unknownMeasurements ?? []) issues.push({ code: "MEASURE_REQUIRED", severity: "error", message: `Enter the measured dimensions for ${name}.`, objectIds: [name] });
   for (const warning of input.warnings ?? []) issues.push({ code: "REVIEW_WARNING", severity: "warning", message: warning });
   return issues;
@@ -84,7 +95,7 @@ export function renderedGeometryMatches(document: Document, workspace: Enclosure
 export function preflightEnclosure(input: EnclosurePreflightInput): { ready: boolean; issues: EnclosureIssue[] } {
   if ("workspace" in input) {
     const issues = workspaceIssues(input);
-    return { ready: !issues.some(({ severity, code }) => severity === "error" || code === "COUPON_UNCONFIRMED"), issues };
+    return { ready: !issues.some(({ severity }) => severity === "error"), issues };
   }
   const issues: EnclosureIssue[] = [];
   if (!Number.isFinite(input.thickness) || input.thickness <= 0) issues.push({ code: "INVALID_STOCK", severity: "error", message: "Stock thickness must be measured and greater than zero." });
@@ -92,5 +103,5 @@ export function preflightEnclosure(input: EnclosurePreflightInput): { ready: boo
   if (input.overflowPartIds.length) issues.push({ code: "OUTSIDE_SHEET", severity: "error", message: `Parts outside the selected sheet: ${input.overflowPartIds.join(", ")}.`, objectIds: input.overflowPartIds });
   if (input.overlappingPartIds.length) issues.push({ code: "PART_OVERLAP", severity: "error", message: `Packed parts overlap: ${input.overlappingPartIds.join(", ")}.`, objectIds: input.overlappingPartIds });
   if (!input.couponConfirmed) issues.push({ code: "COUPON_UNCONFIRMED", severity: "warning", message: "Cut and test the fit coupon before the enclosure." });
-  return { ready: issues.length === 0, issues };
+  return { ready: !issues.some(({ severity }) => severity === "error"), issues };
 }
