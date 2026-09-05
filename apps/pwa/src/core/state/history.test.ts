@@ -80,4 +80,14 @@ describe("enclosure workspace history", () => {
         const redone = appReducer(undone, { type: "REDO" });
         expect(redone.document.enclosureWorkspace).toEqual(workspace(0));
     });
+
+    it("does not retain aliases to a dispatched workspace payload", () => {
+        const payload = workspace(0);
+        const changed = appReducer(INITIAL_STATE, { type: "SET_ENCLOSURE_WORKSPACE", payload });
+        payload.sourcePanel.width = 999;
+        payload.sourcePanel.transform.e = 42;
+        expect(changed.document.enclosureWorkspace?.sourcePanel.width).toBe(80);
+        expect(changed.document.enclosureWorkspace?.sourcePanel.transform.e).toBe(0);
+        expect(changed.history.present.document.enclosureWorkspace?.sourcePanel.width).toBe(80);
+    });
 });

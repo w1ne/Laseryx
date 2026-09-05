@@ -58,4 +58,24 @@ describe("preflightEnclosure", () => {
     const blocked = preflightEnclosure({ workspace, stockThickness: 4, stockWidth: 400, stockHeight: 400, machineProfile: { bedMm: { w: 450, h: 450 } } });
     expect(blocked.issues.map(({ code }) => code)).toEqual(expect.arrayContaining(["STOCK_PROFILE_MISMATCH", "STOCK_SIZE_EXCEEDED", "MACHINE_BED_EXCEEDED"]));
   });
+
+  it("blocks a stored result made from older source dimensions until regeneration", () => {
+    const base: EnclosureWorkspace = { version: 1, presets: [], sourcePanel: { id: "source", name: "Panel", width: 100, height: 70, components: [], transform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 } }, enclosure: { id: "box", revision: 0, parameters: { frontHeight: 30, rearHeight: 40, thickness: 3, clearance: .1, fingerTarget: 8 } }, coupon: { confirmed: true } };
+    const generated = regenerateEnclosureWorkspace(base);
+    if (!generated.ok) throw new Error("fixture failed");
+    const stale = { ...generated.workspace, sourcePanel: { ...generated.workspace.sourcePanel, width: 110 } };
+    const result = preflightEnclosure({ workspace: stale });
+    expect(result.ready).toBe(false);
+    expect(result.issues).toContainEqual(expect.objectContaining({ code: "STALE_GENERATED_RESULT", message: expect.stringMatching(/regenerate box/i) }));
+  });
+
+  it("checks every sheet against bed size without using canvas offsets", () => {
+    const base: EnclosureWorkspace = { version: 1, presets: [], sourcePanel: { id: "source", name: "Panel", width: 100, height: 70, components: [], transform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 } }, enclosure: { id: "box", revision: 0, parameters: { frontHeight: 30, rearHeight: 40, thickness: 3, clearance: .1, fingerTarget: 8 } }, coupon: { confirmed: true } };
+    const generated = regenerateEnclosureWorkspace(base); if (!generated.ok) throw new Error("fixture failed");
+    const layout = packParts(generated.workspace.enclosure.result!.panels.map(({ id, width, height }) => ({ id, width, height })), { sheetSize: { width: 200, height: 150 } });
+    const offsetLayout = { ...layout, sheets: layout.sheets.map((sheet, index) => ({ ...sheet, x: index * 250, y: 300 })) };
+    const workspace = { ...generated.workspace, sheetLayout: offsetLayout };
+    expect(preflightEnclosure({ workspace, machineProfile: { bedMm: { w: 200, h: 150 } } }).issues.map(({ code }) => code)).not.toContain("MACHINE_BED_EXCEEDED");
+    expect(preflightEnclosure({ workspace, machineProfile: { bedMm: { w: 190, h: 140 } } }).issues.map(({ code }) => code)).toContain("MACHINE_BED_EXCEEDED");
+  });
 });

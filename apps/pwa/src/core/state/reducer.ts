@@ -82,8 +82,10 @@ function internalReducer(state: AppState, action: Action): AppState {
         case "SET_DOCUMENT":
             return { ...state, document: action.payload };
 
-        case "SET_ENCLOSURE_WORKSPACE":
-            return { ...state, document: renderEnclosureWorkspace(state.document, action.payload) };
+        case "SET_ENCLOSURE_WORKSPACE": {
+            const workspace = structuredClone(action.payload);
+            return { ...state, document: renderEnclosureWorkspace(state.document, workspace) };
+        }
 
         case "ADD_LAYER":
             return {

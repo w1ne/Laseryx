@@ -3,7 +3,7 @@ import { hasSelfIntersection } from "./joints";
 import { regenerateEnclosureWorkspace, type EnclosureWorkspace } from "./workspace";
 import { generateFitCoupon } from "./coupon";
 
-export type EnclosureIssueCode = "INVALID_STOCK" | "MEASURE_REQUIRED" | "OUTSIDE_SHEET" | "PART_OVERLAP" | "COUPON_UNCONFIRMED" | "COMPONENT_DIMENSIONS_INVALID" | "COMPONENT_TRANSFORM_INVALID" | "CUTOUT_OUTSIDE_PANEL" | "CUTOUT_OVERLAP" | "JOINT_TOO_SHORT" | "JOINT_INFEASIBLE" | "CONTOUR_OPEN" | "CONTOUR_SELF_INTERSECTION" | "CUTOUT_JOINT_COLLISION" | "PART_UNPLACED" | "PLACEMENT_OUT_OF_BOUNDS" | "PLACEMENT_OVERLAP" | "PLACEMENT_DUPLICATE" | "LAYOUT_PART_MISMATCH" | "STOCK_PROFILE_MISMATCH" | "STOCK_SIZE_EXCEEDED" | "MACHINE_BED_EXCEEDED" | "WORKSPACE_INCOMPLETE" | "REVIEW_WARNING";
+export type EnclosureIssueCode = "INVALID_STOCK" | "MEASURE_REQUIRED" | "OUTSIDE_SHEET" | "PART_OVERLAP" | "COUPON_UNCONFIRMED" | "COMPONENT_DIMENSIONS_INVALID" | "COMPONENT_TRANSFORM_INVALID" | "CUTOUT_OUTSIDE_PANEL" | "CUTOUT_OVERLAP" | "JOINT_TOO_SHORT" | "JOINT_INFEASIBLE" | "CONTOUR_OPEN" | "CONTOUR_SELF_INTERSECTION" | "CUTOUT_JOINT_COLLISION" | "PART_UNPLACED" | "PLACEMENT_OUT_OF_BOUNDS" | "PLACEMENT_OVERLAP" | "PLACEMENT_DUPLICATE" | "LAYOUT_PART_MISMATCH" | "STALE_GENERATED_RESULT" | "STOCK_PROFILE_MISMATCH" | "STOCK_SIZE_EXCEEDED" | "MACHINE_BED_EXCEEDED" | "WORKSPACE_INCOMPLETE" | "REVIEW_WARNING";
 export type EnclosureIssue = { code: EnclosureIssueCode; severity: "error" | "warning"; message: string; objectIds?: string[] };
 export type LegacyEnclosurePreflightInput = { thickness: number; couponConfirmed: boolean; unknownMeasurements: string[]; overflowPartIds: string[]; overlappingPartIds: string[] };
 export type WorkspacePreflightInput = { workspace: EnclosureWorkspace; unknownMeasurements?: string[]; warnings?: string[]; stockWidth?: number; stockHeight?: number; stockThickness?: number; materialPreset?: { thickness?: number }; stockProfile?: { id?: string; thickness?: number; width?: number; height?: number }; machineProfile?: { id?: string; bedMm?: { w: number; h: number }; stockThickness?: number } };
@@ -20,6 +20,8 @@ function workspaceIssues(input: WorkspacePreflightInput): EnclosureIssue[] {
     if (!issues.some((existing) => existing.code === code && existing.message === issue.message)) issues.push({ code, severity: "error", message: `Cannot make box: ${issue.message}.`, objectIds: issue.componentIds });
   }
   const result = workspace.enclosure.result;
+  const freshResult = generated.ok ? generated.workspace.enclosure.result : undefined;
+  if (result && freshResult && JSON.stringify(result) !== JSON.stringify(freshResult)) issues.push({ code: "STALE_GENERATED_RESULT", severity: "error", message: "Regenerate box because the stored faces no longer match the source panel or box settings." });
   if (!result) issues.push({ code: "WORKSPACE_INCOMPLETE", severity: "error", message: "Make the box faces before starting the cut." });
   else for (const panel of result.panels) for (const path of panel.paths) {
     if (!path.closed) issues.push({ code: "CONTOUR_OPEN", severity: "error", message: `${panel.name} has an open contour; close it before cutting.`, objectIds: [panel.id] });
@@ -28,7 +30,7 @@ function workspaceIssues(input: WorkspacePreflightInput): EnclosureIssue[] {
   const layout = workspace.sheetLayout;
   if (result && !layout) issues.push({ code: "PART_UNPLACED", severity: "error", message: "Arrange the generated box faces on sheets before cutting." });
   if (layout) {
-    const expected = new Map(result?.panels.map(({ id, width, height }) => [id, { width, height }]) ?? []);
+    const expected = new Map(freshResult?.panels.map(({ id, width, height }) => [id, { width, height }]) ?? []);
     if (workspace.coupon.selectedClearance !== undefined) {
       const coupon = generateFitCoupon({ thickness: workspace.enclosure.parameters.thickness, clearance: workspace.coupon.selectedClearance });
       expected.set(coupon.id, coupon.bounds);
@@ -61,8 +63,8 @@ function workspaceIssues(input: WorkspacePreflightInput): EnclosureIssue[] {
   const thickness = input.stockThickness ?? input.materialPreset?.thickness ?? input.stockProfile?.thickness ?? input.machineProfile?.stockThickness;
   if (thickness !== undefined && Math.abs(thickness - workspace.enclosure.parameters.thickness) > .001) issues.push({ code: "STOCK_PROFILE_MISMATCH", severity: "error", message: `Selected stock thickness ${thickness} mm does not match the box thickness ${workspace.enclosure.parameters.thickness} mm.` });
   const stockWidth = input.stockWidth ?? input.stockProfile?.width, stockHeight = input.stockHeight ?? input.stockProfile?.height;
-  if (layout && stockWidth !== undefined && stockHeight !== undefined && layout.sheets.some(({ width, height }) => width > stockWidth + 1e-6 || height > stockHeight + 1e-6)) issues.push({ code: "STOCK_SIZE_EXCEEDED", severity: "error", message: `The arranged sheets exceed the available ${stockWidth} × ${stockHeight} mm stock.` });
-  if (layout && input.machineProfile?.bedMm && layout.sheets.some(({ x, y, width, height }) => x < 0 || y < 0 || x + width > input.machineProfile!.bedMm!.w + 1e-6 || y + height > input.machineProfile!.bedMm!.h + 1e-6)) issues.push({ code: "MACHINE_BED_EXCEEDED", severity: "error", message: `The arranged sheets exceed the ${input.machineProfile.bedMm.w} × ${input.machineProfile.bedMm.h} mm machine bed.` });
+  if (layout && stockWidth !== undefined && stockHeight !== undefined && layout.sheets.some(({ width, height }) => !((width <= stockWidth + 1e-6 && height <= stockHeight + 1e-6) || (width <= stockHeight + 1e-6 && height <= stockWidth + 1e-6)))) issues.push({ code: "STOCK_SIZE_EXCEEDED", severity: "error", message: `The arranged sheets exceed the available ${stockWidth} × ${stockHeight} mm stock.` });
+  if (layout && input.machineProfile?.bedMm && layout.sheets.some(({ width, height }) => width > input.machineProfile!.bedMm!.w + 1e-6 || height > input.machineProfile!.bedMm!.h + 1e-6)) issues.push({ code: "MACHINE_BED_EXCEEDED", severity: "error", message: `A physical sheet exceeds the ${input.machineProfile.bedMm.w} × ${input.machineProfile.bedMm.h} mm machine bed.` });
   if (workspace.coupon.selectedClearance !== undefined && !workspace.coupon.confirmed) issues.push({ code: "COUPON_UNCONFIRMED", severity: "warning", message: "Confirm the included fit coupon result before cutting the enclosure." });
   for (const name of input.unknownMeasurements ?? []) issues.push({ code: "MEASURE_REQUIRED", severity: "error", message: `Enter the measured dimensions for ${name}.`, objectIds: [name] });
   for (const warning of input.warnings ?? []) issues.push({ code: "REVIEW_WARNING", severity: "warning", message: warning });

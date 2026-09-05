@@ -20,6 +20,7 @@ export function renderEnclosureWorkspace(document: Document, workspace: Enclosur
     const outlineId = `components-box:panel:${workspace.sourcePanel.id}:outline`;
     objects.push(pathObject(outlineId, `${workspace.sourcePanel.name} outline`, expansion.outline.points, expansion.transform)); members.push(outlineId);
     expansion.cutouts.forEach((cutout, index) => { const id = `components-box:panel:${workspace.sourcePanel.id}:cutout:${cutout.componentId}:${index}`; objects.push(pathObject(id, cutout.componentName, cutout.path.points, expansion.transform)); members.push(id); });
+    if (members.length === 1) { const anchorId = `components-box:panel:${workspace.sourcePanel.id}:anchor`; objects.push(pathObject(anchorId, `${workspace.sourcePanel.name} anchor`, [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }], expansion.transform, true)); members.push(anchorId); }
     groups.push({ id: `components-box:panel:${workspace.sourcePanel.id}`, name: workspace.sourcePanel.name, memberIds: members });
   } else {
     const layout = workspace.sheetLayout;
@@ -30,12 +31,13 @@ export function renderEnclosureWorkspace(document: Document, workspace: Enclosur
       const placement = placements.get(panel.id), sheet = placement ? sheets.get(placement.sheetId) : undefined;
       const transform: Transform = placement && sheet ? (placement.rotation === 90 ? { a: 0, b: 1, c: -1, d: 0, e: sheet.x + placement.x + panel.height, f: sheet.y + placement.y } : { ...identity, e: sheet.x + placement.x, f: sheet.y + placement.y }) : { ...identity, e: (panelIndex % 2) * 175, f: Math.floor(panelIndex / 2) * 120 };
       const members = panel.paths.map((path, index) => { const id = `components-box:${workspace.enclosure.id}:face:${panel.id}:${index}`; const name = index === 0 ? panel.name : panel.id === "source-panel" ? (sourceCutoutNames[index - 1] ?? `${panel.name} cutout`) : `${panel.name} cutout`; objects.push(pathObject(id, name, path.points, transform)); return id; });
+      if (members.length === 1) { const anchorId = `components-box:${workspace.enclosure.id}:face:${panel.id}:anchor`; objects.push(pathObject(anchorId, `${panel.name} anchor`, [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }], transform, true)); members.push(anchorId); }
       groups.push({ id: `components-box:${workspace.enclosure.id}:face:${panel.id}`, name: panel.name, memberIds: members });
     });
     if (layout) {
       const boundaries = expandSheetBoundaries(layout.sheets, "layer-components-box-sheets").map((b) => ({ ...b, id: `components-box:${workspace.enclosure.id}:${b.id}` }));
       objects.push(...boundaries);
-      boundaries.forEach((boundary) => groups.push({ id: `components-box:${workspace.enclosure.id}:sheet:${boundary.id.split(":").at(-1)}`, name: boundary.name ?? "Sheet", memberIds: [boundary.id] }));
+      boundaries.forEach((boundary) => { const sheetId = boundary.id.split(":").at(-1); const anchorId = `components-box:${workspace.enclosure.id}:sheet:${sheetId}:anchor`; objects.push(pathObject(anchorId, `${boundary.name} anchor`, [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }], boundary.transform, true)); groups.push({ id: `components-box:${workspace.enclosure.id}:sheet:${sheetId}`, name: boundary.name ?? "Sheet", memberIds: [boundary.id, anchorId] }); });
     }
     if (workspace.coupon.selectedClearance !== undefined) {
       const coupon = generateFitCoupon({ thickness: workspace.enclosure.parameters.thickness, clearance: workspace.coupon.selectedClearance });
