@@ -96,6 +96,20 @@ describe("preflightEnclosure", () => {
     expect(preflightEnclosure({ workspace: { ...generated.workspace, sheetLayout: layout } }).issues).toContainEqual(expect.objectContaining({ code: "BODY_OVERLAP", objectIds: ["left", "right"] }));
   });
 
+  it("maps source-panel top to rear clearance and bottom to front clearance", () => {
+    const preset = { id: "body", name: "Body", kind: "circle" as const, dimensions: { diameter: 5 }, mechanics: { confidence: "measured" as const, body: { width: 8, height: 8, depth: 40 } } };
+    const run = (y: number, frontHeight: number, rearHeight: number) => {
+      const component = { ...preset, id: `body-${y}`, presetId: preset.id, transform: { a: 1, b: 0, c: 0, d: 1, e: 50, f: y } };
+      const base: EnclosureWorkspace = { version: 1, presets: [preset], sourcePanel: { id: "source", name: "Panel", width: 100, height: 70, components: [component], transform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 } }, enclosure: { id: "box", revision: 0, parameters: { frontHeight, rearHeight, thickness: 3, clearance: .1, fingerTarget: 8 } }, coupon: {} };
+      const generated = regenerateEnclosureWorkspace(base); if (!generated.ok) throw new Error("fixture failed");
+      return preflightEnclosure({ workspace: generated.workspace }).issues.map(({ code }) => code);
+    };
+    expect(run(10, 65, 35)).toContain("BODY_CLEARANCE");
+    expect(run(60, 65, 35)).not.toContain("BODY_CLEARANCE");
+    expect(run(10, 35, 65)).not.toContain("BODY_CLEARANCE");
+    expect(run(60, 35, 65)).toContain("BODY_CLEARANCE");
+  });
+
   it("checks every sheet against bed size without using canvas offsets", () => {
     const base: EnclosureWorkspace = { version: 1, presets: [], sourcePanel: { id: "source", name: "Panel", width: 100, height: 70, components: [], transform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 } }, enclosure: { id: "box", revision: 0, parameters: { frontHeight: 30, rearHeight: 40, thickness: 3, clearance: .1, fingerTarget: 8 } }, coupon: { confirmed: true } };
     const generated = regenerateEnclosureWorkspace(base); if (!generated.ok) throw new Error("fixture failed");

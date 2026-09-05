@@ -84,7 +84,7 @@ const transform = (value: unknown) => record(value) && ["a", "b", "c", "d", "e",
 const hole = (value: unknown) => record(value) && finite(value.x) && finite(value.y) && finite(value.diameter) && value.diameter > 0 && (value.label === undefined || typeof value.label === "string");
 const mechanics = (value: unknown) => value === undefined || (record(value)
   && ["verified", "measured", "nominal", "required"].includes(value.confidence as string)
-  && (value.body === undefined || (record(value.body) && ["width", "height", "depth"].every((key) => finite(value.body![key]) && (value.body![key] as number) > 0)))
+  && (value.body === undefined || (record(value.body) && ["width", "height"].every((key) => finite(value.body![key]) && (value.body![key] as number) > 0) && (value.body.depth === undefined || (finite(value.body.depth) && value.body.depth > 0))))
   && (value.frontProtrusion === undefined || (finite(value.frontProtrusion) && value.frontProtrusion >= 0))
   && (value.mountingHoles === undefined || (Array.isArray(value.mountingHoles) && value.mountingHoles.length <= 100 && value.mountingHoles.every(hole)))
   && (value.acousticHole === undefined || hole(value.acousticHole))
@@ -217,7 +217,9 @@ export function sanitizeEnclosureWorkspace(value: unknown): EnclosureWorkspace |
   const presetIdSet = new Set(presetIds);
   if (presetIdSet.size !== presetIds.length || !unique(instanceIds) || !value.sourcePanel.components.every((item) => presetIdSet.has((item as Record<string, unknown>).presetId as string))) return undefined;
   try {
-    return structuredClone(value) as EnclosureWorkspace;
+    const sanitized = structuredClone(value) as EnclosureWorkspace;
+    sanitized.coupon = sanitized.coupon.selectedClearance === undefined ? {} : { selectedClearance: sanitized.coupon.selectedClearance };
+    return sanitized;
   } catch {
     return undefined;
   }

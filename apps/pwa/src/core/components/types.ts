@@ -19,7 +19,7 @@ export type ComponentSource = {
 
 export type MechanicalConfidence = "verified" | "measured" | "nominal" | "required";
 export type PositionedHole = { x: number; y: number; diameter: number; label?: string };
-export type BodyEnvelope = { width: number; height: number; depth: number };
+export type BodyEnvelope = { width: number; height: number; depth?: number };
 export type ComponentMechanics = {
   confidence: MechanicalConfidence;
   mountingHoles?: PositionedHole[];

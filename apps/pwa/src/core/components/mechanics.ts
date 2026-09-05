@@ -14,7 +14,7 @@ export function validateMechanics(mechanics?: ComponentMechanics): string[] {
   if (mechanics.body) {
     if (!positive(mechanics.body.width)) issues.push("Body width must be positive.");
     if (!positive(mechanics.body.height)) issues.push("Body height must be positive.");
-    if (!positive(mechanics.body.depth)) issues.push("Body depth must be positive.");
+    if (mechanics.body.depth !== undefined && !positive(mechanics.body.depth)) issues.push("Body depth must be positive.");
   }
   mechanics.mountingHoles?.forEach((hole) => issues.push(...validHole(hole, "Mounting hole")));
   if (mechanics.acousticHole) issues.push(...validHole(mechanics.acousticHole, "Acoustic hole"));

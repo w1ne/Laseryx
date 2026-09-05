@@ -22,12 +22,12 @@ function workspaceIssues(input: WorkspacePreflightInput): EnclosureIssue[] {
     const body = component.mechanics?.body;
     if (body) {
       const position = Math.max(0, Math.min(1, component.transform.f / workspace.sourcePanel.height));
-      const localHeight = workspace.enclosure.parameters.frontHeight + (workspace.enclosure.parameters.rearHeight - workspace.enclosure.parameters.frontHeight) * position;
+      const localHeight = workspace.enclosure.parameters.rearHeight + (workspace.enclosure.parameters.frontHeight - workspace.enclosure.parameters.rearHeight) * position;
       const available = localHeight - workspace.enclosure.parameters.thickness;
-      if (body.depth > available) issues.push({ code: "BODY_CLEARANCE", severity: "error", message: `${component.name} needs ${body.depth} mm behind the panel; only ${available.toFixed(1)} mm is available here.`, objectIds: [component.id] });
+      if (body.depth !== undefined && body.depth > available) issues.push({ code: "BODY_CLEARANCE", severity: "error", message: `${component.name} needs ${body.depth} mm behind the panel; only ${available.toFixed(1)} mm is available here.`, objectIds: [component.id] });
       const halfW = body.width / 2, halfH = body.height / 2;
       const points = [[-halfW, -halfH], [halfW, -halfH], [halfW, halfH], [-halfW, halfH]].map(([x, y]) => ({ x: component.transform.a * x + component.transform.c * y + component.transform.e, y: component.transform.b * x + component.transform.d * y + component.transform.f }));
-      bodies.push({ id: component.id, name: component.name, minX: Math.min(...points.map((p) => p.x)), maxX: Math.max(...points.map((p) => p.x)), minY: Math.min(...points.map((p) => p.y)), maxY: Math.max(...points.map((p) => p.y)), depth: body.depth });
+      if (body.depth !== undefined) bodies.push({ id: component.id, name: component.name, minX: Math.min(...points.map((p) => p.x)), maxX: Math.max(...points.map((p) => p.x)), minY: Math.min(...points.map((p) => p.y)), maxY: Math.max(...points.map((p) => p.y)), depth: body.depth });
     }
   }
   for (let a = 0; a < bodies.length; a++) for (let b = a + 1; b < bodies.length; b++) {

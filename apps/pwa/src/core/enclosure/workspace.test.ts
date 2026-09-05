@@ -105,6 +105,11 @@ describe("enclosure workspace", () => {
     expect(sanitizeEnclosureWorkspace({ ...base, presets: [{ ...mechanical, mechanics: { ...mechanical.mechanics, body: { ...mechanical.mechanics.body, depth: -1 } } }] })).toBeUndefined();
   });
 
+  it("accepts but strips legacy coupon confirmation", () => {
+    const base: EnclosureWorkspace = { version: 1, presets: [], sourcePanel: panel(), enclosure: { id: "box", revision: 0, parameters }, coupon: { confirmed: true, selectedClearance: .15 } };
+    expect(sanitizeEnclosureWorkspace(base)?.coupon).toEqual({ selectedClearance: .15 });
+  });
+
   it("requires every layout part exactly once and rejects out-of-bounds or overlapping placements", () => {
     const layout = { sheetSize: { width: 100, height: 100 }, orientation: "landscape" as const, margin: 5, gap: 2, parts: [{ id: "a", width: 20, height: 10 }, { id: "b", width: 20, height: 10 }], sheets: [{ id: "sheet", x: 0, y: 0, width: 100, height: 100 }], placements: [{ partId: "a", sheetId: "sheet", x: 5, y: 5, rotation: 0 as const }], unplacedPartIds: ["b"] };
     const base: EnclosureWorkspace = { version: 1, presets: [], sourcePanel: panel(), enclosure: { id: "box", revision: 0, parameters }, coupon: { confirmed: false }, sheetLayout: layout };

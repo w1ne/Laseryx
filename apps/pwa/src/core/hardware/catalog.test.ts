@@ -13,11 +13,12 @@ describe("hackathon hardware catalog", () => {
     expect(getHardwareModule("100.491.54")?.dimensions).toMatchObject({
       boardWidth: 62, boardHeight: 29, cutoutWidth: 43.72, cutoutHeight: 23.695
     });
-    expect(getHardwareModule("100.355.72")?.dimensions.shaftDiameter).toBe(6);
+    expect(getHardwareModule("100.355.72")).toMatchObject({ confidence: "measure", dimensions: { cutoutDiameter: 7 } });
     expect(getHardwareModule("100.220.17")?.dimensions.cutoutDiameter).toBe(6);
     expect(getHardwareModule("100.321.00")?.dimensions).toMatchObject({
       bodyWidth: 88, bodyHeight: 12.5, travel: 60
     });
+    expect(getHardwareModule("100.321.00")?.confidence).toBe("measure");
   });
 
   it("does not invent dimensions and marks internal modules", () => {
