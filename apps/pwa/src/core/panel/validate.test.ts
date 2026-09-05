@@ -49,17 +49,59 @@ describe("validatePanel", () => {
     }));
   });
 
-  it("warns when transformed cutout bounds overlap and names both components", () => {
+  it("blocks when transformed cutout bounds overlap and names both components", () => {
     const circle = preset({ id: "circle", name: "Button", kind: "circle", dimensions: { diameter: 10 } });
     const first = createComponentInstance(circle, "button-a", { ...identity, e: 40, f: 40 });
     const second = createComponentInstance(circle, "button-b", { ...identity, e: 47, f: 40 });
 
     expect(validatePanel(panel([first, second]))).toContainEqual(expect.objectContaining({
       code: "cutout-bounds-overlap",
-      severity: "warning",
+      severity: "error",
       componentIds: ["button-a", "button-b"],
       message: expect.stringMatching(/bounds overlap/i)
     }));
+  });
+
+  it("uses primitive bounds that catch a rotated circle between tessellation samples", () => {
+    const angle = Math.PI / 32;
+    const component = createComponentInstance(preset({
+      id: "large-circle", name: "Large dial", kind: "circle", dimensions: { diameter: 100 }
+    }), "dial-1", {
+      a: Math.cos(angle), b: Math.sin(angle), c: -Math.sin(angle), d: Math.cos(angle), e: 49.9, f: 60
+    });
+
+    expect(validatePanel({ ...panel([component]), width: 200, height: 120 })).toContainEqual(expect.objectContaining({
+      code: "cutout-outside-panel", severity: "error", componentIds: ["dial-1"]
+    }));
+  });
+
+  it.each([
+    ["a", Number.NaN],
+    ["b", Infinity],
+    ["c", Number.NEGATIVE_INFINITY],
+    ["d", Number.NaN],
+    ["e", Infinity],
+    ["f", Number.NEGATIVE_INFINITY]
+  ] as const)("rejects a non-finite component transform coefficient %s", (coefficient, value) => {
+    const component = createComponentInstance(preset({
+      id: "circle", name: "Unsafe button", kind: "circle", dimensions: { diameter: 8 }
+    }), "unsafe-1", { ...identity, [coefficient]: value });
+
+    expect(validatePanel(panel([component]))).toContainEqual(expect.objectContaining({
+      code: "component-transform-invalid",
+      severity: "error",
+      componentIds: ["unsafe-1"],
+      componentNames: ["Unsafe button"],
+      message: expect.stringContaining(coefficient)
+    }));
+  });
+
+  it("accepts a finite affine component transform with shear and scale", () => {
+    const component = createComponentInstance(preset({
+      id: "rect", name: "Skewed display", kind: "rectangle", dimensions: { width: 20, height: 10 }
+    }), "display-1", { a: 1.2, b: 0.15, c: 0.25, d: 0.9, e: 80, f: 50 });
+
+    expect(validatePanel(panel([component]))).toEqual([]);
   });
 
   it.each([

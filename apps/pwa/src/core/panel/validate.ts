@@ -1,15 +1,71 @@
 import { expandComponent } from "../components/expand";
-import { computeBounds, transformPoints } from "../geom";
+import { applyTransform } from "../geom";
 import type { ComponentInstance } from "../components/types";
+import type { Point, Transform } from "../model";
 import type { PanelDesign, PanelValidationIssue } from "./types";
 
-type Bounds = ReturnType<typeof computeBounds>;
+type Bounds = { minX: number; minY: number; maxX: number; maxY: number };
+const TRANSFORM_COEFFICIENTS: Array<keyof Transform> = ["a", "b", "c", "d", "e", "f"];
 
+function boundsFromPoints(points: Point[]): Bounds {
+  return {
+    minX: Math.min(...points.map(({ x }) => x)),
+    minY: Math.min(...points.map(({ y }) => y)),
+    maxX: Math.max(...points.map(({ x }) => x)),
+    maxY: Math.max(...points.map(({ y }) => y))
+  };
+}
+
+function transformedRectangleBounds(width: number, height: number, transform: Transform): Bounds {
+  const halfWidth = width / 2;
+  const halfHeight = height / 2;
+  return boundsFromPoints([
+    { x: -halfWidth, y: -halfHeight },
+    { x: halfWidth, y: -halfHeight },
+    { x: halfWidth, y: halfHeight },
+    { x: -halfWidth, y: halfHeight }
+  ].map((point) => applyTransform(point, transform)));
+}
+
+function transformedCircleBounds(centerX: number, radius: number, transform: Transform): Bounds {
+  const center = applyTransform({ x: centerX, y: 0 }, transform);
+  const extentX = radius * Math.hypot(transform.a, transform.c);
+  const extentY = radius * Math.hypot(transform.b, transform.d);
+  return {
+    minX: center.x - extentX,
+    minY: center.y - extentY,
+    maxX: center.x + extentX,
+    maxY: center.y + extentY
+  };
+}
+
+function unionBounds(bounds: Bounds[]): Bounds {
+  return {
+    minX: Math.min(...bounds.map(({ minX }) => minX)),
+    minY: Math.min(...bounds.map(({ minY }) => minY)),
+    maxX: Math.max(...bounds.map(({ maxX }) => maxX)),
+    maxY: Math.max(...bounds.map(({ maxY }) => maxY))
+  };
+}
+
+/** Exact for circles, rectangles and button rows; conservative for curved rectangular primitives. */
 function componentBounds(component: ComponentInstance): Bounds {
-  return computeBounds(expandComponent(component).map((path) => ({
-    ...path,
-    points: transformPoints(path.points, component.transform)
-  })));
+  const { transform } = component;
+  switch (component.kind) {
+    case "circle":
+      return transformedCircleBounds(0, component.dimensions.diameter / 2, transform);
+    case "slot":
+      return transformedRectangleBounds(component.dimensions.length, component.dimensions.width, transform);
+    case "rectangle":
+    case "rounded-rectangle":
+      return transformedRectangleBounds(component.dimensions.width, component.dimensions.height, transform);
+    case "button-row": {
+      const { count, diameter, pitch } = component.dimensions;
+      return unionBounds(Array.from({ length: count }, (_, index) =>
+        transformedCircleBounds((index - (count - 1) / 2) * pitch, diameter / 2, transform)
+      ));
+    }
+  }
 }
 
 function boundsOverlap(first: Bounds, second: Bounds): boolean {
@@ -47,7 +103,22 @@ export function validatePanel(panel: PanelDesign): PanelValidationIssue[] {
 
   const validComponents: Array<{ component: ComponentInstance; bounds: Bounds }> = [];
   for (const component of panel.components) {
+    const invalidCoefficient = TRANSFORM_COEFFICIENTS
+      .find((coefficient) => !Number.isFinite(component.transform[coefficient]));
+    if (invalidCoefficient) {
+      issues.push({
+        ...baseIssue(panel),
+        code: "component-transform-invalid",
+        severity: "error",
+        componentIds: [component.id],
+        componentNames: [component.name],
+        message: `${component.name} transform coefficient ${invalidCoefficient} must be finite.`
+      });
+      continue;
+    }
     try {
+      // Component expansion owns the complete dimension validation contract.
+      expandComponent(component);
       validComponents.push({ component, bounds: componentBounds(component) });
     } catch (error) {
       const reason = error instanceof Error ? error.message : "dimensions are invalid";
@@ -85,7 +156,7 @@ export function validatePanel(panel: PanelDesign): PanelValidationIssue[] {
         issues.push({
           ...baseIssue(panel),
           code: "cutout-bounds-overlap",
-          severity: "warning",
+          severity: "error",
           componentIds: [first.component.id, second.component.id],
           componentNames: [first.component.name, second.component.name],
           message: `${first.component.name} and ${second.component.name} bounds overlap; inspect their cutout geometry.`

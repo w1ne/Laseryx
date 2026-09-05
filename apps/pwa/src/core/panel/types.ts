@@ -31,6 +31,7 @@ export type PanelValidationIssue = {
     | "panel-width-invalid"
     | "panel-height-invalid"
     | "component-dimensions-invalid"
+    | "component-transform-invalid"
     | "cutout-outside-panel"
     | "cutout-bounds-overlap";
   severity: PanelIssueSeverity;
