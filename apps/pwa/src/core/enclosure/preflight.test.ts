@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { preflightEnclosure } from "./preflight";
 import { regenerateEnclosureWorkspace, type EnclosureWorkspace } from "./workspace";
 import { packParts } from "../layout/pack";
+import { renderEnclosureWorkspace } from "./render";
 
 describe("preflightEnclosure", () => {
   it("blocks unknown measurements, overflow, and invalid stock", () => {
@@ -77,5 +78,16 @@ describe("preflightEnclosure", () => {
     const workspace = { ...generated.workspace, sheetLayout: offsetLayout };
     expect(preflightEnclosure({ workspace, machineProfile: { bedMm: { w: 200, h: 150 } } }).issues.map(({ code }) => code)).not.toContain("MACHINE_BED_EXCEEDED");
     expect(preflightEnclosure({ workspace, machineProfile: { bedMm: { w: 190, h: 140 } } }).issues.map(({ code }) => code)).toContain("MACHINE_BED_EXCEEDED");
+  });
+
+  it("blocks when actual rendered cut geometry was tampered with", () => {
+    const base: EnclosureWorkspace = { version: 1, presets: [], sourcePanel: { id: "source", name: "Panel", width: 100, height: 70, components: [], transform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 } }, enclosure: { id: "box", revision: 0, parameters: { frontHeight: 30, rearHeight: 40, thickness: 3, clearance: .1, fingerTarget: 8 } }, coupon: { confirmed: true } };
+    const generated = regenerateEnclosureWorkspace(base); if (!generated.ok) throw new Error("fixture failed");
+    const layout = packParts(generated.workspace.enclosure.result!.panels.map(({ id, width, height }) => ({ id, width, height })), { sheetSize: { width: 500, height: 500 } });
+    const workspace = { ...generated.workspace, sheetLayout: layout }, document = renderEnclosureWorkspace({ version: 1, units: "mm", layers: [], objects: [] }, workspace);
+    document.objects[0].transform.e += 1;
+    const result = preflightEnclosure({ workspace, document });
+    expect(result.ready).toBe(false);
+    expect(result.issues).toContainEqual(expect.objectContaining({ code: "RENDERED_GEOMETRY_STALE", message: expect.stringMatching(/rendered geometry is out of date/i) }));
   });
 });

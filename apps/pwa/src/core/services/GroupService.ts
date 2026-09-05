@@ -49,6 +49,7 @@ export const GroupService = {
           ? [state.selectedObjectId]
           : [];
     const unique = [...new Set(ids)];
+    if (unique.some((id) => id.startsWith("components-box:"))) return null;
     if (unique.length < 2) return null;
 
     // Remove members from existing groups (they leave old groups)
@@ -79,6 +80,7 @@ export const GroupService = {
           ? [state.selectedObjectId]
           : [];
     if (ids.length === 0) return false;
+    if (ids.some((id) => id.startsWith("components-box:"))) return false;
 
     const dissolve = new Set(
       listGroups(state.document)
@@ -157,6 +159,14 @@ export const GroupService = {
     const base = opts?.baseDocument ?? state.document;
     if (dx === 0 && dy === 0 && !opts?.live) return;
 
+    const panelWorkspace = base.enclosureWorkspace;
+    const panelGroup = panelWorkspace && !panelWorkspace.enclosure.result && listGroups(base).find((candidate) => candidate.id === `components-box:panel:${panelWorkspace.sourcePanel.id}` && candidate.memberIds.length === memberIds.length && candidate.memberIds.every((id) => memberIds.includes(id)));
+    if (panelGroup) {
+      const transform = panelWorkspace.sourcePanel.transform;
+      dispatch({ type: "UPDATE_PANEL_TRANSFORM", payload: { ...transform, e: transform.e + dx, f: transform.f + dy }, skipHistory: opts?.live });
+      return;
+    }
+
     const workspacePlacement = base.enclosureWorkspace?.sheetLayout?.placements.find((placement) => {
       const group = listGroups(base).find((candidate) => candidate.memberIds.length === memberIds.length && candidate.memberIds.every((id) => memberIds.includes(id)));
       return group?.id === `components-box:${base.enclosureWorkspace?.enclosure.id}:face:${placement.partId}` || (placement.partId === "fit-coupon" && group?.id === `components-box:${base.enclosureWorkspace?.enclosure.id}:coupon`);
@@ -209,6 +219,7 @@ export const GroupService = {
   ): boolean {
     const ids = [...new Set(objectIds.filter(Boolean))];
     if (ids.length === 0) return false;
+    if (ids.some((id) => id.startsWith("components-box:"))) return false;
 
     // If any id is in a group and the selection is exactly that group (or a superset
     // that includes full groups), remove whole groups via member set already in ids.

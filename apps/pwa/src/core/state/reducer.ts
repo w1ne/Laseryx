@@ -11,6 +11,8 @@ const UNDOABLE_ACTIONS = new Set([
     "SET_DOCUMENT",
     "SET_ENCLOSURE_WORKSPACE",
     "UPDATE_ENCLOSURE_PLACEMENT",
+    "UPDATE_PANEL_TRANSFORM",
+    "UPDATE_COMPONENT_INSTANCE",
     "ADD_LAYER",
     "DELETE_LAYER",
     "ADD_OBJECT",
@@ -54,6 +56,8 @@ export function appReducer(state: AppState, action: Action): AppState {
         };
     }
 
+    if ((action.type === "UPDATE_OBJECT" && action.payload.id.startsWith("components-box:")) || (action.type === "DELETE_OBJECT" && action.payload.startsWith("components-box:")) || (action.type === "ADD_OBJECT" && action.payload.id.startsWith("components-box:")) || (action.type === "DELETE_LAYER" && action.payload.startsWith("layer-components-box"))) return state;
+
     // 2. Perform the internal reduction
     const newState = internalReducer(state, action);
 
@@ -62,6 +66,7 @@ export function appReducer(state: AppState, action: Action): AppState {
         UNDOABLE_ACTIONS.has(action.type) &&
         !(action.type === "UPDATE_OBJECT" && action.skipHistory) &&
         !(action.type === "UPDATE_ENCLOSURE_PLACEMENT" && action.skipHistory) &&
+        !(action.type === "UPDATE_PANEL_TRANSFORM" && action.skipHistory) &&
         !(action.type === "SET_DOCUMENT" && action.skipHistory)
     ) {
         const nextUndoable: UndoableState = {
@@ -95,6 +100,22 @@ function internalReducer(state: AppState, action: Action): AppState {
             if (!workspace.sheetLayout.placements.some(({ partId }) => partId === action.payload.partId)) return state;
             const next = structuredClone(workspace);
             next.sheetLayout = { ...next.sheetLayout!, placements: next.sheetLayout!.placements.map((placement) => placement.partId === action.payload.partId ? { ...placement, ...action.payload } : placement) };
+            return { ...state, document: renderEnclosureWorkspace(state.document, next) };
+        }
+
+        case "UPDATE_PANEL_TRANSFORM": {
+            const workspace = state.document.enclosureWorkspace;
+            if (!workspace || workspace.enclosure.result || !Object.values(action.payload).every(Number.isFinite)) return state;
+            const next = structuredClone(workspace); next.sourcePanel.transform = { ...action.payload };
+            return { ...state, document: renderEnclosureWorkspace(state.document, next) };
+        }
+
+        case "UPDATE_COMPONENT_INSTANCE": {
+            const workspace = state.document.enclosureWorkspace;
+            if (!workspace || workspace.enclosure.result) return state;
+            const next = structuredClone(workspace), index = next.sourcePanel.components.findIndex(({ id }) => id === action.payload.id);
+            if (index < 0) return state;
+            next.sourcePanel.components[index] = { ...next.sourcePanel.components[index], ...structuredClone(action.payload.changes), id: next.sourcePanel.components[index].id, kind: next.sourcePanel.components[index].kind } as typeof next.sourcePanel.components[number];
             return { ...state, document: renderEnclosureWorkspace(state.document, next) };
         }
 

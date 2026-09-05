@@ -14,7 +14,9 @@ export function renderEnclosureWorkspace(document: Document, workspace: Enclosur
   const groups = (document.groups ?? []).filter(({ id }) => !generatedId(id));
   const layers = [...document.layers];
   if (!layers.some(({ id }) => id === "layer-components-box")) layers.push({ id: "layer-components-box", name: "Components & Box", visible: true, locked: false });
-  if (!layers.some(({ id }) => id === "layer-components-box-sheets")) layers.push({ id: "layer-components-box-sheets", name: "Sheet boundaries", visible: true, locked: false });
+  const sheetLayer = layers.findIndex(({ id }) => id === "layer-components-box-sheets");
+  if (sheetLayer < 0) layers.push({ id: "layer-components-box-sheets", name: "Sheet boundaries", visible: true, locked: true });
+  else layers[sheetLayer] = { ...layers[sheetLayer], locked: true };
   if (!workspace.enclosure.result) {
     const expansion = expandPanel(workspace.sourcePanel), members: string[] = [];
     const outlineId = `components-box:panel:${workspace.sourcePanel.id}:outline`;

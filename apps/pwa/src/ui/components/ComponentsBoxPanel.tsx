@@ -36,7 +36,7 @@ export function ComponentsBoxPanel({ document, onDocumentChange, onWorkspaceChan
     for (const preset of workspace?.presets ?? []) merged.set(preset.id, preset);
     return [...merged.values()].sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
   }, [repoPresets, workspace?.presets]);
-  const preflight = useMemo(() => workspace?.enclosure.result ? preflightEnclosure({ workspace, stockWidth: workspace.packing?.sheetSize.width, stockHeight: workspace.packing?.sheetSize.height, machineProfile }) : undefined, [workspace, machineProfile]);
+  const preflight = useMemo(() => workspace?.enclosure.result ? preflightEnclosure({ workspace, document, stockWidth: workspace.packing?.sheetSize.width, stockHeight: workspace.packing?.sheetSize.height, machineProfile }) : undefined, [workspace, document, machineProfile]);
   useEffect(() => { void componentPresetRepo.list().then(setRepoPresets).catch(() => setMessage("Saved components could not be loaded.")); }, []);
   const saveWorkspace = (next: EnclosureWorkspace, base = latestDocument.current) => {
     if (onWorkspaceChange) onWorkspaceChange(next);

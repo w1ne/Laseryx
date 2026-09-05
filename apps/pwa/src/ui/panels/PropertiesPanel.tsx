@@ -41,6 +41,8 @@ export function PropertiesPanel() {
     );
   }
 
+  if (selectedObject.id.startsWith("components-box:")) return <div className="panel props"><div className="panel__header"><h2>{selectedObject.name ?? "Enclosure geometry"}</h2></div><div className="panel__body"><p className="props__empty">Generated enclosure geometry is controlled by Components &amp; Box. Move or rotate the complete face group.</p></div><PropsStyles /></div>;
+
   const f = (n?: number) => (n !== undefined && Number.isFinite(n) ? formatMm(n) : "");
   const bbox = boundsOf(selectedObject);
   const size = getObjectSize(selectedObject);

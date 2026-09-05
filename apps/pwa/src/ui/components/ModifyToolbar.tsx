@@ -28,13 +28,15 @@ export function ModifyToolbar() {
   const canGroup = ids.length >= 2;
   const canUngroup = ids.some((id) => !!findGroupContaining(document, id));
   const hasSelection = ids.length > 0;
+  const derived = !!selected?.id.startsWith("components-box:");
+  const derivedPlacement = derived && group ? document.enclosureWorkspace?.sheetLayout?.placements.find(({ partId }) => group.id.endsWith(`:${partId}`) || (partId === "fit-coupon" && group.id.endsWith(":coupon"))) : undefined;
 
   const applyPatch = (patch: ReturnType<typeof mirrorHorizontal>) => {
     if (!selected || !patch) return;
     ObjectService.updateObject(dispatch, selected.id, patch);
   };
   const nudge = (dx: number, dy: number) => group ? GroupService.translateSelection(state, dispatch, group.memberIds, dx, dy) : selected && applyPatch(nudgeObject(selected, dx, dy));
-  const rotate = () => group && GroupService.updateEnclosurePlacement(state, dispatch, group.memberIds, { rotation: document.enclosureWorkspace?.sheetLayout?.placements.find(({ partId }) => group.id.endsWith(`:${partId}`) || (partId === "fit-coupon" && group.id.endsWith(":coupon")))?.rotation === 90 ? 0 : 90 }) || (selected && applyPatch(rotate90(selected, 1)));
+  const rotate = () => group && derivedPlacement && GroupService.updateEnclosurePlacement(state, dispatch, group.memberIds, { rotation: derivedPlacement.rotation === 90 ? 0 : 90 }) || (!derived && selected && applyPatch(rotate90(selected, 1)));
 
   const dup = () => {
     if (!selected) return;
@@ -50,7 +52,7 @@ export function ModifyToolbar() {
       <button
         type="button"
         className="editbar__btn"
-        disabled={!canGroup}
+        disabled={!canGroup || derived}
         title="Group — bind 2+ selected objects so they select and move together (⌘/Ctrl+G)"
         onClick={() => GroupService.groupSelection(state, dispatch)}
       >
@@ -59,7 +61,7 @@ export function ModifyToolbar() {
       <button
         type="button"
         className="editbar__btn"
-        disabled={!canUngroup}
+        disabled={!canUngroup || derived}
         title="Ungroup — split the selected group (⌘/Ctrl+Shift+G)"
         onClick={() => GroupService.ungroupSelection(state, dispatch)}
       >
@@ -77,7 +79,7 @@ export function ModifyToolbar() {
       <button
         type="button"
         className="editbar__btn"
-        disabled={!selected}
+        disabled={!selected || derived}
         title="Mirror horizontally (left ↔ right) about center"
         onClick={() => selected && applyPatch(mirrorHorizontal(selected))}
       >
@@ -86,7 +88,7 @@ export function ModifyToolbar() {
       <button
         type="button"
         className="editbar__btn"
-        disabled={!selected}
+        disabled={!selected || derived}
         title="Mirror vertically (top ↔ bottom) about center"
         onClick={() => selected && applyPatch(mirrorVertical(selected))}
       >
@@ -95,7 +97,7 @@ export function ModifyToolbar() {
       <button
         type="button"
         className="editbar__btn"
-        disabled={!selected}
+        disabled={!selected || (derived && !derivedPlacement)}
         title="Rotate 90° clockwise around center"
         onClick={rotate}
       >
@@ -104,7 +106,7 @@ export function ModifyToolbar() {
       <button
         type="button"
         className="editbar__btn"
-        disabled={!selected}
+        disabled={!selected || derived}
         title="Duplicate (offset 10 mm). Shortcut: ⌘/Ctrl+D"
         onClick={dup}
       >

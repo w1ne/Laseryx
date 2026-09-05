@@ -135,6 +135,7 @@ export function DocumentPanel() {
                   <button
                     type="button"
                     className="side__row-del"
+                    disabled={row.groupId.startsWith("components-box:")}
                     title={`Delete entire group “${row.name}” and all of its members (Delete key also works when selected)`}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -153,7 +154,7 @@ export function DocumentPanel() {
             const label = objectListLabel(obj, document);
             return (
               <div key={obj.id} className={`side__row ${isSelected ? "is-selected" : ""}`}>
-                <button
+                  <button
                   type="button"
                   className="side__row-main"
                   title={`Select “${label}”. Shift+click adds to multi-select.`}
@@ -168,7 +169,8 @@ export function DocumentPanel() {
                 </button>
                 <button
                   type="button"
-                  className="side__row-del"
+                    className="side__row-del"
+                    disabled={obj.id.startsWith("components-box:")}
                   title={
                     selSet.has(obj.id) && selSet.size > 1
                       ? `Delete ${selSet.size} selected objects (Delete key)`

@@ -2,11 +2,13 @@ import { validatePanel } from "../panel/validate";
 import { hasSelfIntersection } from "./joints";
 import { regenerateEnclosureWorkspace, type EnclosureWorkspace } from "./workspace";
 import { generateFitCoupon } from "./coupon";
+import { renderEnclosureWorkspace } from "./render";
+import type { Document } from "../model";
 
-export type EnclosureIssueCode = "INVALID_STOCK" | "MEASURE_REQUIRED" | "OUTSIDE_SHEET" | "PART_OVERLAP" | "COUPON_UNCONFIRMED" | "COMPONENT_DIMENSIONS_INVALID" | "COMPONENT_TRANSFORM_INVALID" | "CUTOUT_OUTSIDE_PANEL" | "CUTOUT_OVERLAP" | "JOINT_TOO_SHORT" | "JOINT_INFEASIBLE" | "CONTOUR_OPEN" | "CONTOUR_SELF_INTERSECTION" | "CUTOUT_JOINT_COLLISION" | "PART_UNPLACED" | "PLACEMENT_OUT_OF_BOUNDS" | "PLACEMENT_OVERLAP" | "PLACEMENT_DUPLICATE" | "LAYOUT_PART_MISMATCH" | "STALE_GENERATED_RESULT" | "STOCK_PROFILE_MISMATCH" | "STOCK_SIZE_EXCEEDED" | "MACHINE_BED_EXCEEDED" | "WORKSPACE_INCOMPLETE" | "REVIEW_WARNING";
+export type EnclosureIssueCode = "INVALID_STOCK" | "MEASURE_REQUIRED" | "OUTSIDE_SHEET" | "PART_OVERLAP" | "COUPON_UNCONFIRMED" | "COMPONENT_DIMENSIONS_INVALID" | "COMPONENT_TRANSFORM_INVALID" | "CUTOUT_OUTSIDE_PANEL" | "CUTOUT_OVERLAP" | "JOINT_TOO_SHORT" | "JOINT_INFEASIBLE" | "CONTOUR_OPEN" | "CONTOUR_SELF_INTERSECTION" | "CUTOUT_JOINT_COLLISION" | "PART_UNPLACED" | "PLACEMENT_OUT_OF_BOUNDS" | "PLACEMENT_OVERLAP" | "PLACEMENT_DUPLICATE" | "LAYOUT_PART_MISMATCH" | "STALE_GENERATED_RESULT" | "RENDERED_GEOMETRY_STALE" | "STOCK_PROFILE_MISMATCH" | "STOCK_SIZE_EXCEEDED" | "MACHINE_BED_EXCEEDED" | "WORKSPACE_INCOMPLETE" | "REVIEW_WARNING";
 export type EnclosureIssue = { code: EnclosureIssueCode; severity: "error" | "warning"; message: string; objectIds?: string[] };
 export type LegacyEnclosurePreflightInput = { thickness: number; couponConfirmed: boolean; unknownMeasurements: string[]; overflowPartIds: string[]; overlappingPartIds: string[] };
-export type WorkspacePreflightInput = { workspace: EnclosureWorkspace; unknownMeasurements?: string[]; warnings?: string[]; stockWidth?: number; stockHeight?: number; stockThickness?: number; materialPreset?: { thickness?: number }; stockProfile?: { id?: string; thickness?: number; width?: number; height?: number }; machineProfile?: { id?: string; bedMm?: { w: number; h: number }; stockThickness?: number } };
+export type WorkspacePreflightInput = { workspace: EnclosureWorkspace; document?: Document; unknownMeasurements?: string[]; warnings?: string[]; stockWidth?: number; stockHeight?: number; stockThickness?: number; materialPreset?: { thickness?: number }; stockProfile?: { id?: string; thickness?: number; width?: number; height?: number }; machineProfile?: { id?: string; bedMm?: { w: number; h: number }; stockThickness?: number } };
 export type EnclosurePreflightInput = LegacyEnclosurePreflightInput | WorkspacePreflightInput;
 
 const panelCode: Record<string, EnclosureIssueCode> = { "component-dimensions-invalid": "COMPONENT_DIMENSIONS_INVALID", "component-transform-invalid": "COMPONENT_TRANSFORM_INVALID", "cutout-outside-panel": "CUTOUT_OUTSIDE_PANEL", "cutout-bounds-overlap": "CUTOUT_OVERLAP", "panel-width-invalid": "COMPONENT_DIMENSIONS_INVALID", "panel-height-invalid": "COMPONENT_DIMENSIONS_INVALID" };
@@ -20,6 +22,7 @@ function workspaceIssues(input: WorkspacePreflightInput): EnclosureIssue[] {
     if (!issues.some((existing) => existing.code === code && existing.message === issue.message)) issues.push({ code, severity: "error", message: `Cannot make box: ${issue.message}.`, objectIds: issue.componentIds });
   }
   const result = workspace.enclosure.result;
+  if (input.document && !renderedGeometryMatches(input.document, workspace)) issues.push({ code: "RENDERED_GEOMETRY_STALE", severity: "error", message: "Rendered geometry is out of date—regenerate the box before cutting." });
   const freshResult = generated.ok ? generated.workspace.enclosure.result : undefined;
   if (result && freshResult && JSON.stringify(result) !== JSON.stringify(freshResult)) issues.push({ code: "STALE_GENERATED_RESULT", severity: "error", message: "Regenerate box because the stored faces no longer match the source panel or box settings." });
   if (!result) issues.push({ code: "WORKSPACE_INCOMPLETE", severity: "error", message: "Make the box faces before starting the cut." });
@@ -69,6 +72,13 @@ function workspaceIssues(input: WorkspacePreflightInput): EnclosureIssue[] {
   for (const name of input.unknownMeasurements ?? []) issues.push({ code: "MEASURE_REQUIRED", severity: "error", message: `Enter the measured dimensions for ${name}.`, objectIds: [name] });
   for (const warning of input.warnings ?? []) issues.push({ code: "REVIEW_WARNING", severity: "warning", message: warning });
   return issues;
+}
+
+export function renderedGeometryMatches(document: Document, workspace: EnclosureWorkspace): boolean {
+  const fields = (object: Document["objects"][number]) => ({ id: object.id, kind: object.kind, layerId: object.layerId, transform: object.transform, construction: object.construction === true, ...(object.kind === "path" ? { closed: object.closed, points: object.points } : {}) });
+  const actual = document.objects.filter(({ id }) => id.startsWith("components-box:")).map(fields).sort((a, b) => a.id.localeCompare(b.id));
+  const expected = renderEnclosureWorkspace(document, workspace).objects.filter(({ id }) => id.startsWith("components-box:")).map(fields).sort((a, b) => a.id.localeCompare(b.id));
+  return JSON.stringify(actual) === JSON.stringify(expected);
 }
 
 export function preflightEnclosure(input: EnclosurePreflightInput): { ready: boolean; issues: EnclosureIssue[] } {

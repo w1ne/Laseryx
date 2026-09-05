@@ -1,12 +1,22 @@
 import { describe, expect, it } from "vitest";
 import { GroupService } from "./GroupService";
 import { appReducer } from "../state/reducer";
-import { INITIAL_STATE, type AppState } from "../state/types";
+import { INITIAL_STATE } from "../state/types";
 import type { Action } from "../state/actions";
 import { regenerateEnclosureWorkspace, type EnclosureWorkspace } from "../enclosure/workspace";
 import { packParts } from "../layout/pack";
 
 describe("GroupService enclosure movement", () => {
+  it("moves the pre-box source panel group through its authoritative transform", () => {
+    const workspace: EnclosureWorkspace = { version: 1, presets: [], sourcePanel: { id: "source", name: "Panel", width: 100, height: 70, components: [], transform: { a: 1, b: 0, c: 0, d: 1, e: 2, f: 3 } }, enclosure: { id: "box", revision: 0, parameters: { frontHeight: 30, rearHeight: 40, thickness: 3, clearance: .1, fingerTarget: 8 } }, coupon: { confirmed: true } };
+    let state = appReducer(INITIAL_STATE, { type: "SET_ENCLOSURE_WORKSPACE", payload: workspace });
+    const group = state.document.groups!.find(({ id }) => id === "components-box:panel:source")!;
+    const dispatch = (action: Action) => { state = appReducer(state, action); };
+    GroupService.translateSelection(state, dispatch, group.memberIds, 10, 5);
+    expect(state.document.enclosureWorkspace!.sourcePanel.transform).toMatchObject({ e: 12, f: 8 });
+    expect(state.document.objects.filter(({ id }) => group.memberIds.includes(id)).every(({ transform }) => transform.e === 12 && transform.f === 8)).toBe(true);
+  });
+
   it("synchronizes a generated face group into its sheet-local placement", () => {
     const workspace: EnclosureWorkspace = { version: 1, presets: [], sourcePanel: { id: "source", name: "Panel", width: 100, height: 70, components: [], transform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 } }, enclosure: { id: "box", revision: 0, parameters: { frontHeight: 30, rearHeight: 40, thickness: 3, clearance: .1, fingerTarget: 8 } }, coupon: { confirmed: true } };
     const generated = regenerateEnclosureWorkspace(workspace); if (!generated.ok) throw new Error("fixture failed");

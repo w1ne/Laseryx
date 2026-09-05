@@ -101,4 +101,23 @@ describe("enclosure workspace history", () => {
         expect(appReducer(moved, { type: "UNDO" }).document.enclosureWorkspace?.sheetLayout?.placements[0].x).toBe(5);
         expect(appReducer(appReducer(moved, { type: "UNDO" }), { type: "REDO" }).document.enclosureWorkspace?.sheetLayout?.placements[0].x).toBe(25);
     });
+
+    it("updates pre-box panel and component transforms through workspace commands", () => {
+        const ws = workspace(0);
+        ws.presets = [{ id: "hole", name: "Hole", kind: "circle", dimensions: { diameter: 5 } }];
+        ws.sourcePanel.components = [{ id: "hole-1", presetId: "hole", name: "Hole", kind: "circle", dimensions: { diameter: 5 }, transform: { a: 1, b: 0, c: 0, d: 1, e: 20, f: 20 } }];
+        let state = appReducer(INITIAL_STATE, { type: "SET_ENCLOSURE_WORKSPACE", payload: ws });
+        state = appReducer(state, { type: "UPDATE_PANEL_TRANSFORM", payload: { ...ws.sourcePanel.transform, e: 12, f: 8 } });
+        state = appReducer(state, { type: "UPDATE_COMPONENT_INSTANCE", payload: { id: "hole-1", changes: { transform: { ...ws.sourcePanel.transform, e: 30, f: 25 } } } });
+        expect(state.document.enclosureWorkspace?.sourcePanel.transform).toMatchObject({ e: 12, f: 8 });
+        expect(state.document.enclosureWorkspace?.sourcePanel.components[0].transform).toMatchObject({ e: 30, f: 25 });
+        expect(state.history.past).toHaveLength(3);
+    });
+
+    it("rejects direct mutation and deletion of derived enclosure objects", () => {
+        const state = appReducer(INITIAL_STATE, { type: "SET_ENCLOSURE_WORKSPACE", payload: workspace(0) });
+        const id = state.document.objects[0].id;
+        expect(appReducer(state, { type: "UPDATE_OBJECT", payload: { id, changes: { transform: { a: 2, b: 0, c: 0, d: 2, e: 0, f: 0 } } } })).toBe(state);
+        expect(appReducer(state, { type: "DELETE_OBJECT", payload: id })).toBe(state);
+    });
 });
