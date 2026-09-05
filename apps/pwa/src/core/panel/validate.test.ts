@@ -1,0 +1,86 @@
+import { describe, expect, it } from "vitest";
+import { createComponentInstance, type ComponentPreset } from "../components/types";
+import type { Transform } from "../model";
+import type { PanelDesign } from "./types";
+import { validatePanel } from "./validate";
+
+const identity: Transform = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+const preset = <T extends ComponentPreset>(value: T): T => value;
+
+function panel(components: PanelDesign["components"] = []): PanelDesign {
+  return { id: "panel-1", name: "Control panel", width: 160, height: 100, transform: identity, components };
+}
+
+describe("validatePanel", () => {
+  it.each([[0, 100, "width"], [160, -1, "height"], [Number.NaN, 100, "width"], [160, Infinity, "height"]])(
+    "blocks a panel with invalid dimensions (%s x %s)",
+    (width, height, dimension) => {
+      const issues = validatePanel({ ...panel(), width: width as number, height: height as number });
+      expect(issues).toContainEqual(expect.objectContaining({
+        code: `panel-${dimension}-invalid`, severity: "error", panelId: "panel-1", panelName: "Control panel"
+      }));
+    }
+  );
+
+  it("propagates invalid dimensions with component identity", () => {
+    const component = createComponentInstance(preset({
+      id: "slot", name: "USB slot", kind: "slot", dimensions: { length: 2, width: 4 }
+    }), "usb-1", { ...identity, e: 50, f: 50 });
+
+    expect(validatePanel(panel([component]))).toContainEqual(expect.objectContaining({
+      code: "component-dimensions-invalid",
+      severity: "error",
+      componentIds: ["usb-1"],
+      componentNames: ["USB slot"],
+      message: expect.stringContaining("USB slot")
+    }));
+  });
+
+  it("blocks a rotated cutout that crosses the usable panel boundary", () => {
+    const angle = Math.PI / 4;
+    const component = createComponentInstance(preset({
+      id: "rect", name: "Rotated display", kind: "rectangle", dimensions: { width: 20, height: 10 }
+    }), "display-1", {
+      a: Math.cos(angle), b: Math.sin(angle), c: -Math.sin(angle), d: Math.cos(angle), e: 5, f: 50
+    });
+
+    expect(validatePanel(panel([component]))).toContainEqual(expect.objectContaining({
+      code: "cutout-outside-panel", severity: "error", componentIds: ["display-1"]
+    }));
+  });
+
+  it("warns when transformed cutout bounds overlap and names both components", () => {
+    const circle = preset({ id: "circle", name: "Button", kind: "circle", dimensions: { diameter: 10 } });
+    const first = createComponentInstance(circle, "button-a", { ...identity, e: 40, f: 40 });
+    const second = createComponentInstance(circle, "button-b", { ...identity, e: 47, f: 40 });
+
+    expect(validatePanel(panel([first, second]))).toContainEqual(expect.objectContaining({
+      code: "cutout-bounds-overlap",
+      severity: "warning",
+      componentIds: ["button-a", "button-b"],
+      message: expect.stringMatching(/bounds overlap/i)
+    }));
+  });
+
+  it.each([
+    preset({ id: "circle", name: "Circle", kind: "circle", dimensions: { diameter: 8 } }),
+    preset({ id: "slot", name: "Slot", kind: "slot", dimensions: { length: 20, width: 6 } }),
+    preset({ id: "rectangle", name: "Rectangle", kind: "rectangle", dimensions: { width: 20, height: 10 } }),
+    preset({ id: "rounded", name: "Rounded", kind: "rounded-rectangle", dimensions: { width: 20, height: 10, cornerRadius: 2 } }),
+    preset({ id: "buttons", name: "Buttons", kind: "button-row", dimensions: { count: 3, diameter: 6, pitch: 10 } })
+  ])("accepts a contained, rotated $kind cutout", (componentPreset) => {
+    const angle = Math.PI / 6;
+    const component = createComponentInstance(componentPreset, `${componentPreset.id}-1`, {
+      a: Math.cos(angle), b: Math.sin(angle), c: -Math.sin(angle), d: Math.cos(angle), e: 80, f: 50
+    });
+    expect(validatePanel(panel([component]))).toEqual([]);
+  });
+
+  it("accepts valid separated cutouts", () => {
+    const circle = preset({ id: "circle", name: "Button", kind: "circle", dimensions: { diameter: 7 } });
+    expect(validatePanel(panel([
+      createComponentInstance(circle, "left", { ...identity, e: 25, f: 25 }),
+      createComponentInstance(circle, "right", { ...identity, e: 135, f: 75 })
+    ]))).toEqual([]);
+  });
+});
