@@ -55,7 +55,7 @@ function validateDimensions(instance: ComponentInstance): void {
  */
 export function expandComponent(instance: ComponentInstance): PolylinePath[] {
   validateDimensions(instance);
-  switch (instance.kind) {
+  const primary = (() => { switch (instance.kind) {
     case "circle":
       return [circleToPolyline(0, 0, instance.dimensions.diameter / 2, 32)];
     case "slot": {
@@ -81,5 +81,7 @@ export function expandComponent(instance: ComponentInstance): PolylinePath[] {
         circleToPolyline((index - (count - 1) / 2) * pitch, 0, diameter / 2, 32)
       );
     }
-  }
+  } })();
+  const holes = [...(instance.mechanics?.mountingHoles ?? []), ...(instance.mechanics?.acousticHole ? [instance.mechanics.acousticHole] : [])];
+  return [...primary, ...holes.map(({ x, y, diameter }) => circleToPolyline(x, y, diameter / 2, 32))];
 }

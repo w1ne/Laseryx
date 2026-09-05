@@ -53,6 +53,18 @@ describe("expandComponent", () => {
     expect(Math.max(...ys)).toBeCloseTo(2);
   });
 
+  it("adds mounting and acoustic holes after the primary cutout", () => {
+    const instance = createComponentInstance(preset({
+      id: "microphone", name: "Microphone", kind: "circle", dimensions: { diameter: 4 },
+      mechanics: { confidence: "measured", mountingHoles: [{ x: -10, y: 0, diameter: 3 }], acousticHole: { x: 2, y: 4, diameter: 2 } }
+    }), "microphone-1");
+    const paths = expandComponent(instance);
+    expect(paths).toHaveLength(3);
+    const mountingXs = paths[1].points.map(({ x }) => x);
+    expect(Math.min(...mountingXs)).toBeCloseTo(-11.5);
+    expect(Math.max(...mountingXs)).toBeCloseTo(-8.5);
+  });
+
   it("rejects a slot whose length is smaller than its width", () => {
     const instance = createComponentInstance(preset({
       id: "slot", name: "Slot", kind: "slot", dimensions: { length: 2, width: 4 }
