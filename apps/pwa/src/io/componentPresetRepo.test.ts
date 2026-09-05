@@ -24,4 +24,15 @@ describe("componentPresetRepo", () => {
     await componentPresetRepo.delete("hole");
     expect(instance.dimensions).toEqual({ diameter: 8 });
   });
+  it("does not create a missing preset during update", async () => {
+    const missing = { id: "missing", name: "Missing", kind: "circle" as const, dimensions: { diameter: 4 } };
+    await expect(componentPresetRepo.update(missing)).rejects.toThrow("Unknown component preset");
+    expect(await componentPresetRepo.list()).toEqual([]);
+  });
+  it("cannot resurrect a preset when delete races update", async () => {
+    const preset = { id: "race", name: "Original", kind: "circle" as const, dimensions: { diameter: 4 } };
+    await componentPresetRepo.create(preset);
+    await Promise.all([componentPresetRepo.update({ ...preset, name: "Updated" }), componentPresetRepo.delete(preset.id)]);
+    expect(await componentPresetRepo.list()).toEqual([]);
+  });
 });

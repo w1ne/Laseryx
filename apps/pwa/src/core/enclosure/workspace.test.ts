@@ -80,4 +80,42 @@ describe("enclosure workspace", () => {
       expect(sanitizeEnclosureWorkspace(value)).toBeUndefined();
     }
   });
+
+  it("rejects semantically invalid components, layouts, and excessive collections", () => {
+    const base: EnclosureWorkspace = { version: 1, presets: [{ id: "slot", name: "Slot", kind: "slot", dimensions: { length: 10, width: 4 } }], sourcePanel: panel(), enclosure: { id: "box", revision: 0, parameters }, coupon: { confirmed: false } };
+    const invalidPresets: unknown[] = [
+      { id: "", name: "Hole", kind: "circle", dimensions: { diameter: 8 } },
+      { id: "bad", name: "Hole", kind: "circle", dimensions: { diameter: 0 } },
+      { id: "bad", name: "Slot", kind: "slot", dimensions: { length: 3, width: 4 } },
+      { id: "bad", name: "Round", kind: "rounded-rectangle", dimensions: { width: 10, height: 8, cornerRadius: 5 } },
+      { id: "bad", name: "Buttons", kind: "button-row", dimensions: { count: 2.5, diameter: 4, pitch: 8 } }
+    ];
+    for (const invalid of invalidPresets) expect(sanitizeEnclosureWorkspace({ ...base, presets: [invalid] })).toBeUndefined();
+    expect(sanitizeEnclosureWorkspace({ ...base, presets: [base.presets[0], structuredClone(base.presets[0])] })).toBeUndefined();
+    const orphan = createComponentInstanceFromPreset(base.presets[0], "placed");
+    expect(sanitizeEnclosureWorkspace({ ...base, sourcePanel: panel([orphan]), presets: [] })).toBeUndefined();
+    expect(sanitizeEnclosureWorkspace({ ...base, sourcePanel: { ...panel(), width: -1 } })).toBeUndefined();
+    expect(sanitizeEnclosureWorkspace({ ...base, presets: Array.from({ length: 1001 }, (_, index) => ({ ...base.presets[0], id: `p-${index}` })) })).toBeUndefined();
+  });
+
+  it("requires every layout part exactly once and rejects out-of-bounds or overlapping placements", () => {
+    const layout = { sheetSize: { width: 100, height: 100 }, orientation: "landscape" as const, margin: 5, gap: 2, parts: [{ id: "a", width: 20, height: 10 }, { id: "b", width: 20, height: 10 }], sheets: [{ id: "sheet", x: 0, y: 0, width: 100, height: 100 }], placements: [{ partId: "a", sheetId: "sheet", x: 5, y: 5, rotation: 0 as const }], unplacedPartIds: ["b"] };
+    const base: EnclosureWorkspace = { version: 1, presets: [], sourcePanel: panel(), enclosure: { id: "box", revision: 0, parameters }, coupon: { confirmed: false }, sheetLayout: layout };
+    expect(sanitizeEnclosureWorkspace(base)).toBeDefined();
+    expect(sanitizeEnclosureWorkspace({ ...base, sheetLayout: { ...layout, unplacedPartIds: [] } })).toBeUndefined();
+    expect(sanitizeEnclosureWorkspace({ ...base, sheetLayout: { ...layout, placements: [{ ...layout.placements[0], x: 81 }] } })).toBeUndefined();
+    expect(sanitizeEnclosureWorkspace({ ...base, sheetLayout: { ...layout, placements: [layout.placements[0], { partId: "b", sheetId: "sheet", x: 24, y: 5, rotation: 0 }], unplacedPartIds: [] } })).toBeUndefined();
+  });
+
+  it("rejects non-reciprocal or inconsistent generated joints", () => {
+    const generated = regenerateEnclosureWorkspace({ version: 1, presets: [], sourcePanel: panel(), enclosure: { id: "box", revision: 0, parameters }, coupon: { confirmed: false } });
+    expect(generated.ok).toBe(true);
+    if (!generated.ok) return;
+    const brokenMate = structuredClone(generated.workspace);
+    brokenMate.enclosure.result!.joints[0].mateId = brokenMate.enclosure.result!.joints[0].id;
+    expect(sanitizeEnclosureWorkspace(brokenMate)).toBeUndefined();
+    const inconsistentPanel = structuredClone(generated.workspace);
+    inconsistentPanel.enclosure.result!.panels[0].joints = [];
+    expect(sanitizeEnclosureWorkspace(inconsistentPanel)).toBeUndefined();
+  });
 });

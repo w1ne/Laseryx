@@ -17,9 +17,15 @@ export const componentPresetRepo = {
   },
   async update(preset: ComponentPreset): Promise<ComponentPreset> {
     const db = await getDb();
-    if (!await db.get("componentPresets", preset.id)) throw new Error(`Unknown component preset: ${preset.id}`);
+    const tx = db.transaction("componentPresets", "readwrite");
+    const store = tx.objectStore("componentPresets");
+    if (!await store.get(preset.id)) {
+      await tx.done;
+      throw new Error(`Unknown component preset: ${preset.id}`);
+    }
     const stored = copy(preset);
-    await db.put("componentPresets", stored);
+    await store.put(stored);
+    await tx.done;
     return copy(stored);
   },
   async delete(id: string): Promise<void> {
