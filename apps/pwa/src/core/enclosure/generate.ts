@@ -1,60 +1,72 @@
-import type { PolylinePath, Transform } from "../model";
-import type { EnclosureInput, EnclosurePanel, GeneratedEnclosure } from "./types";
+import type { Point, Transform } from "../model";
+import { expandPanel } from "../panel/expand";
+import type { PanelDesign } from "../panel/types";
+import { createMatingJointPair, chooseJointSegmentCount, fingerJointPolygon } from "./joints";
+import type { EdgeJoint, EnclosureGenerationResult, EnclosureInput, EnclosurePanel, EnclosurePanelId, EnclosureParameters, GeneratedEnclosure } from "./types";
 
 const identity: Transform = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
-function fingerEdge(
-  start: { x: number; y: number }, end: { x: number; y: number },
-  outward: { x: number; y: number }, count: number, depth: number, phase: 0 | 1
-) {
-  const points = [{ ...start }];
-  for (let i = 0; i < count; i++) {
-    const active = (i + phase) % 2 === 0;
-    const x1 = start.x + (end.x - start.x) * i / count;
-    const y1 = start.y + (end.y - start.y) * i / count;
-    const x2 = start.x + (end.x - start.x) * (i + 1) / count;
-    const y2 = start.y + (end.y - start.y) * (i + 1) / count;
-    if (active) points.push({ x: x1 + outward.x * depth, y: y1 + outward.y * depth }, { x: x2 + outward.x * depth, y: y2 + outward.y * depth });
-    points.push({ x: x2, y: y2 });
-  }
-  return points;
-}
-
-function fingerOutline(width: number, height: number, target: number, depth: number, phase: 0 | 1): PolylinePath {
-  const horizontal = chooseOddFingerCount(width, target);
-  const vertical = chooseOddFingerCount(height, target);
-  const edges = [
-    fingerEdge({ x: 0, y: 0 }, { x: width, y: 0 }, { x: 0, y: -1 }, horizontal, depth, phase),
-    fingerEdge({ x: width, y: 0 }, { x: width, y: height }, { x: 1, y: 0 }, vertical, depth, phase),
-    fingerEdge({ x: width, y: height }, { x: 0, y: height }, { x: 0, y: 1 }, horizontal, depth, phase),
-    fingerEdge({ x: 0, y: height }, { x: 0, y: 0 }, { x: -1, y: 0 }, vertical, depth, phase)
-  ];
-  return { closed: true, points: edges.flatMap((edge, index) => index ? edge.slice(1) : edge) };
-}
-
 export function chooseOddFingerCount(length: number, targetWidth: number): number {
-  const approximate = Math.max(3, Math.round(length / Math.max(targetWidth, 0.1)));
-  return approximate % 2 === 1 ? approximate : approximate + 1;
+  return Math.max(3, chooseJointSegmentCount(length, Math.max(targetWidth, 0.1)));
 }
 
-export function generateEnclosure(input: EnclosureInput): GeneratedEnclosure {
-  for (const [key, value] of Object.entries(input)) if (!Number.isFinite(value) || value <= 0) throw new Error(`${key} must be greater than zero`);
-  const slopedLength = Math.hypot(input.depth, input.rearHeight - input.frontHeight);
-  const specs: Array<[EnclosurePanel["id"], string, number, number, boolean?]> = [
-    ["front", "Front control panel", input.width, slopedLength],
-    ["rear", "Rear panel", input.width, input.rearHeight],
-    ["left", "Left side", input.depth, input.rearHeight],
-    ["right", "Right side", input.depth, input.rearHeight],
-    ["base", "Base", input.width, input.depth],
-    ["service-lid", "Service lid", input.width - 2 * input.thickness, input.depth - 2 * input.thickness, true]
-  ];
-  return {
-    input: { ...input },
-    slopeDegrees: Math.atan2(input.rearHeight - input.frontHeight, input.depth) * 180 / Math.PI,
-    panels: specs.map(([id, name, width, height, removable]) => {
-      const phase: 0 | 1 = id === "left" || id === "right" || id === "service-lid" ? 1 : 0;
-      const horizontal = chooseOddFingerCount(width, input.fingerTarget);
-      const vertical = chooseOddFingerCount(height, input.fingerTarget);
-      return { id, name, width, height, removable, transform: { ...identity }, paths: [fingerOutline(width, height, input.fingerTarget, input.thickness + input.clearance / 2, phase)], fingerCount: horizontal, edgePattern: { horizontal, vertical, phase } };
-    })
+const pairSpecs = (width: number, slope: number, depth: number, front: number, rear: number): Array<[string, string, number]> => [
+  ["source-panel-top", "rear-top", width], ["source-panel-right", "right-top", slope], ["source-panel-bottom", "service-panel-top", width], ["source-panel-left", "left-top", slope],
+  ["rear-right", "right-right", rear], ["rear-bottom", "base-top", width], ["rear-left", "left-left", rear], ["base-right", "right-bottom", depth],
+  ["base-bottom", "service-panel-bottom", width], ["base-left", "left-bottom", depth], ["service-panel-right", "right-left", front], ["service-panel-left", "left-right", front]
+];
+
+function validate(source: PanelDesign, parameters: EnclosureParameters) {
+  const issues: Extract<EnclosureGenerationResult, { ok: false }>["issues"] = [];
+  for (const [field, value] of Object.entries({ width: source.width, slopedLength: source.height, ...parameters })) {
+    const valid = field === "clearance" ? Number.isFinite(value) && value >= 0 : Number.isFinite(value) && value > 0;
+    if (!valid) issues.push({ code: "invalid-dimension", field, message: `${field} must be ${field === "clearance" ? "non-negative" : "positive"} and finite` });
+  }
+  const delta = Math.abs(parameters.rearHeight - parameters.frontHeight);
+  if (Number.isFinite(source.height) && Number.isFinite(delta) && delta >= source.height) issues.push({ code: "impossible-slope", message: "Height delta must be shorter than the designed panel's sloped length" });
+  return issues;
+}
+
+function generateFromPanel(source: PanelDesign, parameters: EnclosureParameters): EnclosureGenerationResult {
+  const issues = validate(source, parameters);
+  if (issues.length) return { ok: false, issues };
+  const delta = parameters.rearHeight - parameters.frontHeight;
+  const depth = Math.sqrt(source.height ** 2 - delta ** 2);
+  const joints: EdgeJoint[] = [];
+  for (const [first, second, length] of pairSpecs(source.width, source.height, depth, parameters.frontHeight, parameters.rearHeight)) {
+    const pair = createMatingJointPair(first, second, length, parameters.thickness, parameters.clearance, parameters.fingerTarget);
+    if (!pair.ok) issues.push(pair.issue); else joints.push(...pair.joints);
+  }
+  if (issues.length) return { ok: false, issues };
+  const expanded = expandPanel(source);
+  const byPanel = (id: EnclosurePanelId) => joints.filter((joint) => joint.panelId === id);
+  const makePanel = (id: EnclosurePanelId, name: string, width: number, height: number, vertices: Point[], transform: Transform, removable = false, cutouts = expanded.cutouts.map(({ path }) => path)): EnclosurePanel => {
+    const panelJoints = byPanel(id);
+    const order = ["top", "right", "bottom", "left"];
+    const ordered = order.map((edge) => panelJoints.find((joint) => joint.edge === edge)!);
+    return { id, name, width, height, transform: { ...transform }, removable, joints: panelJoints, paths: [fingerJointPolygon(vertices, ordered.map((joint) => joint.segmentCount), parameters.thickness, ordered.map((joint) => joint.phase)), ...cutouts], fingerCount: ordered[0].segmentCount, edgePattern: { horizontal: ordered[0].segmentCount, vertical: ordered[1].segmentCount, phase: ordered[0].phase } };
   };
+  const rect = (w: number, h: number): Point[] => [{ x: 0, y: 0 }, { x: w, y: 0 }, { x: w, y: h }, { x: 0, y: h }];
+  const sideHeight = Math.max(parameters.frontHeight, parameters.rearHeight);
+  const side: Point[] = [{ x: 0, y: sideHeight - parameters.frontHeight }, { x: depth, y: sideHeight - parameters.rearHeight }, { x: depth, y: sideHeight }, { x: 0, y: sideHeight }];
+  const panels = [
+    makePanel("source-panel", source.name, source.width, source.height, rect(source.width, source.height), source.transform),
+    makePanel("rear", "Rear panel", source.width, parameters.rearHeight, rect(source.width, parameters.rearHeight), identity, false, []),
+    makePanel("left", "Left side", depth, sideHeight, side, identity, false, []),
+    makePanel("right", "Right side", depth, sideHeight, side, identity, false, []),
+    makePanel("base", "Base", source.width, depth, rect(source.width, depth), identity, false, []),
+    makePanel("service-panel", "Service panel", source.width, parameters.frontHeight, rect(source.width, parameters.frontHeight), identity, true, [])
+  ];
+  const input: EnclosureInput = { width: source.width, depth, ...parameters };
+  return { ok: true, issues: [], enclosure: { input, slopeDegrees: Math.atan2(delta, depth) * 180 / Math.PI, panels, joints } };
+}
+
+export function generateEnclosure(source: PanelDesign, parameters: EnclosureParameters): EnclosureGenerationResult;
+export function generateEnclosure(input: EnclosureInput): GeneratedEnclosure;
+export function generateEnclosure(sourceOrInput: PanelDesign | EnclosureInput, parameters?: EnclosureParameters): EnclosureGenerationResult | GeneratedEnclosure {
+  if (parameters) return generateFromPanel(sourceOrInput as PanelDesign, parameters);
+  const input = sourceOrInput as EnclosureInput;
+  const source: PanelDesign = { id: "legacy-source", name: "Front control panel", width: input.width, height: Math.hypot(input.depth, input.rearHeight - input.frontHeight), components: [], transform: identity };
+  const result = generateFromPanel(source, input);
+  if (!result.ok) throw new Error(result.issues.map(({ message }) => message).join("; "));
+  return result.enclosure;
 }
