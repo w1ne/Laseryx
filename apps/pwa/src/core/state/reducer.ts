@@ -10,6 +10,7 @@ import { renderEnclosureWorkspace } from "../enclosure/render";
 const UNDOABLE_ACTIONS = new Set([
     "SET_DOCUMENT",
     "SET_ENCLOSURE_WORKSPACE",
+    "UPDATE_ENCLOSURE_PLACEMENT",
     "ADD_LAYER",
     "DELETE_LAYER",
     "ADD_OBJECT",
@@ -60,6 +61,7 @@ export function appReducer(state: AppState, action: Action): AppState {
     if (
         UNDOABLE_ACTIONS.has(action.type) &&
         !(action.type === "UPDATE_OBJECT" && action.skipHistory) &&
+        !(action.type === "UPDATE_ENCLOSURE_PLACEMENT" && action.skipHistory) &&
         !(action.type === "SET_DOCUMENT" && action.skipHistory)
     ) {
         const nextUndoable: UndoableState = {
@@ -85,6 +87,15 @@ function internalReducer(state: AppState, action: Action): AppState {
         case "SET_ENCLOSURE_WORKSPACE": {
             const workspace = structuredClone(action.payload);
             return { ...state, document: renderEnclosureWorkspace(state.document, workspace) };
+        }
+
+        case "UPDATE_ENCLOSURE_PLACEMENT": {
+            const workspace = state.document.enclosureWorkspace;
+            if (!workspace?.sheetLayout || ![action.payload.x, action.payload.y].every(Number.isFinite)) return state;
+            if (!workspace.sheetLayout.placements.some(({ partId }) => partId === action.payload.partId)) return state;
+            const next = structuredClone(workspace);
+            next.sheetLayout = { ...next.sheetLayout!, placements: next.sheetLayout!.placements.map((placement) => placement.partId === action.payload.partId ? { ...placement, ...action.payload } : placement) };
+            return { ...state, document: renderEnclosureWorkspace(state.document, next) };
         }
 
         case "ADD_LAYER":

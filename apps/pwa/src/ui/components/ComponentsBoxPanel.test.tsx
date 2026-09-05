@@ -150,6 +150,22 @@ describe("ComponentsBoxPanel", () => {
     await waitFor(() => expect(screen.getByText("Example presets")).toBeTruthy());
   });
 
+  it("preserves a valid custom placement when regenerating the box", async () => {
+    let current = document();
+    const onDocumentChange = vi.fn((next: Document) => { current = next; });
+    const view = render(<ComponentsBoxPanel document={current} onDocumentChange={onDocumentChange} />);
+    fireEvent.click(screen.getByRole("button", { name: "Create panel" })); fireEvent.click(screen.getByRole("button", { name: "Save panel" }));
+    current = onDocumentChange.mock.calls.at(-1)![0]; view.rerender(<ComponentsBoxPanel document={current} onDocumentChange={onDocumentChange} />);
+    fireEvent.click(screen.getByRole("button", { name: "Make box" })); fireEvent.click(screen.getByRole("button", { name: "Generate box" }));
+    current = onDocumentChange.mock.calls.at(-1)![0]; view.rerender(<ComponentsBoxPanel document={current} onDocumentChange={onDocumentChange} />); fireEvent.click(screen.getByRole("button", { name: "Arrange sheets" }));
+    current = onDocumentChange.mock.calls.at(-1)![0]; current.enclosureWorkspace!.sheetLayout!.placements[0] = { ...current.enclosureWorkspace!.sheetLayout!.placements[0], x: 17 };
+    view.rerender(<ComponentsBoxPanel document={current} onDocumentChange={onDocumentChange} />); fireEvent.click(screen.getByRole("button", { name: "Make box" })); fireEvent.click(screen.getByRole("button", { name: "Generate box" }));
+    current = onDocumentChange.mock.calls.at(-1)![0]; expect(current.enclosureWorkspace!.sheetLayout!.placements[0].x).toBe(17);
+    view.rerender(<ComponentsBoxPanel document={current} onDocumentChange={onDocumentChange} />); fireEvent.click(screen.getByRole("button", { name: "Arrange sheets" }));
+    expect(onDocumentChange.mock.calls.at(-1)![0].enclosureWorkspace.sheetLayout.placements[0].x).not.toBe(17);
+    await waitFor(() => expect(screen.getByText("Example presets")).toBeTruthy());
+  });
+
   it("explicitly arranges faces and renders construction-only sheet boundaries", async () => {
     const onDocumentChange = vi.fn();
     render(<ComponentsBoxPanel document={document()} onDocumentChange={onDocumentChange} />);

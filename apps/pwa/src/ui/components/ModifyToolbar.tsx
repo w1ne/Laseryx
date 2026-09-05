@@ -33,6 +33,8 @@ export function ModifyToolbar() {
     if (!selected || !patch) return;
     ObjectService.updateObject(dispatch, selected.id, patch);
   };
+  const nudge = (dx: number, dy: number) => group ? GroupService.translateSelection(state, dispatch, group.memberIds, dx, dy) : selected && applyPatch(nudgeObject(selected, dx, dy));
+  const rotate = () => group && GroupService.updateEnclosurePlacement(state, dispatch, group.memberIds, { rotation: document.enclosureWorkspace?.sheetLayout?.placements.find(({ partId }) => group.id.endsWith(`:${partId}`) || (partId === "fit-coupon" && group.id.endsWith(":coupon")))?.rotation === 90 ? 0 : 90 }) || (selected && applyPatch(rotate90(selected, 1)));
 
   const dup = () => {
     if (!selected) return;
@@ -95,7 +97,7 @@ export function ModifyToolbar() {
         className="editbar__btn"
         disabled={!selected}
         title="Rotate 90° clockwise around center"
-        onClick={() => selected && applyPatch(rotate90(selected, 1))}
+        onClick={rotate}
       >
         Rotate 90°
       </button>
@@ -116,7 +118,7 @@ export function ModifyToolbar() {
         className="editbar__btn editbar__btn--icon"
         disabled={!selected}
         title="Nudge left 1 mm (← · Shift = 10 mm)"
-        onClick={() => selected && applyPatch(nudgeObject(selected, -1, 0))}
+        onClick={() => nudge(-1, 0)}
       >
         ←
       </button>
@@ -125,7 +127,7 @@ export function ModifyToolbar() {
         className="editbar__btn editbar__btn--icon"
         disabled={!selected}
         title="Nudge right 1 mm (→ · Shift = 10 mm)"
-        onClick={() => selected && applyPatch(nudgeObject(selected, 1, 0))}
+        onClick={() => nudge(1, 0)}
       >
         →
       </button>
@@ -134,7 +136,7 @@ export function ModifyToolbar() {
         className="editbar__btn editbar__btn--icon"
         disabled={!selected}
         title="Nudge up 1 mm (↑ · Shift = 10 mm)"
-        onClick={() => selected && applyPatch(nudgeObject(selected, 0, -1))}
+        onClick={() => nudge(0, -1)}
       >
         ↑
       </button>
@@ -143,7 +145,7 @@ export function ModifyToolbar() {
         className="editbar__btn editbar__btn--icon"
         disabled={!selected}
         title="Nudge down 1 mm (↓ · Shift = 10 mm)"
-        onClick={() => selected && applyPatch(nudgeObject(selected, 0, 1))}
+        onClick={() => nudge(0, 1)}
       >
         ↓
       </button>

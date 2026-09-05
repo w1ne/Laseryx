@@ -90,4 +90,15 @@ describe("enclosure workspace history", () => {
         expect(changed.document.enclosureWorkspace?.sourcePanel.transform.e).toBe(0);
         expect(changed.history.present.document.enclosureWorkspace?.sourcePanel.width).toBe(80);
     });
+
+    it("moves an arranged enclosure part atomically with undo and redo", () => {
+        const ws = workspace(0);
+        ws.sheetLayout = { sheetSize: { width: 200, height: 150 }, orientation: "landscape", margin: 5, gap: 2, parts: [{ id: "source-panel", width: 80, height: 50 }], sheets: [{ id: "sheet-1", x: 220, y: 0, width: 200, height: 150 }], placements: [{ partId: "source-panel", sheetId: "sheet-1", x: 5, y: 5, rotation: 0 }], unplacedPartIds: [] };
+        const withWorkspace = appReducer(INITIAL_STATE, { type: "SET_ENCLOSURE_WORKSPACE", payload: ws });
+        const moved = appReducer(withWorkspace, { type: "UPDATE_ENCLOSURE_PLACEMENT", payload: { partId: "source-panel", x: 25, y: 15, rotation: 90 } });
+        expect(moved.document.enclosureWorkspace?.sheetLayout?.placements[0]).toMatchObject({ x: 25, y: 15, rotation: 90 });
+        expect(moved.history.past.length).toBe(withWorkspace.history.past.length + 1);
+        expect(appReducer(moved, { type: "UNDO" }).document.enclosureWorkspace?.sheetLayout?.placements[0].x).toBe(5);
+        expect(appReducer(appReducer(moved, { type: "UNDO" }), { type: "REDO" }).document.enclosureWorkspace?.sheetLayout?.placements[0].x).toBe(25);
+    });
 });

@@ -24,6 +24,22 @@ function setDoc(
 }
 
 export const GroupService = {
+  updateEnclosurePlacement(
+    state: AppState,
+    dispatch: React.Dispatch<Action>,
+    memberIds: string[],
+    changes: Partial<Pick<Extract<Action, { type: "UPDATE_ENCLOSURE_PLACEMENT" }>["payload"], "x" | "y" | "rotation">>,
+    opts?: { skipHistory?: boolean; baseDocument?: AppState["document"] }
+  ): boolean {
+    const document = opts?.baseDocument ?? state.document, workspace = document.enclosureWorkspace;
+    if (!workspace?.sheetLayout) return false;
+    const selected = new Set(memberIds), group = listGroups(document).find((candidate) => candidate.memberIds.length === selected.size && candidate.memberIds.every((id) => selected.has(id)));
+    const partId = group && workspace.sheetLayout.parts.find(({ id }) => group.id === `components-box:${workspace.enclosure.id}:face:${id}` || (id === "fit-coupon" && group.id === `components-box:${workspace.enclosure.id}:coupon`))?.id;
+    const placement = partId ? workspace.sheetLayout.placements.find((item) => item.partId === partId) : undefined;
+    if (!placement) return false;
+    dispatch({ type: "UPDATE_ENCLOSURE_PLACEMENT", payload: { ...placement, ...changes }, skipHistory: opts?.skipHistory });
+    return true;
+  },
   /** Create a group from current multi-selection (≥2). */
   groupSelection(state: AppState, dispatch: React.Dispatch<Action>): string | null {
     const ids =
@@ -140,6 +156,12 @@ export const GroupService = {
     if (memberIds.length === 0) return;
     const base = opts?.baseDocument ?? state.document;
     if (dx === 0 && dy === 0 && !opts?.live) return;
+
+    const workspacePlacement = base.enclosureWorkspace?.sheetLayout?.placements.find((placement) => {
+      const group = listGroups(base).find((candidate) => candidate.memberIds.length === memberIds.length && candidate.memberIds.every((id) => memberIds.includes(id)));
+      return group?.id === `components-box:${base.enclosureWorkspace?.enclosure.id}:face:${placement.partId}` || (placement.partId === "fit-coupon" && group?.id === `components-box:${base.enclosureWorkspace?.enclosure.id}:coupon`);
+    });
+    if (workspacePlacement && this.updateEnclosurePlacement(state, dispatch, memberIds, { x: workspacePlacement.x + dx, y: workspacePlacement.y + dy }, { skipHistory: opts?.live, baseDocument: base })) return;
 
     const { objects, sketch } = translateMembers(base, memberIds, dx, dy);
     let doc = {

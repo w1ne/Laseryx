@@ -202,11 +202,12 @@ export function App() {
         if (e.key === "ArrowRight") dx = step;
         if (e.key === "ArrowUp") dy = -step;
         if (e.key === "ArrowDown") dy = step;
-        const patch = nudgeObject(selected, dx, dy);
-        dispatch({
-          type: "UPDATE_OBJECT",
-          payload: { id: selected.id, changes: patch }
-        });
+        const selectedIds = stateRef.current.selectedObjectIds;
+        if (selectedIds.length > 1) GroupService.translateSelection(stateRef.current, dispatch, selectedIds, dx, dy);
+        else {
+          const patch = nudgeObject(selected, dx, dy);
+          dispatch({ type: "UPDATE_OBJECT", payload: { id: selected.id, changes: patch } });
+        }
       }
     };
 

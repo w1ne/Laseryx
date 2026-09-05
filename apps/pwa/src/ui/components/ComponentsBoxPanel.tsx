@@ -71,7 +71,7 @@ export function ComponentsBoxPanel({ document, onDocumentChange, onWorkspaceChan
   };
   const makeBox = (settings: BoxSettings) => {
     if (!workspace) return;
-    const candidate = { ...workspace, enclosure: { ...workspace.enclosure, parameters: { frontHeight: settings.frontHeight, rearHeight: settings.rearHeight, thickness: settings.thickness, clearance: settings.clearance, fingerTarget: settings.fingerTarget } }, coupon: { confirmed: false, ...(settings.includeCoupon ? { selectedClearance: settings.clearance } : {}) }, packing: { sheetSize: { width: settings.sheetWidth, height: settings.sheetHeight }, orientation: settings.orientation, margin: settings.margin, gap: settings.gap }, sheetLayout: undefined };
+    const candidate = { ...workspace, enclosure: { ...workspace.enclosure, parameters: { frontHeight: settings.frontHeight, rearHeight: settings.rearHeight, thickness: settings.thickness, clearance: settings.clearance, fingerTarget: settings.fingerTarget } }, coupon: { confirmed: false, ...(settings.includeCoupon ? { selectedClearance: settings.clearance } : {}) }, packing: { sheetSize: { width: settings.sheetWidth, height: settings.sheetHeight }, orientation: settings.orientation, margin: settings.margin, gap: settings.gap } };
     const result = regenerateEnclosureWorkspace(candidate);
     if (!result.ok) { setMessage(result.issues.map(({ message }) => message).join(" ")); return; }
     saveWorkspace(result.workspace); setEditor(null); setMessage("Six box faces generated. Arrange them when ready.");

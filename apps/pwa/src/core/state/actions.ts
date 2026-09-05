@@ -7,6 +7,7 @@ export type Action =
     | { type: "SET_DOCUMENT"; payload: Document; skipHistory?: boolean }
     /** Atomically replace enclosure workspace and its derived document geometry. */
     | { type: "SET_ENCLOSURE_WORKSPACE"; payload: EnclosureWorkspace }
+    | { type: "UPDATE_ENCLOSURE_PLACEMENT"; payload: { partId: string; x: number; y: number; rotation: 0 | 90 }; skipHistory?: boolean }
     | { type: "ADD_LAYER"; payload: Layer }
     | { type: "DELETE_LAYER"; payload: string } // layerId
     | { type: "ADD_OBJECT"; payload: Obj }
