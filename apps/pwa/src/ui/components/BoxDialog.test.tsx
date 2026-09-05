@@ -23,4 +23,14 @@ describe("BoxDialog", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(/height difference must be less than the panel height/i);
     expect(onConfirm).not.toHaveBeenCalled();
   });
+
+  it("initializes every persisted fabrication and layout field", () => {
+    render(<BoxDialog panelHeight={100} initial={{ frontHeight: 20, rearHeight: 40, thickness: 4, clearance: .2, fingerTarget: 9, sheetWidth: 300, sheetHeight: 200, orientation: "portrait", margin: 7, gap: 4, includeCoupon: true }} onConfirm={vi.fn()} onCancel={vi.fn()} />);
+    expect(screen.getByLabelText("Front height")).toHaveValue(20);
+    fireEvent.click(screen.getByText("Advanced"));
+    expect(screen.getByLabelText("Stock thickness")).toHaveValue(4);
+    expect(screen.getByLabelText("Sheet width")).toHaveValue(300);
+    expect(screen.getByLabelText("Sheet orientation")).toHaveValue("portrait");
+    expect(screen.getByLabelText("Include fit coupon")).toBeChecked();
+  });
 });

@@ -1,11 +1,14 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { Document } from "../../core/model";
+import type { ComponentPreset } from "../../core/components/types";
+import { componentPresetRepo } from "../../io/componentPresetRepo";
 import { ComponentsBoxPanel } from "./ComponentsBoxPanel";
 
 vi.mock("../../io/componentPresetRepo", () => ({ componentPresetRepo: { list: vi.fn().mockResolvedValue([]), create: vi.fn(async (value) => value) } }));
 
 const document = (): Document => ({ version: 1, units: "mm", layers: [], objects: [] });
+const preset: ComponentPreset = { id: "project-hole", name: "Project hole", kind: "circle", dimensions: { diameter: 5 } };
 
 describe("ComponentsBoxPanel", () => {
   it("shows exactly four progressive primary actions and no temporary kit control", async () => {
@@ -57,7 +60,7 @@ describe("ComponentsBoxPanel", () => {
     expect(current.objects.some(({ id }) => id.includes(":coupon:"))).toBe(false);
   });
 
-  it("includes and packs stable fit-coupon geometry only when requested", () => {
+  it("includes and packs stable fit-coupon geometry only when requested", async () => {
     let current = document();
     const onDocumentChange = vi.fn((next: Document) => { current = next; });
     const view = render(<ComponentsBoxPanel document={current} onDocumentChange={onDocumentChange} />);
@@ -77,9 +80,10 @@ describe("ComponentsBoxPanel", () => {
     expect(current.enclosureWorkspace?.sheetLayout?.placements.some(({ partId }) => partId === "fit-coupon")).toBe(true);
     expect(current.objects.filter(({ id }) => id.includes(":coupon:"))).toHaveLength(6);
     expect(current.objects.find(({ id }) => id.endsWith(":coupon:1"))?.name).toBe("Fit slot 0.05 mm");
+    await waitFor(() => expect(screen.getByText("Example presets")).toBeTruthy());
   });
 
-  it("blocks invalid panel dimensions without dispatching", () => {
+  it("blocks invalid panel dimensions without dispatching", async () => {
     const onDocumentChange = vi.fn();
     render(<ComponentsBoxPanel document={document()} onDocumentChange={onDocumentChange} />);
     fireEvent.click(screen.getByRole("button", { name: "Create panel" }));
@@ -87,6 +91,60 @@ describe("ComponentsBoxPanel", () => {
     expect(screen.getByRole("button", { name: "Save panel" })).toBeDisabled();
     expect(screen.getByRole("alert")).toHaveTextContent(/panel dimensions must be greater than zero/i);
     expect(onDocumentChange).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.getByText("Example presets")).toBeTruthy());
+  });
+
+  it("merges project presets when the repository resolves empty", async () => {
+    const base = document();
+    base.enclosureWorkspace = { version: 1, presets: [preset], sourcePanel: { id: "panel", name: "Panel", width: 160, height: 100, components: [], transform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 } }, enclosure: { id: "box", revision: 0, parameters: { frontHeight: 35, rearHeight: 65, thickness: 3, clearance: .15, fingerTarget: 8 } }, coupon: { confirmed: false } };
+    render(<ComponentsBoxPanel document={base} onDocumentChange={vi.fn()} />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Add Project hole" })).toBeTruthy());
+  });
+
+  it("commits an async component save onto the latest workspace and serializes submits", async () => {
+    vi.mocked(componentPresetRepo.create).mockClear();
+    let release!: () => void;
+    vi.mocked(componentPresetRepo.create).mockImplementationOnce(() => new Promise((resolve) => { release = () => resolve(preset); }));
+    const base = document();
+    base.enclosureWorkspace = { version: 1, presets: [], sourcePanel: { id: "panel", name: "Panel", width: 160, height: 100, components: [], transform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 } }, enclosure: { id: "box", revision: 0, parameters: { frontHeight: 35, rearHeight: 65, thickness: 3, clearance: .15, fingerTarget: 8 } }, coupon: { confirmed: false } };
+    const onDocumentChange = vi.fn();
+    const view = render(<ComponentsBoxPanel document={base} onDocumentChange={onDocumentChange} />);
+    fireEvent.click(screen.getByRole("button", { name: "Add component" }));
+    const save = screen.getByRole("button", { name: "Save component" });
+    fireEvent.click(save);
+    fireEvent.click(save);
+    const latest = structuredClone(base); latest.enclosureWorkspace!.sourcePanel.width = 175;
+    view.rerender(<ComponentsBoxPanel document={latest} onDocumentChange={onDocumentChange} />);
+    release();
+    await waitFor(() => expect(onDocumentChange).toHaveBeenCalledTimes(1));
+    expect(onDocumentChange.mock.calls[0][0].enclosureWorkspace.sourcePanel.width).toBe(175);
+    expect(onDocumentChange.mock.calls[0][0].enclosureWorkspace.sourcePanel.components).toHaveLength(1);
+    expect(componentPresetRepo.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("reopens persisted fabrication settings and arranges with persisted sheet options", async () => {
+    let current = document();
+    const onDocumentChange = vi.fn((next: Document) => { current = next; });
+    const view = render(<ComponentsBoxPanel document={current} onDocumentChange={onDocumentChange} />);
+    fireEvent.click(screen.getByRole("button", { name: "Create panel" })); fireEvent.click(screen.getByRole("button", { name: "Save panel" }));
+    current = onDocumentChange.mock.calls.at(-1)![0]; view.rerender(<ComponentsBoxPanel document={current} onDocumentChange={onDocumentChange} />);
+    fireEvent.click(screen.getByRole("button", { name: "Make box" })); fireEvent.click(screen.getByText("Advanced"));
+    fireEvent.change(screen.getByLabelText("Stock thickness"), { target: { value: "4" } });
+    fireEvent.change(screen.getByLabelText("Sheet width"), { target: { value: "300" } });
+    fireEvent.change(screen.getByLabelText("Sheet height"), { target: { value: "200" } });
+    fireEvent.change(screen.getByLabelText("Sheet orientation"), { target: { value: "portrait" } });
+    fireEvent.change(screen.getByLabelText("Sheet margin"), { target: { value: "7" } });
+    fireEvent.change(screen.getByLabelText("Part gap"), { target: { value: "4" } });
+    fireEvent.click(screen.getByRole("button", { name: "Generate box" })); current = onDocumentChange.mock.calls.at(-1)![0];
+    view.unmount(); render(<ComponentsBoxPanel document={current} onDocumentChange={onDocumentChange} />);
+    fireEvent.click(screen.getByRole("button", { name: "Make box" })); fireEvent.click(screen.getByText("Advanced"));
+    expect(screen.getByLabelText("Stock thickness")).toHaveValue(4);
+    expect(screen.getByLabelText("Sheet width")).toHaveValue(300);
+    expect(screen.getByLabelText("Sheet orientation")).toHaveValue("portrait");
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" })); fireEvent.click(screen.getByRole("button", { name: "Arrange sheets" }));
+    current = onDocumentChange.mock.calls.at(-1)![0];
+    expect(current.enclosureWorkspace?.sheetLayout).toMatchObject({ sheetSize: { width: 200, height: 300 }, orientation: "portrait", margin: 7, gap: 4 });
+    await waitFor(() => expect(screen.getByText("Example presets")).toBeTruthy());
   });
 
   it("explicitly arranges faces and renders construction-only sheet boundaries", async () => {

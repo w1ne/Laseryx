@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentPreset } from "../../core/components/types";
 import { expandPanel } from "../../core/panel/expand";
 import type { PanelDesign } from "../../core/panel/types";
@@ -97,12 +97,19 @@ export function renderEnclosureWorkspace(document: Document, workspace: Enclosur
 
 export function ComponentsBoxPanel({ document, onDocumentChange }: ComponentsBoxPanelProps) {
   const [open, setOpen] = useState(true), [editor, setEditor] = useState<"component" | "panel" | "box" | null>(null);
-  const [presets, setPresets] = useState<ComponentPreset[]>(document.enclosureWorkspace?.presets ?? []);
-  const [boxSettings, setBoxSettings] = useState<BoxSettings | undefined>();
+  const [repoPresets, setRepoPresets] = useState<ComponentPreset[]>([]);
+  const [savingComponent, setSavingComponent] = useState(false);
   const [message, setMessage] = useState("");
   const workspace = document.enclosureWorkspace;
-  useEffect(() => { void componentPresetRepo.list().then(setPresets).catch(() => setMessage("Saved components could not be loaded.")); }, []);
-  const saveWorkspace = (next: EnclosureWorkspace) => onDocumentChange(renderEnclosureWorkspace(document, next));
+  const latestDocument = useRef(document), savePending = useRef(false);
+  latestDocument.current = document;
+  const presets = useMemo(() => {
+    const merged = new Map(repoPresets.map((preset) => [preset.id, preset]));
+    for (const preset of workspace?.presets ?? []) merged.set(preset.id, preset);
+    return [...merged.values()].sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+  }, [repoPresets, workspace?.presets]);
+  useEffect(() => { void componentPresetRepo.list().then(setRepoPresets).catch(() => setMessage("Saved components could not be loaded.")); }, []);
+  const saveWorkspace = (next: EnclosureWorkspace, base = latestDocument.current) => onDocumentChange(renderEnclosureWorkspace(base, next));
   const savePanel = (width: number, height: number) => {
     const panel: PanelDesign = { id: workspace?.sourcePanel.id ?? "source-panel-design", name: "Control panel", width, height, components: workspace?.sourcePanel.components ?? [], transform: identity };
     saveWorkspace(workspace ? { ...workspace, sourcePanel: panel, enclosure: { ...workspace.enclosure, result: undefined }, sheetLayout: undefined } : {
@@ -110,29 +117,32 @@ export function ComponentsBoxPanel({ document, onDocumentChange }: ComponentsBox
     }); setEditor(null); setMessage(`Panel ready · ${width} × ${height} mm`);
   };
   const placePreset = (preset: ComponentPreset, persist: boolean) => {
-    if (!workspace) return;
-    const copyNumber = workspace.sourcePanel.components.length + 1;
-    const x = Math.min(workspace.sourcePanel.width - 10, 25 + (copyNumber - 1) * 15);
-    const y = Math.min(workspace.sourcePanel.height - 10, 25 + (copyNumber - 1) * 10);
-    const panel = addComponentInstance(workspace.sourcePanel, createInstanceFromPreset(preset, `${preset.id}-instance-${Date.now().toString(36)}`, { ...identity, e: x, f: y }));
-    const projectPresets = workspace.presets.some(({ id }) => id === preset.id) ? workspace.presets : [...workspace.presets, preset];
-    if (persist) setPresets((items) => [...items, preset]);
-    saveWorkspace({ ...workspace, presets: projectPresets, sourcePanel: panel, enclosure: { ...workspace.enclosure, result: undefined }, sheetLayout: undefined });
+    const base = latestDocument.current, current = base.enclosureWorkspace;
+    if (!current) return;
+    const copyNumber = current.sourcePanel.components.length + 1;
+    const x = Math.min(current.sourcePanel.width - 10, 25 + (copyNumber - 1) * 15);
+    const y = Math.min(current.sourcePanel.height - 10, 25 + (copyNumber - 1) * 10);
+    const panel = addComponentInstance(current.sourcePanel, createInstanceFromPreset(preset, `${preset.id}-instance-${Date.now().toString(36)}`, { ...identity, e: x, f: y }));
+    const projectPresets = current.presets.some(({ id }) => id === preset.id) ? current.presets : [...current.presets, preset];
+    if (persist) setRepoPresets((items) => items.some(({ id }) => id === preset.id) ? items : [...items, preset]);
+    saveWorkspace({ ...current, presets: projectPresets, sourcePanel: panel, enclosure: { ...current.enclosure, result: undefined }, sheetLayout: undefined }, base);
     setEditor(null); setMessage(`${preset.name} added to the panel.`);
   };
   const saveComponent = async (preset: ComponentPreset) => {
-    if (!workspace) return;
+    if (!latestDocument.current.enclosureWorkspace || savePending.current) return;
+    savePending.current = true; setSavingComponent(true);
     try {
       await componentPresetRepo.create(preset);
       placePreset(preset, true);
     } catch { setMessage("That component could not be saved. Choose a different name and try again."); }
+    finally { savePending.current = false; setSavingComponent(false); }
   };
   const makeBox = (settings: BoxSettings) => {
     if (!workspace) return;
-    const candidate = { ...workspace, enclosure: { ...workspace.enclosure, parameters: { frontHeight: settings.frontHeight, rearHeight: settings.rearHeight, thickness: settings.thickness, clearance: settings.clearance, fingerTarget: settings.fingerTarget } }, coupon: { confirmed: false, ...(settings.includeCoupon ? { selectedClearance: settings.clearance } : {}) }, sheetLayout: undefined };
+    const candidate = { ...workspace, enclosure: { ...workspace.enclosure, parameters: { frontHeight: settings.frontHeight, rearHeight: settings.rearHeight, thickness: settings.thickness, clearance: settings.clearance, fingerTarget: settings.fingerTarget } }, coupon: { confirmed: false, ...(settings.includeCoupon ? { selectedClearance: settings.clearance } : {}) }, packing: { sheetSize: { width: settings.sheetWidth, height: settings.sheetHeight }, orientation: settings.orientation, margin: settings.margin, gap: settings.gap }, sheetLayout: undefined };
     const result = regenerateEnclosureWorkspace(candidate);
     if (!result.ok) { setMessage(result.issues.map(({ message }) => message).join(" ")); return; }
-    setBoxSettings(settings); saveWorkspace(result.workspace); setEditor(null); setMessage("Six box faces generated. Arrange them when ready.");
+    saveWorkspace(result.workspace); setEditor(null); setMessage("Six box faces generated. Arrange them when ready.");
   };
   const arrange = () => {
     if (!workspace?.enclosure.result) return;
@@ -141,7 +151,8 @@ export function ComponentsBoxPanel({ document, onDocumentChange }: ComponentsBox
       const coupon = generateFitCoupon({ thickness: workspace.enclosure.parameters.thickness, clearance: workspace.coupon.selectedClearance });
       parts.push({ id: coupon.id, ...coupon.bounds });
     }
-    const layout = packParts(parts, { sheetSize: { width: boxSettings?.sheetWidth ?? 210, height: boxSettings?.sheetHeight ?? 148 }, orientation: "landscape", margin: boxSettings?.margin ?? 5, gap: boxSettings?.gap ?? 2 });
+    const packing = workspace.packing ?? { sheetSize: { width: 210, height: 148 }, orientation: "landscape" as const, margin: 5, gap: 2 };
+    const layout = packParts(parts, packing);
     saveWorkspace({ ...workspace, sheetLayout: layout });
     setMessage(layout.unplacedPartIds.length ? `${layout.unplacedPartIds.length} face(s) do not fit the selected sheets.` : `${layout.sheets.length} sheet(s) arranged.`);
   };
@@ -157,9 +168,9 @@ export function ComponentsBoxPanel({ document, onDocumentChange }: ComponentsBox
       {!workspace?.enclosure.result && <p className="components-box__hint">{workspace ? `${workspace.sourcePanel.name} · ${workspace.sourcePanel.width} × ${workspace.sourcePanel.height} mm · ${workspace.sourcePanel.components.length} component(s)` : "Create a panel to begin."}</p>}
       {!workspace?.enclosure.result && <p className="components-box__hint">Make a box before arranging sheets.</p>}
       {workspace?.enclosure.result && <p className="components-box__hint">Six faces · {workspace.sheetLayout ? `${workspace.sheetLayout.sheets.length} sheet(s)` : "ready to arrange"}</p>}
-      {editor === "component" && <ComponentEditor onSave={saveComponent} onCancel={() => setEditor(null)} />}
+      {editor === "component" && <ComponentEditor saving={savingComponent} onSave={saveComponent} onCancel={() => setEditor(null)} />}
       {editor === "panel" && <PanelForm initial={workspace?.sourcePanel} onSave={savePanel} onCancel={() => setEditor(null)} />}
-      {editor === "box" && workspace && <BoxDialog panelHeight={workspace.sourcePanel.height} onConfirm={makeBox} onCancel={() => setEditor(null)} />}
+      {editor === "box" && workspace && <BoxDialog panelHeight={workspace.sourcePanel.height} initial={{ ...workspace.enclosure.parameters, sheetWidth: workspace.packing?.sheetSize.width ?? 210, sheetHeight: workspace.packing?.sheetSize.height ?? 148, orientation: workspace.packing?.orientation ?? "landscape", margin: workspace.packing?.margin ?? 5, gap: workspace.packing?.gap ?? 2, includeCoupon: workspace.coupon.selectedClearance !== undefined }} onConfirm={makeBox} onCancel={() => setEditor(null)} />}
       {presets.length > 0 && <details className="components-box__examples"><summary>Saved presets</summary>{presets.map((preset) => <button type="button" key={preset.id} disabled={!workspace} onClick={() => placePreset(preset, false)}>Add {preset.name}</button>)}</details>}
       <details className="components-box__examples"><summary>Example presets</summary>{examples.map((preset) => <button type="button" key={preset.id} disabled={!workspace} onClick={() => void saveComponent({ ...preset, id: `${preset.id}-${Date.now().toString(36)}` })}>{preset.name}</button>)}</details>
       {message && <p role="status" className="components-box__message">{message}</p>}

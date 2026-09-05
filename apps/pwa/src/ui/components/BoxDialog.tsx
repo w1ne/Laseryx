@@ -1,11 +1,11 @@
 import { useState } from "react";
 import type { EnclosureParameters } from "../../core/enclosure/types";
 
-export type BoxSettings = EnclosureParameters & { depth: number; sheetWidth: number; sheetHeight: number; margin: number; gap: number; includeCoupon: boolean };
+export type BoxSettings = EnclosureParameters & { depth: number; sheetWidth: number; sheetHeight: number; orientation: "landscape" | "portrait"; margin: number; gap: number; includeCoupon: boolean };
 export type BoxDialogProps = { panelHeight: number; initial?: Partial<BoxSettings>; onConfirm: (settings: BoxSettings) => void; onCancel: () => void };
 
 export function BoxDialog({ panelHeight, initial, onConfirm, onCancel }: BoxDialogProps) {
-  const [value, setValue] = useState<BoxSettings>({ depth: 0, frontHeight: 35, rearHeight: 65, thickness: 3, clearance: .15, fingerTarget: 8, sheetWidth: 210, sheetHeight: 148, margin: 5, gap: 2, includeCoupon: false, ...initial });
+  const [value, setValue] = useState<BoxSettings>({ depth: 0, frontHeight: 35, rearHeight: 65, thickness: 3, clearance: .15, fingerTarget: 8, sheetWidth: 210, sheetHeight: 148, orientation: "landscape", margin: 5, gap: 2, includeCoupon: false, ...initial });
   const delta = Math.abs(value.rearHeight - value.frontHeight);
   const depth = delta < panelHeight ? Math.round(Math.sqrt(panelHeight ** 2 - delta ** 2) * 1000) / 1000 : 0;
   const numeric = [panelHeight, value.frontHeight, value.rearHeight, value.thickness, value.fingerTarget, value.sheetWidth, value.sheetHeight];
@@ -18,6 +18,7 @@ export function BoxDialog({ panelHeight, initial, onConfirm, onCancel }: BoxDial
     <details><summary>Advanced</summary><div className="components-box__grid">
       {field("thickness", "Stock thickness", .1)}{field("clearance", "Fit clearance", .05)}{field("fingerTarget", "Finger target", .5)}
       {field("sheetWidth", "Sheet width")}{field("sheetHeight", "Sheet height")}{field("margin", "Sheet margin", .5)}{field("gap", "Part gap", .5)}
+      <label>Sheet orientation<select aria-label="Sheet orientation" value={value.orientation} onChange={(event) => setValue({ ...value, orientation: event.target.value as BoxSettings["orientation"] })}><option value="landscape">Landscape</option><option value="portrait">Portrait</option></select></label>
       <label className="components-box__check"><input type="checkbox" checked={value.includeCoupon} onChange={(event) => setValue({ ...value, includeCoupon: event.target.checked })} /> Include fit coupon</label>
     </div></details>
     {error && <p role="alert" className="components-box__error">{error}</p>}

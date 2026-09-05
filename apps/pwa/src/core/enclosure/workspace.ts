@@ -1,6 +1,6 @@
 import { createComponentInstance, type ComponentInstance, type ComponentPreset } from "../components/types";
 import { preservePlacements } from "../layout/pack";
-import type { SheetLayout } from "../layout/types";
+import type { SheetLayout, SheetOrientation, SheetSize } from "../layout/types";
 import type { Transform } from "../model";
 import type { PanelDesign } from "../panel/types";
 import { generateEnclosure } from "./generate";
@@ -26,6 +26,7 @@ export type EnclosureWorkspace = {
     result?: GeneratedEnclosure;
   };
   coupon: CouponState;
+  packing?: { sheetSize: SheetSize; orientation: SheetOrientation; margin: number; gap: number };
   sheetLayout?: SheetLayout;
 };
 
@@ -196,7 +197,9 @@ export function sanitizeEnclosureWorkspace(value: unknown): EnclosureWorkspace |
     || !record(value.enclosure) || typeof value.enclosure.id !== "string" || !Number.isInteger(value.enclosure.revision) || (value.enclosure.revision as number) < 0
     || !parameters(value.enclosure.parameters) || !generatedResult(value.enclosure.result)
     || !record(value.coupon) || typeof value.coupon.confirmed !== "boolean"
-    || (value.coupon.selectedClearance !== undefined && (!finite(value.coupon.selectedClearance) || value.coupon.selectedClearance < 0)) || !sheetLayout(value.sheetLayout)) return undefined;
+    || (value.coupon.selectedClearance !== undefined && (!finite(value.coupon.selectedClearance) || value.coupon.selectedClearance < 0))
+    || (value.packing !== undefined && (!record(value.packing) || !record(value.packing.sheetSize) || !finite(value.packing.sheetSize.width) || value.packing.sheetSize.width <= 0 || !finite(value.packing.sheetSize.height) || value.packing.sheetSize.height <= 0 || (value.packing.orientation !== "landscape" && value.packing.orientation !== "portrait") || !finite(value.packing.margin) || value.packing.margin < 0 || !finite(value.packing.gap) || value.packing.gap < 0))
+    || !sheetLayout(value.sheetLayout)) return undefined;
   const presetIds = value.presets.map((item) => (item as Record<string, unknown>).id as string);
   const instanceIds = value.sourcePanel.components.map((item) => (item as Record<string, unknown>).id as string);
   const presetIdSet = new Set(presetIds);

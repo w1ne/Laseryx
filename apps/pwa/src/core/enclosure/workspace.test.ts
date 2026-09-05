@@ -148,4 +148,10 @@ describe("enclosure workspace", () => {
     const workspace: EnclosureWorkspace = { version: 1, presets: [], sourcePanel: panel(), enclosure: { id: "box", revision: 0, parameters }, coupon: { confirmed: false }, sheetLayout: layout };
     expect(sanitizeEnclosureWorkspace(workspace)?.sheetLayout?.placements).toHaveLength(500);
   });
+
+  it("sanitizes persisted packing preferences", () => {
+    const base: EnclosureWorkspace = { version: 1, presets: [], sourcePanel: panel(), enclosure: { id: "box", revision: 0, parameters }, coupon: { confirmed: false }, packing: { sheetSize: { width: 300, height: 200 }, orientation: "portrait", margin: 7, gap: 4 } };
+    expect(sanitizeEnclosureWorkspace(base)?.packing).toEqual(base.packing);
+    expect(sanitizeEnclosureWorkspace({ ...base, packing: { ...base.packing!, margin: -1 } })).toBeUndefined();
+  });
 });

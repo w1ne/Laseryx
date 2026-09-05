@@ -1,14 +1,14 @@
 import { useState } from "react";
 import type { ComponentKind, ComponentPreset } from "../../core/components/types";
 
-export type ComponentEditorProps = { onSave: (preset: ComponentPreset) => void; onCancel: () => void };
+export type ComponentEditorProps = { onSave: (preset: ComponentPreset) => void; onCancel: () => void; saving?: boolean };
 
 const defaults = {
   circle: { diameter: 10 }, slot: { length: 20, width: 6 }, rectangle: { width: 20, height: 12 },
   "rounded-rectangle": { width: 20, height: 12, cornerRadius: 2 }, "button-row": { count: 4, diameter: 8, pitch: 12 }
 } satisfies Record<ComponentKind, ComponentPreset["dimensions"]>;
 
-export function ComponentEditor({ onSave, onCancel }: ComponentEditorProps) {
+export function ComponentEditor({ onSave, onCancel, saving = false }: ComponentEditorProps) {
   const [name, setName] = useState("Component");
   const [kind, setKind] = useState<ComponentKind>("circle");
   const [dimensions, setDimensions] = useState<Record<string, number>>({ ...defaults.circle });
@@ -38,6 +38,6 @@ export function ComponentEditor({ onSave, onCancel }: ComponentEditorProps) {
     {kind === "rounded-rectangle" && <>{field("width", "Width", .1)}{field("height", "Height", .1)}{field("cornerRadius", "Corner radius", .1)}</>}
     {kind === "button-row" && <>{field("count", "Button count")}{field("diameter", "Diameter", .1)}{field("pitch", "Pitch", .1)}</>}
     {error && <p role="alert" className="components-box__error">{error}</p>}
-    <div className="components-box__editor-actions"><button type="button" disabled={!!error} onClick={save}>Save component</button><button type="button" onClick={onCancel}>Cancel</button></div>
+    <div className="components-box__editor-actions"><button type="button" disabled={!!error || saving} onClick={save}>{saving ? "Saving…" : "Save component"}</button><button type="button" disabled={saving} onClick={onCancel}>Cancel</button></div>
   </div>;
 }
