@@ -38,7 +38,7 @@ describe("Components & Box store workflow", () => {
     const undone = appReducer(arranged, { type: "UNDO" });
     expect(undone.document.enclosureWorkspace?.sheetLayout).toBeUndefined();
     expect(appReducer(undone, { type: "REDO" }).document.enclosureWorkspace?.sheetLayout).toEqual(manuallyPlaced);
-    expect(preflightEnclosure({ workspace: finishedWorkspace })).toEqual({ ready: true, issues: [] });
+    expect(preflightEnclosure({ workspace: finishedWorkspace })).toEqual({ ready: true, issues: [expect.objectContaining({ code: "COUPON_UNCONFIRMED", severity: "warning" })] });
     const projectId = await projectRepo.save(arranged.document, new Map(), "Box workflow");
     const loaded = await projectRepo.load(projectId);
     expect(loaded?.document.enclosureWorkspace?.sheetLayout?.placements[0]).toEqual(manuallyPlaced.placements[0]);
