@@ -5,6 +5,7 @@ import { placeHardwareModule } from "../../core/hardware/place";
 import { generateEnclosure } from "../../core/enclosure/generate";
 import { generateFitCoupon } from "../../core/enclosure/coupon";
 import { packParts } from "../../core/layout/pack";
+import { expandSheetBoundaries } from "../../core/layout/sheets";
 import { preflightEnclosure } from "../../core/enclosure/preflight";
 
 type DraftPath = Omit<PathObj, "id" | "layerId">;
@@ -29,18 +30,31 @@ export function HackathonEnclosurePanel({ addPaths }: HackathonEnclosurePanelPro
   const generate = () => {
     const enclosure = generateEnclosure(settings);
     const coupon = generateFitCoupon(settings);
-    const packed = packParts([...enclosure.panels.map((p) => ({ id: p.id, width: p.width, height: p.height })), { id: coupon.id, ...coupon.bounds }], { width: 210, height: 148, margin: 5, gap: 3, allowRotation: true });
-    const placements = new Map(packed.sheets.flatMap((sheet, sheetIndex) => sheet.placements.map((p) => [p.id, { ...p, sheetIndex }] as const)));
-    addPaths(enclosure.panels.flatMap((panel) => panel.paths.map((path) => {
-      const p = placements.get(panel.id);
-      return { kind: "path" as const, closed: path.closed, points: path.points, transform: { a: 1, b: 0, c: 0, d: 1, e: (p?.x ?? 0) + (p?.sheetIndex ?? 0) * 220, f: p?.y ?? 0 }, name: panel.name };
-    })).concat(coupon.paths.map((path, index) => {
-      const p = placements.get(coupon.id);
-      return { kind: "path" as const, closed: path.closed, points: path.points, transform: { a: 1, b: 0, c: 0, d: 1, e: (p?.x ?? 0) + (p?.sheetIndex ?? 0) * 220, f: p?.y ?? 0 }, name: index === 0 ? "Fit coupon" : `Fit slot ${coupon.labels[index - 1]}` };
+    const packed = packParts([...enclosure.panels.map((p) => ({ id: p.id, width: p.width, height: p.height })), { id: coupon.id, ...coupon.bounds }], { sheetSize: { width: 210, height: 148 }, orientation: "landscape", margin: 5, gap: 3 });
+    const sheets = new Map(packed.sheets.map((sheet) => [sheet.id, sheet]));
+    const placements = new Map(packed.placements.map((placement) => [placement.partId, placement]));
+    const transformFor = (partId: string, partHeight: number) => {
+      const placement = placements.get(partId);
+      if (!placement) return null;
+      const sheet = sheets.get(placement.sheetId)!;
+      return placement.rotation === 90
+        ? { a: 0, b: 1, c: -1, d: 0, e: sheet.x + placement.x + partHeight, f: sheet.y + placement.y }
+        : { a: 1, b: 0, c: 0, d: 1, e: sheet.x + placement.x, f: sheet.y + placement.y };
+    };
+    const sheetDrafts: DraftPath[] = expandSheetBoundaries(packed.sheets, "enclosure-reference").map(({ id: _id, layerId: _layerId, ...draft }) => draft);
+    addPaths(sheetDrafts.concat(enclosure.panels.flatMap((panel) => {
+      const transform = transformFor(panel.id, panel.height);
+      if (!transform) return [];
+      return panel.paths.map((path) => {
+        return { kind: "path" as const, closed: path.closed, points: path.points, transform, name: panel.name };
+      });
+    })).concat(coupon.paths.flatMap((path, index) => {
+      const transform = transformFor(coupon.id, coupon.bounds.height);
+      return transform ? [{ kind: "path" as const, closed: path.closed, points: path.points, transform, name: index === 0 ? "Fit coupon" : `Fit slot ${coupon.labels[index - 1]}` }] : [];
     })));
     setSheetCount(packed.sheets.length);
-    setOverflow(packed.overflow.map((part) => part.id));
-    setMessage(packed.overflow.length ? `${packed.overflow.length} part(s) do not fit A5.` : "Enclosure and fit coupon generated. Run Operations preflight before cutting.");
+    setOverflow([...packed.unplacedPartIds]);
+    setMessage(packed.unplacedPartIds.length ? `${packed.unplacedPartIds.length} part(s) do not fit A5.` : "Enclosure and fit coupon generated. Run Operations preflight before cutting.");
   };
 
   const numberField = (key: keyof typeof settings, label: string, step = 1) => <label className="hack-kit__field">{label}<input type="number" min="0.01" step={step} value={settings[key]} onChange={(e) => setSettings({ ...settings, [key]: Number(e.target.value) })} /></label>;

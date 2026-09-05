@@ -12,6 +12,15 @@ describe("HackathonEnclosurePanel", () => {
     expect(addPaths).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ name: expect.stringContaining("Rotary encoder") })]));
     fireEvent.click(screen.getByRole("button", { name: /generate enclosure/i }));
     expect(addPaths).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ name: "Front control panel" })]));
+    const generated = addPaths.mock.calls.at(-1)?.[0] ?? [];
+    const sheetDrafts = generated.filter((path) => path.name?.startsWith("Sheet "));
+    expect(sheetDrafts.length).toBeGreaterThan(0);
+    expect(sheetDrafts[0]).toMatchObject({
+      name: "Sheet sheet-1",
+      construction: true,
+      closed: true,
+      points: [{ x: 0, y: 0 }, { x: 210, y: 0 }, { x: 210, y: 148 }, { x: 0, y: 148 }],
+    });
     expect(screen.getByText(/sheets required/i)).toBeTruthy();
   });
 
