@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentPreset } from "../../core/components/types";
 import type { PanelDesign } from "../../core/panel/types";
-import { addComponentInstance, createInstanceFromPreset, regenerateEnclosureWorkspace, type EnclosureWorkspace } from "../../core/enclosure/workspace";
+import { addComponentInstance, createInstanceFromPreset, regenerateEnclosureWorkspace, removeComponentInstance, updateComponentInstance, type EnclosureWorkspace } from "../../core/enclosure/workspace";
+import { EXAMPLE_COMPONENT_PRESETS } from "../../core/components/examples";
+import type { ComponentInstance } from "../../core/components/types";
+import { validatePanel } from "../../core/panel/validate";
 import { generateFitCoupon } from "../../core/enclosure/coupon";
 import { preflightEnclosure } from "../../core/enclosure/preflight";
 import { packParts } from "../../core/layout/pack";
@@ -19,12 +22,8 @@ export type ComponentsBoxPanelProps = {
   machineProfile?: Pick<MachineProfile, "bedMm">;
 };
 const identity: Transform = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
-const examples: ComponentPreset[] = [
-  { id: "example-mount-hole", name: "Mounting hole", kind: "circle", dimensions: { diameter: 4 } },
-  { id: "example-cable-slot", name: "Cable slot", kind: "slot", dimensions: { length: 18, width: 6 } }
-];
 export function ComponentsBoxPanel({ document, onDocumentChange, onWorkspaceChange, machineProfile }: ComponentsBoxPanelProps) {
-  const [open, setOpen] = useState(true), [editor, setEditor] = useState<"component" | "panel" | "box" | null>(null);
+  const [open, setOpen] = useState(true), [editor, setEditor] = useState<"component" | "panel" | "box" | null>(null), [selectedInstanceId, setSelectedInstanceId] = useState<string>();
   const [repoPresets, setRepoPresets] = useState<ComponentPreset[]>([]);
   const [savingComponent, setSavingComponent] = useState(false);
   const [message, setMessage] = useState("");
@@ -42,10 +41,10 @@ export function ComponentsBoxPanel({ document, onDocumentChange, onWorkspaceChan
     if (onWorkspaceChange) onWorkspaceChange(next);
     else onDocumentChange?.(renderEnclosureWorkspace(base, next));
   };
-  const savePanel = (width: number, height: number) => {
-    const panel: PanelDesign = { id: workspace?.sourcePanel.id ?? "source-panel-design", name: "Control panel", width, height, components: workspace?.sourcePanel.components ?? [], transform: identity };
+  const savePanel = (width: number, height: number, x: number, y: number) => {
+    const panel: PanelDesign = { id: workspace?.sourcePanel.id ?? "source-panel-design", name: "Control panel", width, height, components: workspace?.sourcePanel.components ?? [], transform: { ...(workspace?.sourcePanel.transform ?? identity), e: x, f: y } };
     saveWorkspace(workspace ? { ...workspace, sourcePanel: panel, enclosure: { ...workspace.enclosure, result: undefined }, sheetLayout: undefined } : {
-      version: 1, presets: [], sourcePanel: panel, enclosure: { id: "enclosure-main", revision: 0, parameters: { frontHeight: 35, rearHeight: 65, thickness: 3, clearance: .15, fingerTarget: 8 } }, coupon: { confirmed: false }
+      version: 1, presets: [], sourcePanel: panel, enclosure: { id: "enclosure-main", revision: 0, parameters: { frontHeight: 35, rearHeight: 65, thickness: 3, clearance: .15, fingerTarget: 8 } }, coupon: { confirmed: false }, packing: { sheetSize: { width: 210, height: 148 }, orientation: "landscape", margin: 5, gap: 3 }
     }); setEditor(null); setMessage(`Panel ready · ${width} × ${height} mm`);
   };
   const placePreset = (preset: ComponentPreset, persist: boolean) => {
@@ -83,7 +82,7 @@ export function ComponentsBoxPanel({ document, onDocumentChange, onWorkspaceChan
       const coupon = generateFitCoupon({ thickness: workspace.enclosure.parameters.thickness, clearance: workspace.coupon.selectedClearance });
       parts.push({ id: coupon.id, ...coupon.bounds });
     }
-    const packing = workspace.packing ?? { sheetSize: { width: 210, height: 148 }, orientation: "landscape" as const, margin: 5, gap: 2 };
+    const packing = workspace.packing ?? { sheetSize: { width: 210, height: 148 }, orientation: "landscape" as const, margin: 5, gap: 3 };
     const layout = packParts(parts, packing);
     saveWorkspace({ ...workspace, sheetLayout: layout });
     setMessage(layout.unplacedPartIds.length ? `${layout.unplacedPartIds.length} face(s) do not fit the selected sheets.` : `${layout.sheets.length} sheet(s) arranged.`);
@@ -99,6 +98,7 @@ export function ComponentsBoxPanel({ document, onDocumentChange, onWorkspaceChan
       </div>
       {!workspace?.enclosure.result && <p className="components-box__hint">{workspace ? `${workspace.sourcePanel.name} · ${workspace.sourcePanel.width} × ${workspace.sourcePanel.height} mm · ${workspace.sourcePanel.components.length} component(s)` : "Create a panel to begin."}</p>}
       {!workspace?.enclosure.result && <p className="components-box__hint">Make a box before arranging sheets.</p>}
+      {workspace && !workspace.enclosure.result && <><p className="components-box__hint">Panel position · {workspace.sourcePanel.transform.e}, {workspace.sourcePanel.transform.f} mm</p><div className="components-box__instances">{workspace.sourcePanel.components.map((instance) => <button type="button" key={instance.id} onClick={() => setSelectedInstanceId(instance.id)}>Edit {instance.name}</button>)}</div></>}
       {workspace?.enclosure.result && <p className="components-box__hint">Six faces · {workspace.sheetLayout ? `${workspace.sheetLayout.sheets.length} sheet(s)` : "ready to arrange"}</p>}
       {preflight && <div role="status" aria-label="Fabrication readiness" className="components-box__message">
         <strong>{preflight.ready ? "Ready to cut." : "Not ready to cut."}</strong>
@@ -107,19 +107,33 @@ export function ComponentsBoxPanel({ document, onDocumentChange, onWorkspaceChan
       {workspace?.coupon.selectedClearance !== undefined && !workspace.coupon.confirmed && <button type="button" onClick={() => saveWorkspace({ ...workspace, coupon: { ...workspace.coupon, confirmed: true } })}>Confirm fit coupon</button>}
       {editor === "component" && <ComponentEditor saving={savingComponent} onSave={saveComponent} onCancel={() => setEditor(null)} />}
       {editor === "panel" && <PanelForm initial={workspace?.sourcePanel} onSave={savePanel} onCancel={() => setEditor(null)} />}
-      {editor === "box" && workspace && <BoxDialog panelHeight={workspace.sourcePanel.height} initial={{ ...workspace.enclosure.parameters, sheetWidth: workspace.packing?.sheetSize.width ?? 210, sheetHeight: workspace.packing?.sheetSize.height ?? 148, orientation: workspace.packing?.orientation ?? "landscape", margin: workspace.packing?.margin ?? 5, gap: workspace.packing?.gap ?? 2, includeCoupon: workspace.coupon.selectedClearance !== undefined }} onConfirm={makeBox} onCancel={() => setEditor(null)} />}
+      {selectedInstanceId && workspace && <InstanceEditor panel={workspace.sourcePanel} instance={workspace.sourcePanel.components.find(({ id }) => id === selectedInstanceId)!} onSave={(changes) => { const panel = updateComponentInstance(workspace.sourcePanel, selectedInstanceId, changes); const issues = validatePanel(panel); if (issues.length) { setMessage(issues.map(({ message }) => message).join(" ")); return false; } saveWorkspace({ ...workspace, sourcePanel: panel, enclosure: { ...workspace.enclosure, result: undefined }, sheetLayout: undefined }); setSelectedInstanceId(undefined); return true; }} onDelete={() => { saveWorkspace({ ...workspace, sourcePanel: removeComponentInstance(workspace.sourcePanel, selectedInstanceId), enclosure: { ...workspace.enclosure, result: undefined }, sheetLayout: undefined }); setSelectedInstanceId(undefined); }} onCancel={() => setSelectedInstanceId(undefined)} />}
+      {editor === "box" && workspace && <BoxDialog panelHeight={workspace.sourcePanel.height} panelWidth={workspace.sourcePanel.width} initial={{ ...workspace.enclosure.parameters, sheetWidth: workspace.packing?.sheetSize.width ?? 210, sheetHeight: workspace.packing?.sheetSize.height ?? 148, orientation: workspace.packing?.orientation ?? "landscape", margin: workspace.packing?.margin ?? 5, gap: workspace.packing?.gap ?? 3, includeCoupon: workspace.coupon.selectedClearance !== undefined }} onConfirm={makeBox} onCancel={() => setEditor(null)} />}
       {presets.length > 0 && <details className="components-box__examples"><summary>Saved presets</summary>{presets.map((preset) => <button type="button" key={preset.id} disabled={!workspace} onClick={() => placePreset(preset, false)}>Add {preset.name}</button>)}</details>}
-      <details className="components-box__examples"><summary>Example presets</summary>{examples.map((preset) => <button type="button" key={preset.id} disabled={!workspace} onClick={() => void saveComponent({ ...preset, id: `${preset.id}-${Date.now().toString(36)}` })}>{preset.name}</button>)}</details>
+      <details className="components-box__examples"><summary>Example presets</summary>{EXAMPLE_COMPONENT_PRESETS.map((preset) => <button type="button" key={preset.id} disabled={!workspace} onClick={() => placePreset(structuredClone(preset) as ComponentPreset, false)}>{preset.name}</button>)}</details>
       {message && <p role="status" className="components-box__message">{message}</p>}
     </div>}
   </section>;
 }
 
-function PanelForm({ initial, onSave, onCancel }: { initial?: PanelDesign; onSave: (width: number, height: number) => void; onCancel: () => void }) {
-  const [width, setWidth] = useState(initial?.width ?? 160), [height, setHeight] = useState(initial?.height ?? 100);
-  const error = [width, height].every((value) => Number.isFinite(value) && value > 0) ? "" : "Panel dimensions must be greater than zero and finite.";
+function PanelForm({ initial, onSave, onCancel }: { initial?: PanelDesign; onSave: (width: number, height: number, x: number, y: number) => void; onCancel: () => void }) {
+  const [width, setWidth] = useState(initial?.width ?? 160), [height, setHeight] = useState(initial?.height ?? 100), [x, setX] = useState(initial?.transform.e ?? 0), [y, setY] = useState(initial?.transform.f ?? 0);
+  const error = [width, height].every((value) => Number.isFinite(value) && value > 0) && [x, y].every(Number.isFinite) ? "" : "Panel dimensions must be greater than zero and all values must be finite.";
   return <div className="components-box__editor" role="dialog" aria-label={initial ? "Edit panel" : "Create panel"}><div className="components-box__grid">
     <label>Panel width<input aria-label="Panel width" type="number" min="1" value={width} onChange={(event) => setWidth(Number(event.target.value))} /></label>
     <label>Panel height<input aria-label="Panel height" type="number" min="1" value={height} onChange={(event) => setHeight(Number(event.target.value))} /></label>
-  </div>{error && <p role="alert" className="components-box__error">{error}</p>}<div className="components-box__editor-actions"><button type="button" disabled={!!error} onClick={() => onSave(width, height)}>Save panel</button><button type="button" onClick={onCancel}>Cancel</button></div></div>;
+    <label>Panel X<input aria-label="Panel X" type="number" value={x} onChange={(event) => setX(Number(event.target.value))} /></label><label>Panel Y<input aria-label="Panel Y" type="number" value={y} onChange={(event) => setY(Number(event.target.value))} /></label>
+  </div>{error && <p role="alert" className="components-box__error">{error}</p>}<div className="components-box__editor-actions"><button type="button" disabled={!!error} onClick={() => onSave(width, height, x, y)}>Save panel</button><button type="button" onClick={onCancel}>Cancel</button></div></div>;
+}
+
+function InstanceEditor({ panel, instance, onSave, onDelete, onCancel }: { panel: PanelDesign; instance: ComponentInstance; onSave: (changes: Partial<Omit<ComponentInstance, "id" | "kind">>) => boolean; onDelete: () => void; onCancel: () => void }) {
+  const [dimensions, setDimensions] = useState<Record<string, number>>({ ...instance.dimensions }), [x, setX] = useState(instance.transform.e), [y, setY] = useState(instance.transform.f);
+  const changes = { dimensions, transform: { ...instance.transform, e: x, f: y } } as Partial<Omit<ComponentInstance, "id" | "kind">>;
+  let error = "";
+  try { error = validatePanel(updateComponentInstance(panel, instance.id, changes)).map(({ message }) => message).join(" "); } catch (cause) { error = cause instanceof Error ? cause.message : "Component values are invalid."; }
+  const field = (key: string, label: string) => <label>{label}<input aria-label={label} type="number" value={dimensions[key]} onChange={(event) => setDimensions({ ...dimensions, [key]: Number(event.target.value) })} /></label>;
+  return <div role="dialog" aria-label={`Edit ${instance.name}`} className="components-box__editor"><strong>{instance.name}</strong>
+    {instance.kind === "circle" && field("diameter", "Component diameter")}{instance.kind === "slot" && <>{field("length", "Component length")}{field("width", "Component width")}</>}{(instance.kind === "rectangle" || instance.kind === "rounded-rectangle") && <>{field("width", "Component width")}{field("height", "Component height")}</>}{instance.kind === "rounded-rectangle" && field("cornerRadius", "Component corner radius")}{instance.kind === "button-row" && <>{field("count", "Button count")}{field("diameter", "Component diameter")}{field("pitch", "Component pitch")}</>}
+    <label>Component X<input aria-label="Component X" type="number" value={x} onChange={(event) => setX(Number(event.target.value))} /></label><label>Component Y<input aria-label="Component Y" type="number" value={y} onChange={(event) => setY(Number(event.target.value))} /></label>
+    {error && <p role="alert" className="components-box__error">{error}</p>}<div className="components-box__editor-actions"><button type="button" disabled={!!error} onClick={() => onSave(changes)}>Save instance</button><button type="button" onClick={onDelete}>Delete instance</button><button type="button" onClick={onCancel}>Cancel</button></div></div>;
 }

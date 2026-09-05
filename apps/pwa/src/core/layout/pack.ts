@@ -13,7 +13,7 @@ function orientedSize(options: PackOptions) {
 }
 
 export function packParts(source: readonly PartBounds[], options: PackOptions = {}): SheetLayout {
-  const margin = options.margin ?? 5, gap = options.gap ?? 2, sheetSize = orientedSize(options), orientation = options.orientation ?? "landscape";
+  const margin = options.margin ?? 5, gap = options.gap ?? 3, sheetSize = orientedSize(options), orientation = options.orientation ?? "landscape";
   if (![margin, gap, sheetSize.width, sheetSize.height].every(Number.isFinite)
     || margin < 0 || gap < 0 || sheetSize.width <= 0 || sheetSize.height <= 0) throw new Error("Invalid sheet settings");
   const ids = new Set<string>();

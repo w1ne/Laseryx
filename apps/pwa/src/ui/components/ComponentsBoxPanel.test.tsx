@@ -7,6 +7,7 @@ import { ComponentsBoxPanel } from "./ComponentsBoxPanel";
 import { regenerateEnclosureWorkspace, type EnclosureWorkspace } from "../../core/enclosure/workspace";
 import { packParts } from "../../core/layout/pack";
 import { generateFitCoupon } from "../../core/enclosure/coupon";
+import { EXAMPLE_COMPONENT_PRESETS } from "../../core/components/examples";
 
 vi.mock("../../io/componentPresetRepo", () => ({ componentPresetRepo: { list: vi.fn().mockResolvedValue([]), create: vi.fn(async (value) => value) } }));
 
@@ -22,6 +23,35 @@ describe("ComponentsBoxPanel", () => {
     ]);
     expect(screen.queryByText(/Hackathon enclosure/i)).toBeNull();
     await waitFor(() => expect(screen.getByText("Example presets")).toBeTruthy());
+  });
+
+  it("offers every exported HESTORE example in the collapsed example list", async () => {
+    render(<ComponentsBoxPanel document={document()} onDocumentChange={vi.fn()} />);
+    expect(screen.getByText("Example presets").closest("details")).not.toHaveAttribute("open");
+    fireEvent.click(screen.getByText("Example presets"));
+    for (const example of EXAMPLE_COMPONENT_PRESETS) expect(screen.getByRole("button", { name: example.name })).toBeTruthy();
+    await waitFor(() => expect(componentPresetRepo.list).toHaveBeenCalled());
+  });
+
+  it("edits, moves, and deletes an independent placed instance while retaining its preset", async () => {
+    const instance = { id: "hole-1", presetId: preset.id, name: preset.name, kind: "circle" as const, dimensions: { diameter: 5 }, transform: { a: 1, b: 0, c: 0, d: 1, e: 30, f: 30 } };
+    let current = document(); current.enclosureWorkspace = { version: 1, presets: [preset], sourcePanel: { id: "panel", name: "Panel", width: 160, height: 100, components: [instance], transform: { a: 1, b: 0, c: 0, d: 1, e: 12, f: 8 } }, enclosure: { id: "box", revision: 0, parameters: { frontHeight: 35, rearHeight: 65, thickness: 3, clearance: .15, fingerTarget: 8 } }, coupon: { confirmed: false } };
+    const onDocumentChange = vi.fn((next: Document) => { current = next; });
+    const view = render(<ComponentsBoxPanel document={current} onDocumentChange={onDocumentChange} />);
+    expect(screen.getByText("Panel position · 12, 8 mm")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Edit Project hole" }));
+    fireEvent.change(screen.getByLabelText("Component diameter"), { target: { value: "8" } });
+    fireEvent.change(screen.getByLabelText("Component X"), { target: { value: "40" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save instance" }));
+    current = onDocumentChange.mock.calls.at(-1)![0];
+    expect(current.enclosureWorkspace?.sourcePanel.components[0]).toMatchObject({ dimensions: { diameter: 8 }, transform: { e: 40, f: 30 } });
+    expect(current.enclosureWorkspace?.presets[0].dimensions).toEqual({ diameter: 5 });
+    view.rerender(<ComponentsBoxPanel document={current} onDocumentChange={onDocumentChange} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit Project hole" })); fireEvent.click(screen.getByRole("button", { name: "Delete instance" }));
+    current = onDocumentChange.mock.calls.at(-1)![0];
+    expect(current.enclosureWorkspace?.sourcePanel.components).toHaveLength(0);
+    expect(current.enclosureWorkspace?.presets).toEqual([preset]);
+    await waitFor(() => expect(componentPresetRepo.list).toHaveBeenCalled());
   });
 
   it("persists a panel-local circle and generates six grouped faces with its cutout", async () => {

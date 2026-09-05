@@ -14,6 +14,14 @@ describe("BoxDialog", () => {
     expect(screen.getByLabelText("Fit clearance")).toHaveValue(0.15);
     expect(screen.getByLabelText("Finger target")).toHaveValue(8);
     expect(screen.getByLabelText("Depth")).toHaveValue(95.394);
+    expect(screen.getByText(/Estimated A5 sheets:/)).toBeTruthy();
+  });
+
+  it("allows depth edits but blocks geometry that requires a different panel", () => {
+    render(<BoxDialog panelHeight={100} onConfirm={vi.fn()} onCancel={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Depth"), { target: { value: "80" } });
+    expect(screen.getByRole("alert")).toHaveTextContent(/Depth and heights require a 85\.44 mm panel; adjust values or panel size/i);
+    expect(screen.getByRole("button", { name: "Generate box" })).toBeDisabled();
   });
 
   it("blocks an impossible slope without submitting malformed settings", () => {

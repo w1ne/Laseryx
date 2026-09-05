@@ -25,6 +25,7 @@ describe("packParts", () => {
 
   it("reports parts that cannot fit either orientation", () => {
     const layout = packParts([{ id: "too-large", width: 220, height: 160 }]);
+    expect(layout.gap).toBe(3);
     expect(layout.placements).toEqual([]);
     expect(layout.unplacedPartIds).toEqual(["too-large"]);
     expect(layout.sheets).toHaveLength(1);

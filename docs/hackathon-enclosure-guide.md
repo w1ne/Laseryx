@@ -24,7 +24,7 @@ Generation resets coupon confirmation. If a generated part is unchanged and its 
 
 ## 3. Arrange sheets and test fit
 
-Select **Arrange sheets** after generation. The default 210 × 148 mm sheet size is A5; change the dimensions and orientation under **Advanced** when the physical stock differs. Laseryx lays out the faces across as many sheets as required and reports any face that does not fit.
+Select **Arrange sheets** after generation. The default 210 × 148 mm sheet size is A5 with a 3 mm inter-part gap; change the dimensions, gap, and orientation under **Advanced** when the physical stock differs. Laseryx lays out the faces across as many sheets as required and reports any face that does not fit.
 
 Sheet boundaries remain visible on the canvas as construction geometry in the **Sheet boundaries** layer. They are guides and are excluded from cutting. Generated faces and the optional coupon remain normal workflow-owned canvas objects.
 
