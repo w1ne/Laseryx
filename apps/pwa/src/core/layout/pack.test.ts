@@ -30,6 +30,13 @@ describe("packParts", () => {
     expect(layout.sheets).toHaveLength(1);
   });
 
+  it("rejects non-finite sheet settings", () => {
+    expect(() => packParts([], { margin: Number.NaN })).toThrow(/settings/i);
+    expect(() => packParts([], { gap: Number.POSITIVE_INFINITY })).toThrow(/settings/i);
+    expect(() => packParts([], { sheetSize: { width: Number.NaN, height: 148 } })).toThrow(/settings/i);
+    expect(() => packParts([], { sheetSize: { width: 210, height: Number.POSITIVE_INFINITY } })).toThrow(/settings/i);
+  });
+
   it("honours custom sheet size and orientation and never overlaps or crosses margins", () => {
     const parts = Array.from({ length: 7 }, (_, index) => ({ id: `p${index}`, width: 35, height: 22 }));
     const layout = packParts(parts, { sheetSize: { width: 80, height: 120 }, orientation: "landscape", margin: 4, gap: 3 });
@@ -78,7 +85,7 @@ describe("preservePlacements", () => {
     expect(next.unplacedPartIds).toEqual(["new", "resize"]);
   });
 
-  it("invalidates every placement involved in an overlap or outside a sheet", () => {
+  it("deterministically retains the first placement when later placements overlap or cross a sheet", () => {
     const bad: SheetLayout = {
       ...oldLayout,
       parts: [{ id: "a", width: 20, height: 20 }, { id: "b", width: 20, height: 20 }, { id: "edge", width: 20, height: 20 }],
@@ -89,8 +96,51 @@ describe("preservePlacements", () => {
       ],
     };
     const next = preservePlacements(bad, bad.parts);
-    expect(next.placements).toEqual([]);
-    expect(next.unplacedPartIds).toEqual(["a", "b", "edge"]);
+    expect(next.placements).toEqual([{ partId: "a", sheetId: "manual-sheet", x: 10, y: 10, rotation: 0 }]);
+    expect(next.unplacedPartIds).toEqual(["b", "edge"]);
+  });
+
+  it("enforces the configured gap when preserving placements", () => {
+    const layout: SheetLayout = {
+      ...oldLayout,
+      parts: [{ id: "first", width: 10, height: 10 }, { id: "second", width: 10, height: 10 }],
+      placements: [
+        { partId: "first", sheetId: "manual-sheet", x: 5, y: 5, rotation: 0 },
+        { partId: "second", sheetId: "manual-sheet", x: 16, y: 5, rotation: 0 },
+      ],
+    };
+    const next = preservePlacements(layout, layout.parts);
+    expect(next.placements.map(({ partId }) => partId)).toEqual(["first"]);
+    expect(next.unplacedPartIds).toEqual(["second"]);
+  });
+
+  it("retains only the first valid placement for duplicate part IDs across any sheets", () => {
+    const layout: SheetLayout = {
+      ...oldLayout,
+      parts: [{ id: "duplicate", width: 10, height: 10 }],
+      sheets: [...oldLayout.sheets, { id: "other-sheet", x: 230, y: 0, width: 210, height: 148 }],
+      placements: [
+        { partId: "duplicate", sheetId: "manual-sheet", x: 10, y: 10, rotation: 0 },
+        { partId: "duplicate", sheetId: "manual-sheet", x: 40, y: 10, rotation: 0 },
+        { partId: "duplicate", sheetId: "other-sheet", x: 10, y: 10, rotation: 0 },
+      ],
+    };
+    expect(preservePlacements(layout, layout.parts).placements).toEqual([layout.placements[0]]);
+  });
+
+  it("skips an invalid duplicate occurrence and retains the first valid one without aliasing sheet size", () => {
+    const layout: SheetLayout = {
+      ...oldLayout,
+      parts: [{ id: "duplicate", width: 10, height: 10 }],
+      placements: [
+        { partId: "duplicate", sheetId: "missing-sheet", x: 10, y: 10, rotation: 0 },
+        { partId: "duplicate", sheetId: "manual-sheet", x: 10, y: 10, rotation: 0 },
+      ],
+    };
+    const next = preservePlacements(layout, layout.parts);
+    expect(next.placements).toEqual([layout.placements[1]]);
+    expect(next.sheetSize).toEqual(layout.sheetSize);
+    expect(next.sheetSize).not.toBe(layout.sheetSize);
   });
 
   it("arrange intentionally replaces manual placement with deterministic packing", () => {

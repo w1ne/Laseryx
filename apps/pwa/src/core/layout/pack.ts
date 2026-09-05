@@ -14,7 +14,8 @@ function orientedSize(options: PackOptions) {
 
 export function packParts(source: readonly PartBounds[], options: PackOptions = {}): SheetLayout {
   const margin = options.margin ?? 5, gap = options.gap ?? 2, sheetSize = orientedSize(options), orientation = options.orientation ?? "landscape";
-  if (margin < 0 || gap < 0 || sheetSize.width <= 0 || sheetSize.height <= 0) throw new Error("Invalid sheet settings");
+  if (![margin, gap, sheetSize.width, sheetSize.height].every(Number.isFinite)
+    || margin < 0 || gap < 0 || sheetSize.width <= 0 || sheetSize.height <= 0) throw new Error("Invalid sheet settings");
   const ids = new Set<string>();
   for (const part of source) { if (ids.has(part.id)) throw new Error(`Duplicate part id: ${part.id}`); ids.add(part.id); }
   const parts = source.map((part) => ({ ...part })).sort((a, b) => a.id.localeCompare(b.id));
@@ -54,19 +55,20 @@ export function preservePlacements(oldLayout: SheetLayout, source: readonly Part
   const parts = source.map((part) => ({ ...part })).sort((a, b) => a.id.localeCompare(b.id));
   const oldParts = new Map(oldLayout.parts.map((part) => [part.id, part]));
   const sheets = oldLayout.sheets.map((sheet) => ({ ...sheet })), sheetsById = new Map(sheets.map((sheet) => [sheet.id, sheet])), partsById = new Map(parts.map((part) => [part.id, part]));
-  const candidates = oldLayout.placements.filter((placement) => {
+  const placements: Placement[] = [];
+  const placed = new Set<string>();
+  for (const placement of oldLayout.placements) {
     const part = partsById.get(placement.partId), previous = oldParts.get(placement.partId), sheet = sheetsById.get(placement.sheetId);
-    if (!part || !previous || !sheet || part.width !== previous.width || part.height !== previous.height) return false;
+    if (!part || !previous || !sheet || placed.has(placement.partId) || part.width !== previous.width || part.height !== previous.height) continue;
     const d = dimensions(part, placement.rotation);
-    return placement.x >= oldLayout.margin && placement.y >= oldLayout.margin && placement.x + d.width <= sheet.width - oldLayout.margin && placement.y + d.height <= sheet.height - oldLayout.margin;
-  }).map((placement) => ({ ...placement }));
-  const invalid = new Set<string>();
-  for (let i = 0; i < candidates.length; i++) for (let j = i + 1; j < candidates.length; j++) {
-    const a = candidates[i], b = candidates[j];
-    if (a.sheetId === b.sheetId && intersects(a, partsById.get(a.partId)!, b, partsById.get(b.partId)!)) { invalid.add(a.partId); invalid.add(b.partId); }
+    const withinBounds = placement.x >= oldLayout.margin && placement.y >= oldLayout.margin
+      && placement.x + d.width <= sheet.width - oldLayout.margin && placement.y + d.height <= sheet.height - oldLayout.margin;
+    if (!withinBounds || placements.some((accepted) => accepted.sheetId === placement.sheetId
+      && intersects(accepted, partsById.get(accepted.partId)!, placement, part, oldLayout.gap))) continue;
+    placements.push({ ...placement });
+    placed.add(placement.partId);
   }
-  const placements = candidates.filter(({ partId }) => !invalid.has(partId)), placed = new Set(placements.map(({ partId }) => partId));
-  return { ...oldLayout, parts, sheets, placements, unplacedPartIds: parts.map(({ id }) => id).filter((id) => !placed.has(id)) };
+  return { ...oldLayout, sheetSize: { ...oldLayout.sheetSize }, parts, sheets, placements, unplacedPartIds: parts.map(({ id }) => id).filter((id) => !placed.has(id)) };
 }
 
 export function arrangeParts(layout: SheetLayout): SheetLayout {
