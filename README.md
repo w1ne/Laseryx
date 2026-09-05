@@ -2,7 +2,7 @@
 
 ## Components and box workflow
 
-The web app includes a generic **Components & Box** workflow: create reusable primitive component presets, place their cutouts on an exact source panel, generate all six finger-jointed faces, arrange them on visible construction-sheet boundaries, test an optional fit coupon, preflight, and cut. Bundled presets appear only under **Example presets**; measure the hardware and stock used for the real build.
+The web app includes a generic **Components & Box** workflow: create reusable component presets with optional mechanical envelopes and mounting holes, place their cutouts on an exact source panel, generate flat or tilted six-face finger-jointed enclosures, arrange them on visible construction-sheet boundaries, optionally test a fit coupon, preflight, and cut. Bundled presets show whether dimensions are verified, nominal, or still require measurement.
 
 Start in **Design → Objects → Components & Box**, then follow **Components → Panel → Make Box → Sheets → Cut**. See the [components and box guide](docs/hackathon-enclosure-guide.md) for Advanced settings, derived depth, regeneration and placement behavior, coupon testing, preflight, and the required physical release gate.
 

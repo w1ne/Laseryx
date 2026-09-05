@@ -40,11 +40,17 @@ describe("ComponentsBoxPanel", () => {
     const view = render(<ComponentsBoxPanel document={current} onDocumentChange={onDocumentChange} />);
     expect(screen.getByText("Panel position · 12, 8 mm")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Edit Project hole" }));
+    expect(screen.getByText("Mechanical details")).toBeTruthy();
+    fireEvent.click(screen.getByText("Mechanical details"));
+    fireEvent.change(screen.getByLabelText("Instance body width"), { target: { value: "18" } });
+    fireEvent.change(screen.getByLabelText("Instance body height"), { target: { value: "16" } });
+    fireEvent.change(screen.getByLabelText("Instance body depth"), { target: { value: "12" } });
+    fireEvent.change(screen.getByLabelText("Instance measurement confidence"), { target: { value: "verified" } });
     fireEvent.change(screen.getByLabelText("Component diameter"), { target: { value: "8" } });
     fireEvent.change(screen.getByLabelText("Component X"), { target: { value: "40" } });
     fireEvent.click(screen.getByRole("button", { name: "Save instance" }));
     current = onDocumentChange.mock.calls.at(-1)![0];
-    expect(current.enclosureWorkspace?.sourcePanel.components[0]).toMatchObject({ dimensions: { diameter: 8 }, transform: { e: 40, f: 30 } });
+    expect(current.enclosureWorkspace?.sourcePanel.components[0]).toMatchObject({ dimensions: { diameter: 8 }, transform: { e: 40, f: 30 }, mechanics: { confidence: "verified", body: { width: 18, height: 16, depth: 12 } } });
     expect(current.enclosureWorkspace?.presets[0].dimensions).toEqual({ diameter: 5 });
     view.rerender(<ComponentsBoxPanel document={current} onDocumentChange={onDocumentChange} />);
     fireEvent.click(screen.getByRole("button", { name: "Edit Project hole" })); fireEvent.click(screen.getByRole("button", { name: "Delete instance" }));

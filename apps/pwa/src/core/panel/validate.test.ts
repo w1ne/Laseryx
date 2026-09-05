@@ -49,6 +49,16 @@ describe("validatePanel", () => {
     }));
   });
 
+  it("includes secondary mounting holes in panel bounds", () => {
+    const component = createComponentInstance(preset({ id: "display", name: "Display", kind: "rectangle", dimensions: { width: 20, height: 10 }, mechanics: { confidence: "measured", mountingHoles: [{ x: -20, y: 0, diameter: 4 }] } }), "display-1", { ...identity, e: 20, f: 50 });
+    expect(validatePanel(panel([component]))).toContainEqual(expect.objectContaining({ code: "cutout-outside-panel", componentIds: ["display-1"] }));
+  });
+
+  it("rejects malformed in-memory mechanical geometry", () => {
+    const component = createComponentInstance(preset({ id: "bad", name: "Unsafe module", kind: "circle", dimensions: { diameter: 5 }, mechanics: { confidence: "measured", mountingHoles: [{ x: Number.NaN, y: 0, diameter: 3 }] } }), "bad-1", { ...identity, e: 40, f: 40 });
+    expect(validatePanel(panel([component]))).toContainEqual(expect.objectContaining({ code: "component-dimensions-invalid", componentIds: ["bad-1"], message: expect.stringMatching(/mounting hole position/i) }));
+  });
+
   it("blocks when transformed cutout bounds overlap and names both components", () => {
     const circle = preset({ id: "circle", name: "Button", kind: "circle", dimensions: { diameter: 10 } });
     const first = createComponentInstance(circle, "button-a", { ...identity, e: 40, f: 40 });

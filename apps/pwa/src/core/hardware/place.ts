@@ -20,7 +20,7 @@ export function placeHardwareModule(sku: string, origin: Point, overrides: Recor
   if (!module) return { ok: false, code: "UNKNOWN_SKU", message: `Unknown hardware SKU ${sku}` };
   if (module.mounting === "internal") return { ok: false, code: "INTERNAL_ONLY", message: `${module.name} is internal-only by default.` };
   const parameters = { ...module.dimensions, ...overrides };
-  if (module.requiresMeasurement && !(parameters.buttonDiameter > 0 && parameters.buttonPitch > 0)) {
+  if (module.geometry === "button-row" && module.requiresMeasurement && !(parameters.buttonDiameter > 0 && parameters.buttonPitch > 0)) {
     return { ok: false, code: "MEASURE_REQUIRED", message: `${module.name}: enter button diameter and pitch measured with calipers.` };
   }
   const example = getExampleComponentPresetBySku(sku);

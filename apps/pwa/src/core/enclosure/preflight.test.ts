@@ -3,6 +3,7 @@ import { preflightEnclosure } from "./preflight";
 import { regenerateEnclosureWorkspace, type EnclosureWorkspace } from "./workspace";
 import { packParts } from "../layout/pack";
 import { renderEnclosureWorkspace } from "./render";
+import { generateFitCoupon } from "./coupon";
 
 describe("preflightEnclosure", () => {
   it("blocks unknown measurements, overflow, and invalid stock", () => {
@@ -28,7 +29,7 @@ describe("preflightEnclosure", () => {
     expect(result.issues.find(({ code }) => code === "COMPONENT_DIMENSIONS_INVALID")?.message).toMatch(/Power switch/);
   });
 
-  it("allows non-blocking warnings but requires an included coupon to be confirmed", () => {
+  it("allows non-blocking warnings and does not require coupon confirmation", () => {
     const base: EnclosureWorkspace = { version: 1, presets: [], sourcePanel: { id: "source", name: "Panel", width: 100, height: 70, components: [], transform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 } }, enclosure: { id: "box", revision: 0, parameters: { frontHeight: 30, rearHeight: 40, thickness: 3, clearance: .1, fingerTarget: 8 } }, coupon: { confirmed: false } };
     const generated = regenerateEnclosureWorkspace(base);
     expect(generated.ok).toBe(true);
@@ -36,7 +37,9 @@ describe("preflightEnclosure", () => {
     const layout = packParts(generated.workspace.enclosure.result!.panels.map(({ id, width, height }) => ({ id, width, height })), { sheetSize: { width: 500, height: 500 }, margin: 5, gap: 2 });
     const arranged = { ...generated.workspace, sheetLayout: layout };
     expect(preflightEnclosure({ workspace: arranged, warnings: ["Review grain direction before cutting."] }).ready).toBe(true);
-    expect(preflightEnclosure({ workspace: { ...arranged, coupon: { selectedClearance: .1, confirmed: false } } }).ready).toBe(false);
+    const coupon = generateFitCoupon({ thickness: 3, clearance: .1 });
+    const withCoupon = { ...arranged, coupon: { selectedClearance: .1, confirmed: false }, sheetLayout: packParts([...generated.workspace.enclosure.result!.panels.map(({ id, width, height }) => ({ id, width, height })), { id: coupon.id, ...coupon.bounds }], { sheetSize: { width: 500, height: 500 }, margin: 5, gap: 2 }) };
+    expect(preflightEnclosure({ workspace: withCoupon }).ready).toBe(true);
   });
 
   it("rejects forged layout parts and layouts that omit generated faces", () => {
@@ -68,6 +71,43 @@ describe("preflightEnclosure", () => {
     const result = preflightEnclosure({ workspace: stale });
     expect(result.ready).toBe(false);
     expect(result.issues).toContainEqual(expect.objectContaining({ code: "STALE_GENERATED_RESULT", message: expect.stringMatching(/regenerate box/i) }));
+  });
+
+  it("blocks missing component measurements and insufficient body depth", () => {
+    const preset = { id: "module", name: "Button module", kind: "rectangle" as const, dimensions: { width: 20, height: 10 }, mechanics: { confidence: "required" as const, body: { width: 30, height: 15, depth: 100 }, missing: ["mounting-hole positions"] } };
+    const component = { ...preset, id: "module-1", presetId: preset.id, transform: { a: 1, b: 0, c: 0, d: 1, e: 50, f: 35 } };
+    const base: EnclosureWorkspace = { version: 1, presets: [preset], sourcePanel: { id: "source", name: "Panel", width: 100, height: 70, components: [component], transform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 } }, enclosure: { id: "box", revision: 0, parameters: { frontHeight: 30, rearHeight: 40, thickness: 3, clearance: .1, fingerTarget: 8 } }, coupon: {} };
+    const generated = regenerateEnclosureWorkspace(base); if (!generated.ok) throw new Error("fixture failed");
+    const layout = packParts(generated.workspace.enclosure.result!.panels.map(({ id, width, height }) => ({ id, width, height })), { sheetSize: { width: 500, height: 500 } });
+    const result = preflightEnclosure({ workspace: { ...generated.workspace, sheetLayout: layout } });
+    expect(result.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: "MEASURE_REQUIRED", objectIds: ["module-1"] }),
+      expect.objectContaining({ code: "BODY_CLEARANCE", objectIds: ["module-1"] })
+    ]));
+    expect(result.ready).toBe(false);
+  });
+
+  it("blocks overlapping component body envelopes even when panel cutouts are separate", () => {
+    const preset = { id: "control", name: "Control", kind: "circle" as const, dimensions: { diameter: 5 }, mechanics: { confidence: "measured" as const, body: { width: 30, height: 15, depth: 10 } } };
+    const placed = (id: string, x: number) => ({ ...preset, id, presetId: preset.id, transform: { a: 1, b: 0, c: 0, d: 1, e: x, f: 35 } });
+    const base: EnclosureWorkspace = { version: 1, presets: [preset], sourcePanel: { id: "source", name: "Panel", width: 100, height: 70, components: [placed("left", 40), placed("right", 60)], transform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 } }, enclosure: { id: "box", revision: 0, parameters: { frontHeight: 30, rearHeight: 40, thickness: 3, clearance: .1, fingerTarget: 8 } }, coupon: {} };
+    const generated = regenerateEnclosureWorkspace(base); if (!generated.ok) throw new Error("fixture failed");
+    const layout = packParts(generated.workspace.enclosure.result!.panels.map(({ id, width, height }) => ({ id, width, height })), { sheetSize: { width: 500, height: 500 } });
+    expect(preflightEnclosure({ workspace: { ...generated.workspace, sheetLayout: layout } }).issues).toContainEqual(expect.objectContaining({ code: "BODY_OVERLAP", objectIds: ["left", "right"] }));
+  });
+
+  it("maps source-panel top to rear clearance and bottom to front clearance", () => {
+    const preset = { id: "body", name: "Body", kind: "circle" as const, dimensions: { diameter: 5 }, mechanics: { confidence: "measured" as const, body: { width: 8, height: 8, depth: 40 } } };
+    const run = (y: number, frontHeight: number, rearHeight: number) => {
+      const component = { ...preset, id: `body-${y}`, presetId: preset.id, transform: { a: 1, b: 0, c: 0, d: 1, e: 50, f: y } };
+      const base: EnclosureWorkspace = { version: 1, presets: [preset], sourcePanel: { id: "source", name: "Panel", width: 100, height: 70, components: [component], transform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 } }, enclosure: { id: "box", revision: 0, parameters: { frontHeight, rearHeight, thickness: 3, clearance: .1, fingerTarget: 8 } }, coupon: {} };
+      const generated = regenerateEnclosureWorkspace(base); if (!generated.ok) throw new Error("fixture failed");
+      return preflightEnclosure({ workspace: generated.workspace }).issues.map(({ code }) => code);
+    };
+    expect(run(10, 65, 35)).toContain("BODY_CLEARANCE");
+    expect(run(60, 65, 35)).not.toContain("BODY_CLEARANCE");
+    expect(run(10, 35, 65)).not.toContain("BODY_CLEARANCE");
+    expect(run(60, 35, 65)).toContain("BODY_CLEARANCE");
   });
 
   it("checks every sheet against bed size without using canvas offsets", () => {

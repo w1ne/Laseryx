@@ -9,7 +9,8 @@ import type { EnclosureGenerationResult, EnclosureParameters, GeneratedEnclosure
 export const ENCLOSURE_WORKSPACE_VERSION = 1 as const;
 
 export type CouponState = {
-  confirmed: boolean;
+  /** Legacy field retained only when loading older projects. */
+  confirmed?: boolean;
   selectedClearance?: number;
 };
 
@@ -80,6 +81,16 @@ export function regenerateEnclosureWorkspace(workspace: EnclosureWorkspace): Wor
 const record = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
 const finite = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
 const transform = (value: unknown) => record(value) && ["a", "b", "c", "d", "e", "f"].every((key) => finite(value[key]));
+const hole = (value: unknown) => record(value) && finite(value.x) && finite(value.y) && finite(value.diameter) && value.diameter > 0 && (value.label === undefined || typeof value.label === "string");
+const mechanics = (value: unknown) => value === undefined || (record(value)
+  && ["verified", "measured", "nominal", "required"].includes(value.confidence as string)
+  && (value.body === undefined || (record(value.body) && ["width", "height"].every((key) => finite(value.body![key]) && (value.body![key] as number) > 0) && (value.body.depth === undefined || (finite(value.body.depth) && value.body.depth > 0))))
+  && (value.frontProtrusion === undefined || (finite(value.frontProtrusion) && value.frontProtrusion >= 0))
+  && (value.mountingHoles === undefined || (Array.isArray(value.mountingHoles) && value.mountingHoles.length <= 100 && value.mountingHoles.every(hole)))
+  && (value.acousticHole === undefined || hole(value.acousticHole))
+  && (value.missing === undefined || (Array.isArray(value.missing) && value.missing.length <= 100 && value.missing.every((item) => typeof item === "string" && item.trim())))
+  && (value.warnings === undefined || (Array.isArray(value.warnings) && value.warnings.length <= 100 && value.warnings.every((item) => typeof item === "string"))));
+const source = (value: unknown) => value === undefined || (record(value) && ["vendor", "sku", "partNumber", "note", "url"].every((key) => value[key] === undefined || typeof value[key] === "string") && (value.sourceType === undefined || ["vendor", "datasheet", "measured"].includes(value.sourceType as string)));
 const dimensions = (kind: unknown, value: unknown) => {
   if (!record(value)) return false;
   const keys = kind === "circle" ? ["diameter"] : kind === "slot" ? ["length", "width"]
@@ -93,6 +104,7 @@ const dimensions = (kind: unknown, value: unknown) => {
 };
 const component = (value: unknown, instance: boolean) => record(value) && typeof value.id === "string" && value.id.length > 0 && typeof value.name === "string"
   && typeof value.kind === "string" && dimensions(value.kind, value.dimensions)
+  && source(value.source) && mechanics(value.mechanics)
   && (!instance || (typeof value.presetId === "string" && transform(value.transform)));
 const unique = (values: readonly string[]) => new Set(values).size === values.length;
 const MAX_ITEMS = 1000, MAX_PATHS_PER_PANEL = 100, MAX_POINTS_PER_PATH = 10_000;
@@ -196,7 +208,7 @@ export function sanitizeEnclosureWorkspace(value: unknown): EnclosureWorkspace |
     || !finite(value.sourcePanel.width) || value.sourcePanel.width <= 0 || !finite(value.sourcePanel.height) || value.sourcePanel.height <= 0 || !Array.isArray(value.sourcePanel.components) || value.sourcePanel.components.length > MAX_ITEMS || !value.sourcePanel.components.every((item) => component(item, true)) || !transform(value.sourcePanel.transform)
     || !record(value.enclosure) || typeof value.enclosure.id !== "string" || !Number.isInteger(value.enclosure.revision) || (value.enclosure.revision as number) < 0
     || !parameters(value.enclosure.parameters) || !generatedResult(value.enclosure.result)
-    || !record(value.coupon) || typeof value.coupon.confirmed !== "boolean"
+    || !record(value.coupon) || (value.coupon.confirmed !== undefined && typeof value.coupon.confirmed !== "boolean")
     || (value.coupon.selectedClearance !== undefined && (!finite(value.coupon.selectedClearance) || value.coupon.selectedClearance < 0))
     || (value.packing !== undefined && (!record(value.packing) || !record(value.packing.sheetSize) || !finite(value.packing.sheetSize.width) || value.packing.sheetSize.width <= 0 || !finite(value.packing.sheetSize.height) || value.packing.sheetSize.height <= 0 || (value.packing.orientation !== "landscape" && value.packing.orientation !== "portrait") || !finite(value.packing.margin) || value.packing.margin < 0 || !finite(value.packing.gap) || value.packing.gap < 0))
     || !sheetLayout(value.sheetLayout)) return undefined;
@@ -205,7 +217,9 @@ export function sanitizeEnclosureWorkspace(value: unknown): EnclosureWorkspace |
   const presetIdSet = new Set(presetIds);
   if (presetIdSet.size !== presetIds.length || !unique(instanceIds) || !value.sourcePanel.components.every((item) => presetIdSet.has((item as Record<string, unknown>).presetId as string))) return undefined;
   try {
-    return structuredClone(value) as EnclosureWorkspace;
+    const sanitized = structuredClone(value) as EnclosureWorkspace;
+    sanitized.coupon = sanitized.coupon.selectedClearance === undefined ? {} : { selectedClearance: sanitized.coupon.selectedClearance };
+    return sanitized;
   } catch {
     return undefined;
   }

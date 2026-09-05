@@ -56,7 +56,7 @@ describe('projectRepo', () => {
         workspace.sourcePanel.width = 999;
         const loaded = await projectRepo.load(id);
         expect(loaded?.document.enclosureWorkspace?.sourcePanel.width).toBe(100);
-        expect(loaded?.document.enclosureWorkspace).toEqual({ ...workspace, sourcePanel: { ...workspace.sourcePanel, width: 100 } });
+        expect(loaded?.document.enclosureWorkspace).toEqual({ ...workspace, sourcePanel: { ...workspace.sourcePanel, width: 100 }, coupon: { selectedClearance: .15 } });
     });
 
     it('loads old projects unchanged and safely omits malformed workspaces', async () => {

@@ -13,6 +13,21 @@ export type ComponentSource = {
   sku?: string;
   partNumber?: string;
   note?: string;
+  url?: string;
+  sourceType?: "vendor" | "datasheet" | "measured";
+};
+
+export type MechanicalConfidence = "verified" | "measured" | "nominal" | "required";
+export type PositionedHole = { x: number; y: number; diameter: number; label?: string };
+export type BodyEnvelope = { width: number; height: number; depth?: number };
+export type ComponentMechanics = {
+  confidence: MechanicalConfidence;
+  mountingHoles?: PositionedHole[];
+  body?: BodyEnvelope;
+  frontProtrusion?: number;
+  acousticHole?: PositionedHole;
+  missing?: string[];
+  warnings?: string[];
 };
 
 type Preset<K extends ComponentKind, D> = {
@@ -21,6 +36,7 @@ type Preset<K extends ComponentKind, D> = {
   kind: K;
   dimensions: D;
   source?: ComponentSource;
+  mechanics?: ComponentMechanics;
 };
 
 export type ComponentPreset =
@@ -37,6 +53,8 @@ type Instance<K extends ComponentKind, D> = {
   kind: K;
   dimensions: D;
   transform: Transform;
+  mechanics?: ComponentMechanics;
+  source?: ComponentSource;
 };
 
 export type ComponentInstance =
@@ -53,7 +71,7 @@ export function createComponentInstance(
   id: string,
   transform: Transform = IDENTITY_TRANSFORM
 ): ComponentInstance {
-  const common = { id, presetId: preset.id, name: preset.name, transform: { ...transform } };
+  const common = { id, presetId: preset.id, name: preset.name, transform: { ...transform }, mechanics: preset.mechanics ? structuredClone(preset.mechanics) : undefined, source: preset.source ? { ...preset.source } : undefined };
   switch (preset.kind) {
     case "circle": return { ...common, kind: preset.kind, dimensions: { ...preset.dimensions } };
     case "slot": return { ...common, kind: preset.kind, dimensions: { ...preset.dimensions } };

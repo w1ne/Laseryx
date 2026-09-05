@@ -3,6 +3,7 @@ import { applyTransform } from "../geom";
 import type { ComponentInstance } from "../components/types";
 import type { Point, Transform } from "../model";
 import type { PanelDesign, PanelValidationIssue } from "./types";
+import { validateMechanics } from "../components/mechanics";
 
 type Bounds = { minX: number; minY: number; maxX: number; maxY: number };
 const TRANSFORM_COEFFICIENTS: Array<keyof Transform> = ["a", "b", "c", "d", "e", "f"];
@@ -51,21 +52,28 @@ function unionBounds(bounds: Bounds[]): Bounds {
 /** Exact for circles, rectangles and button rows; conservative for curved rectangular primitives. */
 function componentBounds(component: ComponentInstance): Bounds {
   const { transform } = component;
+  let primary: Bounds;
   switch (component.kind) {
     case "circle":
-      return transformedCircleBounds(0, component.dimensions.diameter / 2, transform);
+      primary = transformedCircleBounds(0, component.dimensions.diameter / 2, transform); break;
     case "slot":
-      return transformedRectangleBounds(component.dimensions.length, component.dimensions.width, transform);
+      primary = transformedRectangleBounds(component.dimensions.length, component.dimensions.width, transform); break;
     case "rectangle":
     case "rounded-rectangle":
-      return transformedRectangleBounds(component.dimensions.width, component.dimensions.height, transform);
+      primary = transformedRectangleBounds(component.dimensions.width, component.dimensions.height, transform); break;
     case "button-row": {
       const { count, diameter, pitch } = component.dimensions;
-      return unionBounds(Array.from({ length: count }, (_, index) =>
+      primary = unionBounds(Array.from({ length: count }, (_, index) =>
         transformedCircleBounds((index - (count - 1) / 2) * pitch, diameter / 2, transform)
-      ));
+      )); break;
     }
   }
+  const holes = [...(component.mechanics?.mountingHoles ?? []), ...(component.mechanics?.acousticHole ? [component.mechanics.acousticHole] : [])];
+  return holes.length ? unionBounds([primary, ...holes.map((hole) => {
+    const center = applyTransform({ x: hole.x, y: hole.y }, transform);
+    const radius = hole.diameter / 2;
+    return { minX: center.x - radius * Math.hypot(transform.a, transform.c), maxX: center.x + radius * Math.hypot(transform.a, transform.c), minY: center.y - radius * Math.hypot(transform.b, transform.d), maxY: center.y + radius * Math.hypot(transform.b, transform.d) };
+  })]) : primary;
 }
 
 function boundsOverlap(first: Bounds, second: Bounds): boolean {
@@ -117,6 +125,8 @@ export function validatePanel(panel: PanelDesign): PanelValidationIssue[] {
       continue;
     }
     try {
+      const mechanicalIssues = validateMechanics(component.mechanics);
+      if (mechanicalIssues.length) throw new Error(mechanicalIssues.join(" "));
       // Component expansion owns the complete dimension validation contract.
       expandComponent(component);
       validComponents.push({ component, bounds: componentBounds(component) });
