@@ -1,8 +1,10 @@
 # Laseryx
 
-## Hackathon enclosure builder
+## Components and box workflow
 
-The web app now includes a first-class **⚡ Hackathon enclosure** workflow for the Budapest hardware kit: verified component cutouts, editable millimetre dimensions, a sloped six-panel finger-jointed box, fit calibration coupon, and automatic A5 sheet layout. See [the hackathon enclosure guide](docs/hackathon-enclosure-guide.md).
+The web app includes a generic **Components & Box** workflow: create reusable primitive component presets, place their cutouts on an exact source panel, generate all six finger-jointed faces, arrange them on visible construction-sheet boundaries, test an optional fit coupon, preflight, and cut. Bundled presets appear only under **Example presets**; measure the hardware and stock used for the real build.
+
+Start in **Design → Objects → Components & Box**, then follow **Components → Panel → Make Box → Sheets → Cut**. See the [components and box guide](docs/hackathon-enclosure-guide.md) for Advanced settings, derived depth, regeneration and placement behavior, coupon testing, preflight, and the required physical release gate.
 
 [![Buy Me A Coffee](https://img.shields.io/badge/Support-Buy%20Me%20A%20Coffee-FFDD00?style=flat-square&logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/3qutj2ucoq)
 
