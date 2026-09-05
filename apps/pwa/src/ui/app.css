@@ -1087,6 +1087,7 @@ select {
 .components-box__actions button.is-next { border-color: #0284c7; background: #0284c7; color: white; font-weight: 700; }
 .components-box__actions button:disabled { cursor: not-allowed; opacity: .5; }
 .components-box__hint, .components-box__message { margin: 8px 0 0; color: #475569; font-size: 10px; line-height: 1.35; }
+.components-box__error { margin: 6px 0; color: #b91c1c; font-size: 10px; line-height: 1.35; }
 .components-box__editor { margin-top: 10px; padding: 9px; border: 1px solid #bae6fd; border-radius: 7px; background: white; }
 .components-box__editor > label, .components-box__grid label { display: grid; gap: 3px; margin-bottom: 6px; color: #475569; font-size: 10px; }
 .components-box__editor input, .components-box__editor select { width: 100%; box-sizing: border-box; min-height: 30px; padding: 5px; border: 1px solid #cbd5e1; border-radius: 5px; }

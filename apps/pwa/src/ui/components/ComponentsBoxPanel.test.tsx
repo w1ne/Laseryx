@@ -25,6 +25,9 @@ describe("ComponentsBoxPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Create panel" }));
     fireEvent.click(screen.getByRole("button", { name: "Save panel" }));
     current = onDocumentChange.mock.calls.at(-1)![0];
+    expect(current.groups).toContainEqual(expect.objectContaining({ id: "components-box:panel:source-panel-design", memberIds: ["components-box:panel:source-panel-design:outline", "components-box:panel:source-panel-design:anchor"] }));
+    expect(current.objects).toHaveLength(2);
+    expect(current.objects.find(({ id }) => id.endsWith(":anchor"))?.construction).toBe(true);
     view.rerender(<ComponentsBoxPanel document={current} onDocumentChange={onDocumentChange} />);
     fireEvent.click(screen.getByRole("button", { name: "Add component" }));
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Custom circle" } });
@@ -34,11 +37,15 @@ describe("ComponentsBoxPanel", () => {
     current = onDocumentChange.mock.calls.at(-1)![0];
     view.rerender(<ComponentsBoxPanel document={current} onDocumentChange={onDocumentChange} />);
     fireEvent.click(screen.getByRole("button", { name: "Make box" }));
+    const beforeBox = structuredClone(current.enclosureWorkspace!.sourcePanel);
     fireEvent.click(screen.getByRole("button", { name: "Generate box" }));
     current = onDocumentChange.mock.calls.at(-1)![0];
+    expect(current.enclosureWorkspace?.sourcePanel).toEqual(beforeBox);
+    expect(current.enclosureWorkspace?.enclosure.result?.panels[0]).toMatchObject({ width: 160, height: 100 });
     expect(current.enclosureWorkspace?.enclosure.result?.panels).toHaveLength(6);
     expect(current.enclosureWorkspace?.enclosure.result?.panels.find((panel) => panel.id === "source-panel")?.paths).toHaveLength(2);
     expect(current.groups?.filter((group) => group.id.includes(":face:"))).toHaveLength(6);
+    expect(current.groups?.filter((group) => group.id.includes(":face:")).every((group) => group.memberIds.length >= 2)).toBe(true);
     view.rerender(<ComponentsBoxPanel document={current} onDocumentChange={onDocumentChange} />);
     fireEvent.click(screen.getByRole("button", { name: "Arrange sheets" }));
     current = onDocumentChange.mock.calls.at(-1)![0];
@@ -46,6 +53,40 @@ describe("ComponentsBoxPanel", () => {
     expect(boundaries.length).toBeGreaterThan(0);
     expect(boundaries.every((object) => object.construction === true)).toBe(true);
     expect(current.enclosureWorkspace?.sheetLayout?.placements).toHaveLength(6);
+    expect(current.enclosureWorkspace?.sheetLayout?.parts.some(({ id }) => id === "fit-coupon")).toBe(false);
+    expect(current.objects.some(({ id }) => id.includes(":coupon:"))).toBe(false);
+  });
+
+  it("includes and packs stable fit-coupon geometry only when requested", () => {
+    let current = document();
+    const onDocumentChange = vi.fn((next: Document) => { current = next; });
+    const view = render(<ComponentsBoxPanel document={current} onDocumentChange={onDocumentChange} />);
+    fireEvent.click(screen.getByRole("button", { name: "Create panel" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save panel" }));
+    current = onDocumentChange.mock.calls.at(-1)![0];
+    view.rerender(<ComponentsBoxPanel document={current} onDocumentChange={onDocumentChange} />);
+    fireEvent.click(screen.getByRole("button", { name: "Make box" }));
+    fireEvent.click(screen.getByText("Advanced"));
+    fireEvent.click(screen.getByLabelText("Include fit coupon"));
+    fireEvent.click(screen.getByRole("button", { name: "Generate box" }));
+    current = onDocumentChange.mock.calls.at(-1)![0];
+    expect(current.objects.filter(({ id }) => id.includes(":coupon:"))).toHaveLength(6);
+    view.rerender(<ComponentsBoxPanel document={current} onDocumentChange={onDocumentChange} />);
+    fireEvent.click(screen.getByRole("button", { name: "Arrange sheets" }));
+    current = onDocumentChange.mock.calls.at(-1)![0];
+    expect(current.enclosureWorkspace?.sheetLayout?.placements.some(({ partId }) => partId === "fit-coupon")).toBe(true);
+    expect(current.objects.filter(({ id }) => id.includes(":coupon:"))).toHaveLength(6);
+    expect(current.objects.find(({ id }) => id.endsWith(":coupon:1"))?.name).toBe("Fit slot 0.05 mm");
+  });
+
+  it("blocks invalid panel dimensions without dispatching", () => {
+    const onDocumentChange = vi.fn();
+    render(<ComponentsBoxPanel document={document()} onDocumentChange={onDocumentChange} />);
+    fireEvent.click(screen.getByRole("button", { name: "Create panel" }));
+    fireEvent.change(screen.getByLabelText("Panel width"), { target: { value: "0" } });
+    expect(screen.getByRole("button", { name: "Save panel" })).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent(/panel dimensions must be greater than zero/i);
+    expect(onDocumentChange).not.toHaveBeenCalled();
   });
 
   it("explicitly arranges faces and renders construction-only sheet boundaries", async () => {

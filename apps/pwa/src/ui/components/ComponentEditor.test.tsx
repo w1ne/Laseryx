@@ -20,4 +20,13 @@ describe("ComponentEditor", () => {
     ]);
     expect(screen.queryByText(/vendor|sku/i)).toBeNull();
   });
+
+  it("blocks invalid kind dimensions with a readable message", () => {
+    const onSave = vi.fn();
+    render(<ComponentEditor onSave={onSave} onCancel={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Diameter"), { target: { value: "0" } });
+    expect(screen.getByRole("button", { name: "Save component" })).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent(/diameter must be greater than zero/i);
+    expect(onSave).not.toHaveBeenCalled();
+  });
 });
