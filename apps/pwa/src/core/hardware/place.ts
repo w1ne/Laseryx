@@ -1,4 +1,7 @@
 import type { Point, PolylinePath } from "../model";
+import { expandComponent } from "../components/expand";
+import { getExampleComponentPresetBySku } from "../components/examples";
+import { createComponentInstance, type ComponentPreset } from "../components/types";
 import { getHardwareModule } from "./catalog";
 
 export type PlacedHardware = {
@@ -10,16 +13,6 @@ export type PlacedHardware = {
   paths: PolylinePath[];
 };
 
-const rectangle = (w: number, h: number): PolylinePath => ({ closed: true, points: [
-  { x: -w / 2, y: -h / 2 }, { x: w / 2, y: -h / 2 },
-  { x: w / 2, y: h / 2 }, { x: -w / 2, y: h / 2 }
-] });
-
-const circle = (diameter: number): PolylinePath => ({ closed: true, points: Array.from({ length: 32 }, (_, i) => {
-  const angle = (i / 32) * Math.PI * 2;
-  return { x: Math.cos(angle) * diameter / 2, y: Math.sin(angle) * diameter / 2 };
-}) });
-
 export function placeHardwareModule(sku: string, origin: Point, overrides: Record<string, number> = {}, id = `${sku}-${Date.now()}`):
   | { ok: true; part: PlacedHardware }
   | { ok: false; code: "UNKNOWN_SKU" | "MEASURE_REQUIRED" | "INTERNAL_ONLY"; message: string } {
@@ -30,10 +23,21 @@ export function placeHardwareModule(sku: string, origin: Point, overrides: Recor
   if (module.requiresMeasurement && !(parameters.buttonDiameter > 0 && parameters.buttonPitch > 0)) {
     return { ok: false, code: "MEASURE_REQUIRED", message: `${module.name}: enter button diameter and pitch measured with calipers.` };
   }
-  let paths: PolylinePath[];
-  if (module.geometry === "display") paths = [rectangle(parameters.cutoutWidth, parameters.cutoutHeight)];
-  else if (module.geometry === "round") paths = [circle(parameters.cutoutDiameter)];
-  else if (module.geometry === "slot") paths = [rectangle(parameters.travel, parameters.slotWidth)];
-  else paths = Array.from({ length: 4 }, (_, i) => ({ ...circle(parameters.buttonDiameter), points: circle(parameters.buttonDiameter).points.map((p) => ({ ...p, x: p.x + (i - 1.5) * parameters.buttonPitch })) }));
+  const example = getExampleComponentPresetBySku(sku);
+  let preset: ComponentPreset;
+  if (module.geometry === "button-row") {
+    preset = { id: `legacy-${sku}`, name: module.name, kind: "button-row", dimensions: {
+      count: 4, diameter: parameters.buttonDiameter, pitch: parameters.buttonPitch
+    } };
+  } else if (example?.kind === "circle") {
+    preset = { ...example, dimensions: { diameter: parameters.cutoutDiameter } };
+  } else if (example?.kind === "slot") {
+    preset = { ...example, dimensions: { length: parameters.travel, width: parameters.slotWidth } };
+  } else if (example?.kind === "rectangle") {
+    preset = { ...example, dimensions: { width: parameters.cutoutWidth, height: parameters.cutoutHeight } };
+  } else {
+    return { ok: false, code: "UNKNOWN_SKU", message: `No cutout preset for hardware SKU ${sku}` };
+  }
+  const paths = expandComponent(createComponentInstance(preset, id));
   return { ok: true, part: { id, sku, name: module.name, origin, parameters, paths } };
 }
