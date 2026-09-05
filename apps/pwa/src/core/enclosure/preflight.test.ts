@@ -37,4 +37,25 @@ describe("preflightEnclosure", () => {
     expect(preflightEnclosure({ workspace: arranged, warnings: ["Review grain direction before cutting."] }).ready).toBe(true);
     expect(preflightEnclosure({ workspace: { ...arranged, coupon: { selectedClearance: .1, confirmed: false } } }).ready).toBe(false);
   });
+
+  it("rejects forged layout parts and layouts that omit generated faces", () => {
+    const base: EnclosureWorkspace = { version: 1, presets: [], sourcePanel: { id: "source", name: "Panel", width: 100, height: 70, components: [], transform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 } }, enclosure: { id: "box", revision: 0, parameters: { frontHeight: 30, rearHeight: 40, thickness: 3, clearance: .1, fingerTarget: 8 } }, coupon: { confirmed: true } };
+    const generated = regenerateEnclosureWorkspace(base);
+    if (!generated.ok) throw new Error("fixture failed");
+    const forged = { sheetSize: { width: 500, height: 500 }, orientation: "landscape" as const, margin: 5, gap: 2, parts: [{ id: "fake", width: 1, height: 1 }], sheets: [{ id: "sheet-1", x: 0, y: 0, width: 500, height: 500 }], placements: [{ partId: "fake", sheetId: "sheet-1", x: 5, y: 5, rotation: 0 as const }], unplacedPartIds: [] };
+    const result = preflightEnclosure({ workspace: { ...generated.workspace, sheetLayout: forged } });
+    expect(result.ready).toBe(false);
+    expect(result.issues.map(({ code }) => code)).toContain("LAYOUT_PART_MISMATCH");
+  });
+
+  it("checks stock dimensions, bed dimensions, and thickness numerically without comparing profile ids", () => {
+    const base: EnclosureWorkspace = { version: 1, presets: [], sourcePanel: { id: "source", name: "Panel", width: 100, height: 70, components: [], transform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 } }, enclosure: { id: "box", revision: 0, parameters: { frontHeight: 30, rearHeight: 40, thickness: 3, clearance: .1, fingerTarget: 8 } }, coupon: { confirmed: true } };
+    const generated = regenerateEnclosureWorkspace(base);
+    if (!generated.ok) throw new Error("fixture failed");
+    const layout = packParts(generated.workspace.enclosure.result!.panels.map(({ id, width, height }) => ({ id, width, height })), { sheetSize: { width: 500, height: 500 } });
+    const workspace = { ...generated.workspace, sheetLayout: layout };
+    expect(preflightEnclosure({ workspace, stockProfile: { id: "birch", thickness: 3.0005, width: 500, height: 500 }, machineProfile: { id: "laser", bedMm: { w: 500, h: 500 } } }).ready).toBe(true);
+    const blocked = preflightEnclosure({ workspace, stockThickness: 4, stockWidth: 400, stockHeight: 400, machineProfile: { bedMm: { w: 450, h: 450 } } });
+    expect(blocked.issues.map(({ code }) => code)).toEqual(expect.arrayContaining(["STOCK_PROFILE_MISMATCH", "STOCK_SIZE_EXCEEDED", "MACHINE_BED_EXCEEDED"]));
+  });
 });

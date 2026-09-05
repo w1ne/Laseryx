@@ -4,6 +4,8 @@ import type { Document } from "../../core/model";
 import type { ComponentPreset } from "../../core/components/types";
 import { componentPresetRepo } from "../../io/componentPresetRepo";
 import { ComponentsBoxPanel } from "./ComponentsBoxPanel";
+import { regenerateEnclosureWorkspace, type EnclosureWorkspace } from "../../core/enclosure/workspace";
+import { packParts } from "../../core/layout/pack";
 
 vi.mock("../../io/componentPresetRepo", () => ({ componentPresetRepo: { list: vi.fn().mockResolvedValue([]), create: vi.fn(async (value) => value) } }));
 
@@ -153,5 +155,17 @@ describe("ComponentsBoxPanel", () => {
     expect(screen.getByRole("button", { name: "Arrange sheets" })).toBeDisabled();
     expect(screen.getByText(/make a box before arranging/i)).toBeTruthy();
     await waitFor(() => expect(screen.getByText("Example presets")).toBeTruthy());
+  });
+
+  it("shows generic preflight readiness only for a complete confirmed layout", () => {
+    const base: EnclosureWorkspace = { version: 1, presets: [], sourcePanel: { id: "panel", name: "Panel", width: 100, height: 70, components: [], transform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 } }, enclosure: { id: "box", revision: 0, parameters: { frontHeight: 30, rearHeight: 40, thickness: 3, clearance: .1, fingerTarget: 8 } }, coupon: { confirmed: false, selectedClearance: .1 } };
+    const generated = regenerateEnclosureWorkspace(base);
+    if (!generated.ok) throw new Error("fixture failed");
+    const view = render(<ComponentsBoxPanel document={{ ...document(), enclosureWorkspace: generated.workspace }} onWorkspaceChange={vi.fn()} />);
+    expect(screen.getByRole("status", { name: "Fabrication readiness" })).toHaveTextContent(/not ready/i);
+    const coupon = { id: "fit-coupon", width: 54, height: 23 };
+    const layout = packParts([...generated.workspace.enclosure.result!.panels.map(({ id, width, height }) => ({ id, width, height })), coupon], { sheetSize: { width: 500, height: 500 } });
+    view.rerender(<ComponentsBoxPanel document={{ ...document(), enclosureWorkspace: { ...generated.workspace, sheetLayout: layout, coupon: { ...generated.workspace.coupon, confirmed: true } } }} onWorkspaceChange={vi.fn()} />);
+    expect(screen.getByRole("status", { name: "Fabrication readiness" })).toHaveTextContent(/ready to cut/i);
   });
 });

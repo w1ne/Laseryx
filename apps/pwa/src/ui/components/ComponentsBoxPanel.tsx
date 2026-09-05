@@ -4,6 +4,7 @@ import { expandPanel } from "../../core/panel/expand";
 import type { PanelDesign } from "../../core/panel/types";
 import { addComponentInstance, createInstanceFromPreset, regenerateEnclosureWorkspace, type EnclosureWorkspace } from "../../core/enclosure/workspace";
 import { generateFitCoupon } from "../../core/enclosure/coupon";
+import { preflightEnclosure } from "../../core/enclosure/preflight";
 import { packParts } from "../../core/layout/pack";
 import { expandSheetBoundaries } from "../../core/layout/sheets";
 import type { Document, PathObj, Transform } from "../../core/model";
@@ -113,6 +114,7 @@ export function ComponentsBoxPanel({ document, onDocumentChange, onWorkspaceChan
     for (const preset of workspace?.presets ?? []) merged.set(preset.id, preset);
     return [...merged.values()].sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
   }, [repoPresets, workspace?.presets]);
+  const preflight = useMemo(() => workspace?.enclosure.result ? preflightEnclosure({ workspace }) : undefined, [workspace]);
   useEffect(() => { void componentPresetRepo.list().then(setRepoPresets).catch(() => setMessage("Saved components could not be loaded.")); }, []);
   const saveWorkspace = (next: EnclosureWorkspace, base = latestDocument.current) => {
     if (onWorkspaceChange) onWorkspaceChange(next);
@@ -176,6 +178,11 @@ export function ComponentsBoxPanel({ document, onDocumentChange, onWorkspaceChan
       {!workspace?.enclosure.result && <p className="components-box__hint">{workspace ? `${workspace.sourcePanel.name} · ${workspace.sourcePanel.width} × ${workspace.sourcePanel.height} mm · ${workspace.sourcePanel.components.length} component(s)` : "Create a panel to begin."}</p>}
       {!workspace?.enclosure.result && <p className="components-box__hint">Make a box before arranging sheets.</p>}
       {workspace?.enclosure.result && <p className="components-box__hint">Six faces · {workspace.sheetLayout ? `${workspace.sheetLayout.sheets.length} sheet(s)` : "ready to arrange"}</p>}
+      {preflight && <div role="status" aria-label="Fabrication readiness" className="components-box__message">
+        <strong>{preflight.ready ? "Ready to cut." : "Not ready to cut."}</strong>
+        {!preflight.ready && <span> {preflight.issues.map(({ message }) => message).join(" ")}</span>}
+      </div>}
+      {workspace?.coupon.selectedClearance !== undefined && !workspace.coupon.confirmed && <button type="button" onClick={() => saveWorkspace({ ...workspace, coupon: { ...workspace.coupon, confirmed: true } })}>Confirm fit coupon</button>}
       {editor === "component" && <ComponentEditor saving={savingComponent} onSave={saveComponent} onCancel={() => setEditor(null)} />}
       {editor === "panel" && <PanelForm initial={workspace?.sourcePanel} onSave={savePanel} onCancel={() => setEditor(null)} />}
       {editor === "box" && workspace && <BoxDialog panelHeight={workspace.sourcePanel.height} initial={{ ...workspace.enclosure.parameters, sheetWidth: workspace.packing?.sheetSize.width ?? 210, sheetHeight: workspace.packing?.sheetSize.height ?? 148, orientation: workspace.packing?.orientation ?? "landscape", margin: workspace.packing?.margin ?? 5, gap: workspace.packing?.gap ?? 2, includeCoupon: workspace.coupon.selectedClearance !== undefined }} onConfirm={makeBox} onCancel={() => setEditor(null)} />}
