@@ -95,6 +95,7 @@ const component = (value: unknown, instance: boolean) => record(value) && typeof
   && (!instance || (typeof value.presetId === "string" && transform(value.transform)));
 const unique = (values: readonly string[]) => new Set(values).size === values.length;
 const MAX_ITEMS = 1000, MAX_PATHS_PER_PANEL = 100, MAX_POINTS_PER_PATH = 10_000;
+const MAX_LAYOUT_COMPARISONS = 100_000;
 const sheetLayout = (value: unknown) => {
   if (value === undefined) return true;
   if (!record(value) || !record(value.sheetSize) || !finite(value.sheetSize.width) || value.sheetSize.width <= 0
@@ -124,12 +125,23 @@ const sheetLayout = (value: unknown) => {
     return { partId: p.partId as string, sheetId: p.sheetId as string, x: p.x as number, y: p.y as number, width, height, sheet };
   });
   if (boxes.some((box) => box.x < value.margin || box.y < value.margin || box.x + box.width > (box.sheet.width as number) - value.margin || box.y + box.height > (box.sheet.height as number) - value.margin)) return false;
-  return boxes.every((box, index) => boxes.slice(index + 1).every((other) => box.sheetId !== other.sheetId
-    || box.x + box.width + value.gap <= other.x || other.x + other.width + value.gap <= box.x
-    || box.y + box.height + value.gap <= other.y || other.y + other.height + value.gap <= box.y));
+  boxes.sort((a, b) => a.sheetId.localeCompare(b.sheetId) || a.x - b.x || a.y - b.y || a.partId.localeCompare(b.partId));
+  let active: typeof boxes = [], activeSheet = "", comparisons = 0;
+  for (const box of boxes) {
+    if (box.sheetId !== activeSheet) { active = []; activeSheet = box.sheetId; }
+    for (let index = active.length - 1; index >= 0; index -= 1) if (active[index].x + active[index].width + value.gap <= box.x) active.splice(index, 1);
+    for (const other of active) {
+      comparisons += 1;
+      if (comparisons > MAX_LAYOUT_COMPARISONS) return false;
+      if (!(other.y + other.height + value.gap <= box.y || box.y + box.height + value.gap <= other.y)) return false;
+    }
+    active.push(box);
+  }
+  return true;
 };
 const parameters = (value: unknown) => record(value)
-  && ["frontHeight", "rearHeight", "thickness", "clearance", "fingerTarget"].every((key) => finite(value[key]));
+  && ["frontHeight", "rearHeight", "thickness", "fingerTarget"].every((key) => finite(value[key]) && (value[key] as number) > 0)
+  && finite(value.clearance) && value.clearance >= 0;
 const PANEL_IDS = ["source-panel", "rear", "left", "right", "base", "service-panel"] as const;
 const point = (value: unknown) => record(value) && finite(value.x) && finite(value.y);
 const path = (value: unknown) => record(value) && value.closed === true && Array.isArray(value.points) && value.points.length >= 3 && value.points.length <= MAX_POINTS_PER_PATH && value.points.every(point);
@@ -154,16 +166,26 @@ const generatedResult = (value: unknown) => {
   const jointIds = value.joints.map((item) => (item as Record<string, unknown>).id as string);
   if (!unique(ids) || !PANEL_IDS.every((id) => ids.includes(id)) || !unique(jointIds)) return false;
   const joints = value.joints as Record<string, unknown>[], byId = new Map(joints.map((item) => [item.id as string, item]));
-  if (!joints.every((item) => { const mate = byId.get(item.mateId as string); return mate && mate.mateId === item.id && mate.pairId === item.pairId && mate.panelId !== item.panelId; })) return false;
-  const pairCounts = new Map<string, number>();
-  for (const item of joints) pairCounts.set(item.pairId as string, (pairCounts.get(item.pairId as string) ?? 0) + 1);
+  const pairCounts = new Map<string, number>(), idsByPanel = new Map<string, Set<string>>(PANEL_IDS.map((id) => [id, new Set()]));
+  for (const item of joints) {
+    const mate = byId.get(item.mateId as string);
+    if (!mate || mate.mateId !== item.id || mate.pairId !== item.pairId || mate.panelId === item.panelId) return false;
+    pairCounts.set(item.pairId as string, (pairCounts.get(item.pairId as string) ?? 0) + 1);
+    idsByPanel.get(item.panelId as string)!.add(item.id as string);
+  }
   if ([...pairCounts.values()].some((count) => count !== 2)) return false;
-  return (value.panels as Record<string, unknown>[]).every((item) => {
+  for (const item of value.panels as Record<string, unknown>[]) {
     const panelJoints = item.joints as Record<string, unknown>[];
-    const expected = joints.filter(({ panelId }) => panelId === item.id);
-    return panelJoints.length === expected.length && panelJoints.every((entry) => { const canonical = byId.get(entry.id as string); return canonical !== undefined && entry.panelId === item.id && sameJoint(entry, canonical); })
-      && unique(panelJoints.map(({ id }) => id as string)) && expected.every(({ id }) => panelJoints.some((entry) => entry.id === id));
-  });
+    const expectedIds = idsByPanel.get(item.id as string)!;
+    if (panelJoints.length !== expectedIds.size) return false;
+    const seen = new Set<string>();
+    for (const entry of panelJoints) {
+      const id = entry.id as string, canonical = byId.get(id);
+      if (seen.has(id) || !expectedIds.has(id) || canonical === undefined || entry.panelId !== item.id || !sameJoint(entry, canonical)) return false;
+      seen.add(id);
+    }
+  }
+  return true;
 };
 
 /** Reject unknown versions and malformed records; callers may omit them as an explicit migration policy. */

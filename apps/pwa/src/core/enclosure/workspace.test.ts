@@ -118,4 +118,34 @@ describe("enclosure workspace", () => {
     inconsistentPanel.enclosure.result!.panels[0].joints = [];
     expect(sanitizeEnclosureWorkspace(inconsistentPanel)).toBeUndefined();
   });
+
+  it("matches generator parameter sign rules exactly", () => {
+    const base: EnclosureWorkspace = { version: 1, presets: [], sourcePanel: panel(), enclosure: { id: "box", revision: 0, parameters: { ...parameters, clearance: 0 } }, coupon: { confirmed: false } };
+    expect(sanitizeEnclosureWorkspace(base)).toBeDefined();
+    for (const field of ["frontHeight", "rearHeight", "thickness", "fingerTarget"] as const) {
+      for (const invalid of [0, -1]) expect(sanitizeEnclosureWorkspace({ ...base, enclosure: { ...base.enclosure, parameters: { ...base.enclosure.parameters, [field]: invalid } } })).toBeUndefined();
+    }
+    expect(sanitizeEnclosureWorkspace({ ...base, enclosure: { ...base.enclosure, parameters: { ...base.enclosure.parameters, clearance: -0.01 } } })).toBeUndefined();
+
+    const generated = regenerateEnclosureWorkspace(base);
+    expect(generated.ok).toBe(true);
+    if (!generated.ok) return;
+    for (const field of ["width", "depth", "frontHeight", "rearHeight", "thickness", "fingerTarget"] as const) {
+      for (const invalid of [0, -1]) {
+        const value = structuredClone(generated.workspace);
+        value.enclosure.result!.input[field] = invalid;
+        expect(sanitizeEnclosureWorkspace(value)).toBeUndefined();
+      }
+    }
+    const badClearance = structuredClone(generated.workspace);
+    badClearance.enclosure.result!.input.clearance = -0.01;
+    expect(sanitizeEnclosureWorkspace(badClearance)).toBeUndefined();
+  });
+
+  it("accepts hundreds of sparse placements through bounded validation", () => {
+    const parts = Array.from({ length: 500 }, (_, index) => ({ id: `part-${index}`, width: 1, height: 1 }));
+    const layout = { sheetSize: { width: 2000, height: 20 }, orientation: "landscape" as const, margin: 0, gap: 1, parts, sheets: [{ id: "sheet", x: 0, y: 0, width: 2000, height: 20 }], placements: parts.map((part, index) => ({ partId: part.id, sheetId: "sheet", x: index * 3, y: 0, rotation: 0 as const })), unplacedPartIds: [] };
+    const workspace: EnclosureWorkspace = { version: 1, presets: [], sourcePanel: panel(), enclosure: { id: "box", revision: 0, parameters }, coupon: { confirmed: false }, sheetLayout: layout };
+    expect(sanitizeEnclosureWorkspace(workspace)?.sheetLayout?.placements).toHaveLength(500);
+  });
 });
