@@ -6,6 +6,23 @@ import { generateFitCoupon } from "../../core/enclosure/coupon";
 export type BoxSettings = EnclosureParameters & { depth: number; sheetWidth: number; sheetHeight: number; orientation: "landscape" | "portrait"; margin: number; gap: number; includeCoupon: boolean };
 export type BoxDialogProps = { panelHeight: number; panelWidth?: number; initial?: Partial<BoxSettings>; onConfirm: (settings: BoxSettings) => void; onCancel: () => void };
 
+function candidateParts(value: BoxSettings, panelWidth: number, panelHeight: number) {
+  const parts = [{ id: "source", name: "Source panel", width: panelWidth, height: panelHeight }, { id: "rear", name: "Rear panel", width: panelWidth, height: value.rearHeight }, { id: "left", name: "Left side", width: value.depth, height: Math.max(value.frontHeight, value.rearHeight) }, { id: "right", name: "Right side", width: value.depth, height: Math.max(value.frontHeight, value.rearHeight) }, { id: "base", name: "Base", width: panelWidth, height: value.depth }, { id: "service", name: "Service panel", width: panelWidth, height: value.frontHeight }];
+  if (value.includeCoupon) { const coupon = generateFitCoupon(value); parts.push({ id: coupon.id, name: "Fit coupon", ...coupon.bounds }); }
+  return parts;
+}
+
+export function boxPackingIssue(value: BoxSettings, panelWidth: number, panelHeight: number): { message: string } | undefined {
+  try {
+    const parts = candidateParts(value, panelWidth, panelHeight);
+    const layout = packParts(parts, { sheetSize: { width: value.sheetWidth, height: value.sheetHeight }, orientation: value.orientation, margin: value.margin, gap: value.gap });
+    const unplaced = new Set(layout.unplacedPartIds);
+    const first = parts.find(({ id }) => unplaced.has(id))?.id;
+    if (!first) return undefined;
+    return { message: `${parts.find(({ id }) => id === first)?.name ?? first} cannot fit the selected ${value.sheetWidth} × ${value.sheetHeight} mm sheet in either orientation with a ${value.margin} mm margin.` };
+  } catch { return undefined; }
+}
+
 export function BoxDialog({ panelHeight, panelWidth = 160, initial, onConfirm, onCancel }: BoxDialogProps) {
   const initialFront = initial?.frontHeight ?? 35, initialRear = initial?.rearHeight ?? 65;
   const initialDepth = Math.sqrt(Math.max(0, panelHeight ** 2 - (initialRear - initialFront) ** 2));
@@ -17,10 +34,10 @@ export function BoxDialog({ panelHeight, panelWidth = 160, initial, onConfirm, o
   if (delta >= panelHeight) error = "Height difference must be less than the panel height.";
   else if (!numeric.every((number) => Number.isFinite(number) && number > 0) || !Number.isFinite(value.clearance) || value.clearance < 0 || !Number.isFinite(value.margin) || value.margin < 0 || !Number.isFinite(value.gap) || value.gap < 0) error = "Box dimensions must be finite; sizes must be positive and clearance, margin, and gap cannot be negative.";
   else if (Math.abs(requiredPanel - panelHeight) > .01) error = `Depth and heights require a ${requiredPanel.toFixed(2)} mm panel; adjust values or panel size.`;
-  const parts = [{ id: "source", width: panelWidth, height: panelHeight }, { id: "rear", width: panelWidth, height: value.rearHeight }, { id: "left", width: value.depth, height: Math.max(value.frontHeight, value.rearHeight) }, { id: "right", width: value.depth, height: Math.max(value.frontHeight, value.rearHeight) }, { id: "base", width: panelWidth, height: value.depth }, { id: "service", width: panelWidth, height: value.frontHeight }];
-  if (value.includeCoupon) { const coupon = generateFitCoupon(value); parts.push({ id: coupon.id, ...coupon.bounds }); }
+  const parts = candidateParts(value, panelWidth, panelHeight);
   let estimatedSheets: number | undefined;
   try { estimatedSheets = packParts(parts, { sheetSize: { width: value.sheetWidth, height: value.sheetHeight }, orientation: value.orientation, margin: value.margin, gap: value.gap }).sheets.length; } catch { /* validation message covers invalid inputs */ }
+  if (!error) error = boxPackingIssue(value, panelWidth, panelHeight)?.message ?? "";
   const field = (key: keyof BoxSettings, label: string, step = 1) => <label>{label}<input aria-label={label} type="number" min="0" step={step} value={value[key] as number} onChange={(event) => setValue({ ...value, [key]: Number(event.target.value) })} /></label>;
   return <div className="components-box__editor" role="dialog" aria-label="Make box">
     <div className="components-box__grid">{field("depth", "Depth", .1)}{field("frontHeight", "Front height")}{field("rearHeight", "Rear height")}</div>
@@ -31,7 +48,7 @@ export function BoxDialog({ panelHeight, panelWidth = 160, initial, onConfirm, o
       <label className="components-box__check"><input type="checkbox" checked={value.includeCoupon} onChange={(event) => setValue({ ...value, includeCoupon: event.target.checked })} /> Include fit coupon</label>
     </div></details>
     {error && <p role="alert" className="components-box__error">{error}</p>}
-    {estimatedSheets !== undefined && <p className="components-box__hint">Estimated A5 sheets: {estimatedSheets}</p>}
+    {estimatedSheets !== undefined && <p className="components-box__hint">Estimated {value.sheetWidth} × {value.sheetHeight} mm sheets: {estimatedSheets}</p>}
     <div className="components-box__editor-actions"><button type="button" disabled={!!error} onClick={() => onConfirm(value)}>Generate box</button><button type="button" onClick={onCancel}>Cancel</button></div>
   </div>;
 }

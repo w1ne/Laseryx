@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { BoxDialog } from "./BoxDialog";
+import { BoxDialog, boxPackingIssue } from "./BoxDialog";
 
 describe("BoxDialog", () => {
   it("keeps fabrication settings under one collapsed Advanced section", () => {
@@ -14,7 +14,7 @@ describe("BoxDialog", () => {
     expect(screen.getByLabelText("Fit clearance")).toHaveValue(0.15);
     expect(screen.getByLabelText("Finger target")).toHaveValue(8);
     expect(screen.getByLabelText("Depth")).toHaveValue(95.394);
-    expect(screen.getByText(/Estimated A5 sheets:/)).toBeTruthy();
+    expect(screen.getByText(/Estimated 210 × 148 mm sheets:/)).toBeTruthy();
   });
 
   it("allows depth edits but blocks geometry that requires a different panel", () => {
@@ -40,5 +40,22 @@ describe("BoxDialog", () => {
     expect(screen.getByLabelText("Sheet width")).toHaveValue(300);
     expect(screen.getByLabelText("Sheet orientation")).toHaveValue("portrait");
     expect(screen.getByLabelText("Include fit coupon")).toBeChecked();
+  });
+
+  it("blocks a face that cannot fit the selected stock in either orientation", () => {
+    render(<BoxDialog panelWidth={205} panelHeight={100} onConfirm={vi.fn()} onCancel={vi.fn()} />);
+    expect(screen.getByRole("alert")).toHaveTextContent(/Source panel cannot fit the selected 210 × 148 mm sheet/i);
+    expect(screen.getByRole("button", { name: "Generate box" })).toBeDisabled();
+  });
+
+  it("accepts rotation-fit faces and labels estimates with custom stock dimensions", () => {
+    render(<BoxDialog panelWidth={130} panelHeight={100} initial={{ sheetWidth: 180, sheetHeight: 148 }} onConfirm={vi.fn()} onCancel={vi.fn()} />);
+    expect(screen.queryByText(/cannot fit/i)).toBeNull();
+    expect(screen.getByText(/Estimated 180 × 148 mm sheets:/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Generate box" })).toBeEnabled();
+  });
+
+  it("exposes the same defensive packing issue used by box generation", () => {
+    expect(boxPackingIssue({ depth: 95.394, frontHeight: 35, rearHeight: 65, thickness: 3, clearance: .15, fingerTarget: 8, sheetWidth: 210, sheetHeight: 148, orientation: "landscape", margin: 5, gap: 3, includeCoupon: false }, 205, 100)?.message).toMatch(/Source panel cannot fit/i);
   });
 });

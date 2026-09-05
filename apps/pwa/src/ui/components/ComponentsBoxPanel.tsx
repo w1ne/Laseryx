@@ -11,7 +11,7 @@ import { packParts } from "../../core/layout/pack";
 import type { Document, MachineProfile, Transform } from "../../core/model";
 import { renderEnclosureWorkspace } from "../../core/enclosure/render";
 import { componentPresetRepo } from "../../io/componentPresetRepo";
-import { BoxDialog, type BoxSettings } from "./BoxDialog";
+import { BoxDialog, boxPackingIssue, type BoxSettings } from "./BoxDialog";
 import { ComponentEditor } from "./ComponentEditor";
 
 export type ComponentsBoxPanelProps = {
@@ -70,6 +70,8 @@ export function ComponentsBoxPanel({ document, onDocumentChange, onWorkspaceChan
   };
   const makeBox = (settings: BoxSettings) => {
     if (!workspace) return;
+    const packingIssue = boxPackingIssue(settings, workspace.sourcePanel.width, workspace.sourcePanel.height);
+    if (packingIssue) { setMessage(packingIssue.message); return; }
     const candidate = { ...workspace, enclosure: { ...workspace.enclosure, parameters: { frontHeight: settings.frontHeight, rearHeight: settings.rearHeight, thickness: settings.thickness, clearance: settings.clearance, fingerTarget: settings.fingerTarget } }, coupon: { confirmed: false, ...(settings.includeCoupon ? { selectedClearance: settings.clearance } : {}) }, packing: { sheetSize: { width: settings.sheetWidth, height: settings.sheetHeight }, orientation: settings.orientation, margin: settings.margin, gap: settings.gap } };
     const result = regenerateEnclosureWorkspace(candidate);
     if (!result.ok) { setMessage(result.issues.map(({ message }) => message).join(" ")); return; }
