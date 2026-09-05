@@ -120,4 +120,21 @@ describe("enclosure generation", () => {
     source.components = [{ id: "inset", presetId: "inset", name: "Inset cutout", kind: "rectangle", dimensions: { width: 4, height: 8 }, transform: { ...identity, e: 6, f: 30 } }];
     expect(generateEnclosure(source, { frontHeight: 35, rearHeight: 65, thickness: 3, clearance: 0.2, fingerTarget: 8 }).ok).toBe(true);
   });
+
+  it.each([
+    ["left", { e: 5, f: 30 }],
+    ["right", { e: 155, f: 30 }],
+    ["top", { e: 80, f: 7 }],
+    ["bottom", { e: 80, f: 93 }]
+  ])("rejects a cutout exactly touching the %s joint recess floor", (_edge, position) => {
+    const source = sourcePanel();
+    source.components = [{ id: "contact", presetId: "contact", name: "Contact cutout", kind: "rectangle", dimensions: { width: 4, height: 8 }, transform: { ...identity, ...position } }];
+    expect(generateEnclosure(source, { frontHeight: 35, rearHeight: 65, thickness: 3, clearance: 0.2, fingerTarget: 8 })).toMatchObject({ ok: false, issues: [{ code: "cutout-joint-collision", componentIds: ["contact"] }] });
+  });
+
+  it("accepts a cutout inset beyond the joint-contact tolerance", () => {
+    const source = sourcePanel();
+    source.components = [{ id: "clear", presetId: "clear", name: "Clear cutout", kind: "rectangle", dimensions: { width: 4, height: 8 }, transform: { ...identity, e: 5.000001, f: 30 } }];
+    expect(generateEnclosure(source, { frontHeight: 35, rearHeight: 65, thickness: 3, clearance: 0.2, fingerTarget: 8 }).ok).toBe(true);
+  });
 });

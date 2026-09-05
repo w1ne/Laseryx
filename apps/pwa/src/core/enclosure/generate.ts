@@ -6,6 +6,8 @@ import { createMatingJointPair, chooseJointSegmentCount, fingerJointPolygon, has
 import type { EdgeJoint, EnclosureGenerationResult, EnclosureInput, EnclosurePanel, EnclosurePanelId, EnclosureParameters, GeneratedEnclosure } from "./types";
 
 const identity: Transform = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+/** Millimetre tolerance used to classify contour contact as an intersection. */
+const GEOMETRY_TOLERANCE = 1e-9;
 export function chooseOddFingerCount(length: number, targetWidth: number): number {
   return Math.max(3, chooseJointSegmentCount(length, Math.max(targetWidth, 0.1)));
 }
@@ -61,8 +63,10 @@ function generateFromPanel(source: PanelDesign, parameters: EnclosureParameters)
   }
   const jointZoneCollisions = expanded.cutouts.filter(({ path }) => {
     const xs = path.points.map(({ x }) => x), ys = path.points.map(({ y }) => y);
-    return Math.min(...xs) < parameters.thickness || Math.max(...xs) > source.width - parameters.thickness
-      || Math.min(...ys) < parameters.thickness || Math.max(...ys) > source.height - parameters.thickness;
+    return Math.min(...xs) <= parameters.thickness + GEOMETRY_TOLERANCE
+      || Math.max(...xs) >= source.width - parameters.thickness - GEOMETRY_TOLERANCE
+      || Math.min(...ys) <= parameters.thickness + GEOMETRY_TOLERANCE
+      || Math.max(...ys) >= source.height - parameters.thickness - GEOMETRY_TOLERANCE;
   });
   if (jointZoneCollisions.length) return {
     ok: false,
