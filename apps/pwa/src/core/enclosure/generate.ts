@@ -1,7 +1,7 @@
 import type { Point, Transform } from "../model";
 import { expandPanel } from "../panel/expand";
 import type { PanelDesign } from "../panel/types";
-import { createMatingJointPair, chooseJointSegmentCount, fingerJointPolygon } from "./joints";
+import { createMatingJointPair, chooseJointSegmentCount, fingerJointPolygon, hasSelfIntersection } from "./joints";
 import type { EdgeJoint, EnclosureGenerationResult, EnclosureInput, EnclosurePanel, EnclosurePanelId, EnclosureParameters, GeneratedEnclosure } from "./types";
 
 const identity: Transform = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
@@ -37,13 +37,18 @@ function generateFromPanel(source: PanelDesign, parameters: EnclosureParameters)
     if (!pair.ok) issues.push(pair.issue); else joints.push(...pair.joints);
   }
   if (issues.length) return { ok: false, issues };
+  const minimumFaceSpan = Math.min(source.width, source.height, depth, parameters.frontHeight, parameters.rearHeight);
+  const minimumFingerWidth = Math.min(...joints.map((joint) => joint.nominalLength / joint.segmentCount));
+  if (8 * parameters.thickness >= minimumFaceSpan || parameters.clearance >= minimumFingerWidth) {
+    return { ok: false, issues: [{ code: "joint-geometry-infeasible", message: "Stock thickness or clearance is too large for a simple finger-jointed outline" }] };
+  }
   const expanded = expandPanel(source);
   const byPanel = (id: EnclosurePanelId) => joints.filter((joint) => joint.panelId === id);
   const makePanel = (id: EnclosurePanelId, name: string, width: number, height: number, vertices: Point[], transform: Transform, removable = false, cutouts = expanded.cutouts.map(({ path }) => path)): EnclosurePanel => {
     const panelJoints = byPanel(id);
     const order = ["top", "right", "bottom", "left"];
     const ordered = order.map((edge) => panelJoints.find((joint) => joint.edge === edge)!);
-    return { id, name, width, height, transform: { ...transform }, removable, joints: panelJoints, paths: [fingerJointPolygon(vertices, ordered.map((joint) => joint.segmentCount), parameters.thickness, ordered.map((joint) => joint.phase)), ...cutouts], fingerCount: ordered[0].segmentCount, edgePattern: { horizontal: ordered[0].segmentCount, vertical: ordered[1].segmentCount, phase: ordered[0].phase } };
+    return { id, name, width, height, transform: { ...transform }, removable, joints: panelJoints, paths: [fingerJointPolygon(vertices, ordered.map((joint) => joint.segmentCount), parameters.thickness, ordered.map((joint) => joint.phase), ordered.map((joint) => joint.matingOffset)), ...cutouts], fingerCount: ordered[0].segmentCount, edgePattern: { horizontal: ordered[0].segmentCount, vertical: ordered[1].segmentCount, phase: ordered[0].phase } };
   };
   const rect = (w: number, h: number): Point[] => [{ x: 0, y: 0 }, { x: w, y: 0 }, { x: w, y: h }, { x: 0, y: h }];
   const sideHeight = Math.max(parameters.frontHeight, parameters.rearHeight);
@@ -56,6 +61,9 @@ function generateFromPanel(source: PanelDesign, parameters: EnclosureParameters)
     makePanel("base", "Base", source.width, depth, rect(source.width, depth), identity, false, []),
     makePanel("service-panel", "Service panel", source.width, parameters.frontHeight, rect(source.width, parameters.frontHeight), identity, true, [])
   ];
+  if (panels.some(({ paths }) => hasSelfIntersection(paths[0]))) {
+    return { ok: false, issues: [{ code: "joint-geometry-infeasible", message: "Finger joints create a self-intersecting face outline" }] };
+  }
   const input: EnclosureInput = { width: source.width, depth, ...parameters };
   return { ok: true, issues: [], enclosure: { input, slopeDegrees: Math.atan2(delta, depth) * 180 / Math.PI, panels, joints } };
 }

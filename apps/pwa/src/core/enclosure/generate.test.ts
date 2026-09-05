@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createComponentInstance, type ComponentPreset } from "../components/types";
 import type { PanelDesign } from "../panel/types";
 import { chooseOddFingerCount, generateEnclosure } from "./generate";
+import { hasSelfIntersection } from "./joints";
 
 const identity = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
 
@@ -63,5 +64,38 @@ describe("enclosure generation", () => {
   it.each([["frontHeight", 0], ["rearHeight", Number.NaN], ["thickness", -1], ["clearance", -0.1], ["fingerTarget", 0]])("validates %s", (key, value) => {
     const result = generateEnclosure(sourcePanel(), { frontHeight: 35, rearHeight: 65, thickness: 3, clearance: 0.15, fingerTarget: 8, [key]: value });
     expect(result.ok).toBe(false);
+  });
+
+  it("applies clearance to mating paths while preserving paired topology and nominal dimensions", () => {
+    const parameters = { frontHeight: 35, rearHeight: 65, thickness: 3, fingerTarget: 8 };
+    const exact = generateEnclosure(sourcePanel(), { ...parameters, clearance: 0 });
+    const cleared = generateEnclosure(sourcePanel(), { ...parameters, clearance: 0.2 });
+    expect(exact.ok && cleared.ok).toBe(true);
+    if (!exact.ok || !cleared.ok) return;
+    expect(cleared.enclosure.panels.map(({ width, height }) => ({ width, height }))).toEqual(exact.enclosure.panels.map(({ width, height }) => ({ width, height })));
+    expect(cleared.enclosure.panels[0].paths[0].points).not.toEqual(exact.enclosure.panels[0].paths[0].points);
+    for (const pairId of new Set(cleared.enclosure.joints.map(({ pairId }) => pairId))) {
+      const pair = cleared.enclosure.joints.filter((joint) => joint.pairId === pairId);
+      expect(pair[0].nominalLength).toBe(pair[1].nominalLength);
+      expect(pair[0].segmentCount).toBe(pair[1].segmentCount);
+    }
+  });
+
+  it("rejects thickness that can make a face outline self-intersect", () => {
+    const source = { ...sourcePanel(), width: 40, height: 30, components: [] };
+    expect(generateEnclosure(source, { frontHeight: 30, rearHeight: 30, thickness: 20, clearance: 0, fingerTarget: 5 })).toMatchObject({ ok: false, issues: [{ code: "joint-geometry-infeasible" }] });
+  });
+
+  it("accepts thickness strictly below the conservative eighth-span boundary", () => {
+    const source = { ...sourcePanel(), width: 40, height: 30, components: [] };
+    expect(generateEnclosure(source, { frontHeight: 30, rearHeight: 30, thickness: 3.7, clearance: 0, fingerTarget: 5 }).ok).toBe(true);
+    expect(generateEnclosure(source, { frontHeight: 30, rearHeight: 30, thickness: 3.75, clearance: 0, fingerTarget: 5 })).toMatchObject({ ok: false, issues: [{ code: "joint-geometry-infeasible" }] });
+  });
+
+  it("emits only simple closed outlines for accepted geometry", () => {
+    const result = generateEnclosure(sourcePanel(), { frontHeight: 35, rearHeight: 65, thickness: 3, clearance: 0.2, fingerTarget: 8 });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.enclosure.panels.every(({ paths }) => paths[0].closed && !hasSelfIntersection(paths[0]))).toBe(true);
   });
 });
