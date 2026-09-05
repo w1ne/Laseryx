@@ -1,6 +1,7 @@
 import type { Point, Transform } from "../model";
 import { expandPanel } from "../panel/expand";
 import type { PanelDesign } from "../panel/types";
+import { validatePanel } from "../panel/validate";
 import { createMatingJointPair, chooseJointSegmentCount, fingerJointPolygon, hasSelfIntersection } from "./joints";
 import type { EdgeJoint, EnclosureGenerationResult, EnclosureInput, EnclosurePanel, EnclosurePanelId, EnclosureParameters, GeneratedEnclosure } from "./types";
 
@@ -29,6 +30,16 @@ function validate(source: PanelDesign, parameters: EnclosureParameters) {
 function generateFromPanel(source: PanelDesign, parameters: EnclosureParameters): EnclosureGenerationResult {
   const issues = validate(source, parameters);
   if (issues.length) return { ok: false, issues };
+  const sourceIssues = validatePanel(source);
+  if (sourceIssues.length) return {
+    ok: false,
+    issues: sourceIssues.map((issue) => ({
+      code: "source-panel-invalid",
+      causeCode: issue.code,
+      componentIds: issue.componentIds,
+      message: issue.message
+    }))
+  };
   const delta = parameters.rearHeight - parameters.frontHeight;
   const depth = Math.sqrt(source.height ** 2 - delta ** 2);
   const joints: EdgeJoint[] = [];
@@ -42,7 +53,25 @@ function generateFromPanel(source: PanelDesign, parameters: EnclosureParameters)
   if (8 * parameters.thickness >= minimumFaceSpan || parameters.clearance >= minimumFingerWidth) {
     return { ok: false, issues: [{ code: "joint-geometry-infeasible", message: "Stock thickness or clearance is too large for a simple finger-jointed outline" }] };
   }
-  const expanded = expandPanel(source);
+  let expanded: ReturnType<typeof expandPanel>;
+  try {
+    expanded = expandPanel(source);
+  } catch (error) {
+    return { ok: false, issues: [{ code: "source-panel-invalid", message: error instanceof Error ? error.message : "Source panel expansion failed" }] };
+  }
+  const jointZoneCollisions = expanded.cutouts.filter(({ path }) => {
+    const xs = path.points.map(({ x }) => x), ys = path.points.map(({ y }) => y);
+    return Math.min(...xs) < parameters.thickness || Math.max(...xs) > source.width - parameters.thickness
+      || Math.min(...ys) < parameters.thickness || Math.max(...ys) > source.height - parameters.thickness;
+  });
+  if (jointZoneCollisions.length) return {
+    ok: false,
+    issues: jointZoneCollisions.map(({ componentId, componentName }) => ({
+      code: "cutout-joint-collision",
+      componentIds: [componentId],
+      message: `${componentName} intersects the source panel finger-joint recess zone`
+    }))
+  };
   const byPanel = (id: EnclosurePanelId) => joints.filter((joint) => joint.panelId === id);
   const makePanel = (id: EnclosurePanelId, name: string, width: number, height: number, vertices: Point[], transform: Transform, removable = false, cutouts = expanded.cutouts.map(({ path }) => path)): EnclosurePanel => {
     const panelJoints = byPanel(id);

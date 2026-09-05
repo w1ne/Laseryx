@@ -15,7 +15,10 @@ export function createMatingJointPair(firstId: string, secondId: string, nominal
     const split = id.lastIndexOf("-");
     return { id, pairId, panelId: id.slice(0, split) as EdgeJoint["panelId"], edge: id.slice(split + 1) as EdgeJoint["edge"], mateId, nominalLength, segmentCount, phase, depth, matingOffset };
   };
-  return { ok: true, joints: [make(firstId, secondId, 0, clearance / 2), make(secondId, firstId, 1, -clearance / 2)] };
+  // Expanding every recess by clearance / 2 leaves each intervening tab
+  // clearance / 2 narrower, for one total clearance between slot and tab.
+  const matingOffset = -clearance / 4;
+  return { ok: true, joints: [make(firstId, secondId, 0, matingOffset), make(secondId, firstId, 1, matingOffset)] };
 }
 
 function jointedEdge(start: Point, end: Point, count: number, depth: number, phase: 0 | 1, matingOffset = 0): Point[] {

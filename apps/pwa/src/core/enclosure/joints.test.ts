@@ -13,8 +13,8 @@ describe("enclosure edge joints", () => {
     expect(a.phase).not.toBe(b.phase);
     expect(a.depth).toBe(3);
     expect(b.depth).toBe(3);
-    expect(a.matingOffset).toBeCloseTo(0.075);
-    expect(b.matingOffset).toBeCloseTo(-0.075);
+    expect(a.matingOffset).toBeCloseTo(-0.0375);
+    expect(b.matingOffset).toBeCloseTo(-0.0375);
   });
 
   it("returns a structured failure for an edge shorter than three target fingers", () => {
@@ -50,5 +50,25 @@ describe("enclosure edge joints", () => {
 
   it("detects a self-intersecting closed path", () => {
     expect(hasSelfIntersection({ closed: true, points: [{ x: 0, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }, { x: 10, y: 0 }] })).toBe(true);
+  });
+
+  it("makes receiving recesses wider than corresponding material tabs by total clearance", () => {
+    const measure = (clearance: number) => {
+      const pair = createMatingJointPair("source-panel-top", "rear-top", 70, 3, clearance, 10);
+      if (!pair.ok) throw new Error(pair.issue.message);
+      const [slotJoint, tabJoint] = pair.joints;
+      const slotFace = fingerJointOutline(70, 30, { top: 7, right: 7, bottom: 7, left: 7 }, 3, slotJoint.phase, { top: slotJoint.matingOffset, right: 0, bottom: 0, left: 0 });
+      const tabFace = fingerJointOutline(70, 30, { top: 7, right: 7, bottom: 7, left: 7 }, 3, tabJoint.phase, { top: tabJoint.matingOffset, right: 0, bottom: 0, left: 0 });
+      const horizontalRecesses = (points: typeof slotFace.points) => points.slice(1).flatMap((point, index) => {
+        const previous = points[index];
+        return previous.y === 3 && point.y === 3 ? [{ start: previous.x, end: point.x }] : [];
+      });
+      const slots = horizontalRecesses(slotFace.points);
+      const mateRecesses = horizontalRecesses(tabFace.points);
+      return { slot: slots[0].end - slots[0].start, tab: mateRecesses[1].start - mateRecesses[0].end };
+    };
+    expect(measure(0).slot).toBeCloseTo(measure(0).tab);
+    const loose = measure(0.2);
+    expect(loose.slot - loose.tab).toBeCloseTo(0.2);
   });
 });

@@ -98,4 +98,26 @@ describe("enclosure generation", () => {
     if (!result.ok) return;
     expect(result.enclosure.panels.every(({ paths }) => paths[0].closed && !hasSelfIntersection(paths[0]))).toBe(true);
   });
+
+  it("rejects a nominally-contained cutout that enters the finger-joint recess zone", () => {
+    const source = sourcePanel();
+    source.components = [{ id: "edge", presetId: "edge", name: "Edge cutout", kind: "rectangle", dimensions: { width: 4, height: 8 }, transform: { ...identity, e: 4, f: 30 } }];
+    expect(generateEnclosure(source, { frontHeight: 35, rearHeight: 65, thickness: 3, clearance: 0.2, fingerTarget: 8 })).toMatchObject({ ok: false, issues: [{ code: "cutout-joint-collision", componentIds: ["edge"] }] });
+  });
+
+  it("converts invalid component transforms and dimensions into structured source issues", () => {
+    const invalidTransform = sourcePanel();
+    invalidTransform.components[0].transform.e = Number.NaN;
+    expect(generateEnclosure(invalidTransform, { frontHeight: 35, rearHeight: 65, thickness: 3, clearance: 0.2, fingerTarget: 8 })).toMatchObject({ ok: false, issues: [{ code: "source-panel-invalid", causeCode: "component-transform-invalid" }] });
+
+    const invalidDimensions = sourcePanel();
+    invalidDimensions.components[0] = { ...invalidDimensions.components[0], dimensions: { width: 0, height: 24 } };
+    expect(generateEnclosure(invalidDimensions, { frontHeight: 35, rearHeight: 65, thickness: 3, clearance: 0.2, fingerTarget: 8 })).toMatchObject({ ok: false, issues: [{ code: "source-panel-invalid", causeCode: "component-dimensions-invalid" }] });
+  });
+
+  it("accepts valid cutouts inset beyond the joint recess zone", () => {
+    const source = sourcePanel();
+    source.components = [{ id: "inset", presetId: "inset", name: "Inset cutout", kind: "rectangle", dimensions: { width: 4, height: 8 }, transform: { ...identity, e: 6, f: 30 } }];
+    expect(generateEnclosure(source, { frontHeight: 35, rearHeight: 65, thickness: 3, clearance: 0.2, fingerTarget: 8 }).ok).toBe(true);
+  });
 });
