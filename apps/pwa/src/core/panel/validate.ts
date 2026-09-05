@@ -3,6 +3,7 @@ import { applyTransform } from "../geom";
 import type { ComponentInstance } from "../components/types";
 import type { Point, Transform } from "../model";
 import type { PanelDesign, PanelValidationIssue } from "./types";
+import { validateMechanics } from "../components/mechanics";
 
 type Bounds = { minX: number; minY: number; maxX: number; maxY: number };
 const TRANSFORM_COEFFICIENTS: Array<keyof Transform> = ["a", "b", "c", "d", "e", "f"];
@@ -124,6 +125,8 @@ export function validatePanel(panel: PanelDesign): PanelValidationIssue[] {
       continue;
     }
     try {
+      const mechanicalIssues = validateMechanics(component.mechanics);
+      if (mechanicalIssues.length) throw new Error(mechanicalIssues.join(" "));
       // Component expansion owns the complete dimension validation contract.
       expandComponent(component);
       validComponents.push({ component, bounds: componentBounds(component) });

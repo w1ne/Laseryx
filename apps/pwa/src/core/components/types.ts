@@ -54,6 +54,7 @@ type Instance<K extends ComponentKind, D> = {
   dimensions: D;
   transform: Transform;
   mechanics?: ComponentMechanics;
+  source?: ComponentSource;
 };
 
 export type ComponentInstance =
@@ -70,7 +71,7 @@ export function createComponentInstance(
   id: string,
   transform: Transform = IDENTITY_TRANSFORM
 ): ComponentInstance {
-  const common = { id, presetId: preset.id, name: preset.name, transform: { ...transform }, mechanics: preset.mechanics ? structuredClone(preset.mechanics) : undefined };
+  const common = { id, presetId: preset.id, name: preset.name, transform: { ...transform }, mechanics: preset.mechanics ? structuredClone(preset.mechanics) : undefined, source: preset.source ? { ...preset.source } : undefined };
   switch (preset.kind) {
     case "circle": return { ...common, kind: preset.kind, dimensions: { ...preset.dimensions } };
     case "slot": return { ...common, kind: preset.kind, dimensions: { ...preset.dimensions } };
