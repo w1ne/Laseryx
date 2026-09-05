@@ -58,4 +58,9 @@ describe("BoxDialog", () => {
   it("exposes the same defensive packing issue used by box generation", () => {
     expect(boxPackingIssue({ depth: 95.394, frontHeight: 35, rearHeight: 65, thickness: 3, clearance: .15, fingerTarget: 8, sheetWidth: 210, sheetHeight: 148, orientation: "landscape", margin: 5, gap: 3, includeCoupon: false }, 205, 100)?.message).toMatch(/Source panel cannot fit/i);
   });
+
+  it("explains the derived tilt", () => {
+    render(<BoxDialog panelHeight={100} onConfirm={vi.fn()} onCancel={vi.fn()} />);
+    expect(screen.getByRole("status")).toHaveTextContent(/Tilted panel: 17\.5° rising toward rear/i);
+  });
 });

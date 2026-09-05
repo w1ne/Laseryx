@@ -39,8 +39,11 @@ export function BoxDialog({ panelHeight, panelWidth = 160, initial, onConfirm, o
   try { estimatedSheets = packParts(parts, { sheetSize: { width: value.sheetWidth, height: value.sheetHeight }, orientation: value.orientation, margin: value.margin, gap: value.gap }).sheets.length; } catch { /* validation message covers invalid inputs */ }
   if (!error) error = boxPackingIssue(value, panelWidth, panelHeight)?.message ?? "";
   const field = (key: keyof BoxSettings, label: string, step = 1) => <label>{label}<input aria-label={label} type="number" min="0" step={step} value={value[key] as number} onChange={(event) => setValue({ ...value, [key]: Number(event.target.value) })} /></label>;
+  const signedRise = value.rearHeight - value.frontHeight;
+  const tilt = Number.isFinite(signedRise) && panelHeight > 0 ? Math.asin(Math.max(-1, Math.min(1, signedRise / panelHeight))) * 180 / Math.PI : 0;
   return <div className="components-box__editor" role="dialog" aria-label="Make box">
     <div className="components-box__grid">{field("depth", "Depth", .1)}{field("frontHeight", "Front height")}{field("rearHeight", "Rear height")}</div>
+    <p role="status" className="components-box__hint">{Math.abs(tilt) < .05 ? "Flat panel" : `Tilted panel: ${Math.abs(tilt).toFixed(1)}° rising toward ${tilt > 0 ? "rear" : "front"}`}</p>
     <details><summary>Advanced</summary><div className="components-box__grid">
       {field("thickness", "Stock thickness", .1)}{field("clearance", "Fit clearance", .05)}{field("fingerTarget", "Finger target", .5)}
       {field("sheetWidth", "Sheet width")}{field("sheetHeight", "Sheet height")}{field("margin", "Sheet margin", .5)}{field("gap", "Part gap", .5)}

@@ -15,6 +15,7 @@ const panelCode: Record<string, EnclosureIssueCode> = { "component-dimensions-in
 
 function workspaceIssues(input: WorkspacePreflightInput): EnclosureIssue[] {
   const { workspace } = input, issues: EnclosureIssue[] = [];
+  const bodies: Array<{ id: string; name: string; minX: number; maxX: number; minY: number; maxY: number; depth: number }> = [];
   for (const component of workspace.sourcePanel.components) {
     for (const missing of component.mechanics?.missing ?? []) issues.push({ code: "MEASURE_REQUIRED", severity: "error", message: `Measure ${missing} for ${component.name}.`, objectIds: [component.id] });
     for (const warning of component.mechanics?.warnings ?? []) issues.push({ code: "REVIEW_WARNING", severity: "warning", message: `${component.name}: ${warning}`, objectIds: [component.id] });
@@ -24,7 +25,14 @@ function workspaceIssues(input: WorkspacePreflightInput): EnclosureIssue[] {
       const localHeight = workspace.enclosure.parameters.frontHeight + (workspace.enclosure.parameters.rearHeight - workspace.enclosure.parameters.frontHeight) * position;
       const available = localHeight - workspace.enclosure.parameters.thickness;
       if (body.depth > available) issues.push({ code: "BODY_CLEARANCE", severity: "error", message: `${component.name} needs ${body.depth} mm behind the panel; only ${available.toFixed(1)} mm is available here.`, objectIds: [component.id] });
+      const halfW = body.width / 2, halfH = body.height / 2;
+      const points = [[-halfW, -halfH], [halfW, -halfH], [halfW, halfH], [-halfW, halfH]].map(([x, y]) => ({ x: component.transform.a * x + component.transform.c * y + component.transform.e, y: component.transform.b * x + component.transform.d * y + component.transform.f }));
+      bodies.push({ id: component.id, name: component.name, minX: Math.min(...points.map((p) => p.x)), maxX: Math.max(...points.map((p) => p.x)), minY: Math.min(...points.map((p) => p.y)), maxY: Math.max(...points.map((p) => p.y)), depth: body.depth });
     }
+  }
+  for (let a = 0; a < bodies.length; a++) for (let b = a + 1; b < bodies.length; b++) {
+    const first = bodies[a], second = bodies[b];
+    if (Math.min(first.depth, second.depth) > 0 && first.minX < second.maxX && first.maxX > second.minX && first.minY < second.maxY && first.maxY > second.minY) issues.push({ code: "BODY_OVERLAP", severity: "error", message: `${first.name} and ${second.name} body envelopes overlap behind the panel.`, objectIds: [first.id, second.id] });
   }
   for (const issue of validatePanel(workspace.sourcePanel)) issues.push({ code: panelCode[issue.code], severity: "error", message: issue.message, objectIds: issue.componentIds });
   const generated = regenerateEnclosureWorkspace({ ...workspace, enclosure: { ...workspace.enclosure, result: undefined }, sheetLayout: undefined });

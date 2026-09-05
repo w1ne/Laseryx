@@ -49,6 +49,11 @@ describe("validatePanel", () => {
     }));
   });
 
+  it("includes secondary mounting holes in panel bounds", () => {
+    const component = createComponentInstance(preset({ id: "display", name: "Display", kind: "rectangle", dimensions: { width: 20, height: 10 }, mechanics: { confidence: "measured", mountingHoles: [{ x: -20, y: 0, diameter: 4 }] } }), "display-1", { ...identity, e: 20, f: 50 });
+    expect(validatePanel(panel([component]))).toContainEqual(expect.objectContaining({ code: "cutout-outside-panel", componentIds: ["display-1"] }));
+  });
+
   it("blocks when transformed cutout bounds overlap and names both components", () => {
     const circle = preset({ id: "circle", name: "Button", kind: "circle", dimensions: { diameter: 10 } });
     const first = createComponentInstance(circle, "button-a", { ...identity, e: 40, f: 40 });

@@ -87,6 +87,15 @@ describe("preflightEnclosure", () => {
     expect(result.ready).toBe(false);
   });
 
+  it("blocks overlapping component body envelopes even when panel cutouts are separate", () => {
+    const preset = { id: "control", name: "Control", kind: "circle" as const, dimensions: { diameter: 5 }, mechanics: { confidence: "measured" as const, body: { width: 30, height: 15, depth: 10 } } };
+    const placed = (id: string, x: number) => ({ ...preset, id, presetId: preset.id, transform: { a: 1, b: 0, c: 0, d: 1, e: x, f: 35 } });
+    const base: EnclosureWorkspace = { version: 1, presets: [preset], sourcePanel: { id: "source", name: "Panel", width: 100, height: 70, components: [placed("left", 40), placed("right", 60)], transform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 } }, enclosure: { id: "box", revision: 0, parameters: { frontHeight: 30, rearHeight: 40, thickness: 3, clearance: .1, fingerTarget: 8 } }, coupon: {} };
+    const generated = regenerateEnclosureWorkspace(base); if (!generated.ok) throw new Error("fixture failed");
+    const layout = packParts(generated.workspace.enclosure.result!.panels.map(({ id, width, height }) => ({ id, width, height })), { sheetSize: { width: 500, height: 500 } });
+    expect(preflightEnclosure({ workspace: { ...generated.workspace, sheetLayout: layout } }).issues).toContainEqual(expect.objectContaining({ code: "BODY_OVERLAP", objectIds: ["left", "right"] }));
+  });
+
   it("checks every sheet against bed size without using canvas offsets", () => {
     const base: EnclosureWorkspace = { version: 1, presets: [], sourcePanel: { id: "source", name: "Panel", width: 100, height: 70, components: [], transform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 } }, enclosure: { id: "box", revision: 0, parameters: { frontHeight: 30, rearHeight: 40, thickness: 3, clearance: .1, fingerTarget: 8 } }, coupon: { confirmed: true } };
     const generated = regenerateEnclosureWorkspace(base); if (!generated.ok) throw new Error("fixture failed");

@@ -44,7 +44,7 @@ export function ComponentsBoxPanel({ document, onDocumentChange, onWorkspaceChan
   const savePanel = (width: number, height: number, x: number, y: number) => {
     const panel: PanelDesign = { id: workspace?.sourcePanel.id ?? "source-panel-design", name: "Control panel", width, height, components: workspace?.sourcePanel.components ?? [], transform: { ...(workspace?.sourcePanel.transform ?? identity), e: x, f: y } };
     saveWorkspace(workspace ? { ...workspace, sourcePanel: panel, enclosure: { ...workspace.enclosure, result: undefined }, sheetLayout: undefined } : {
-      version: 1, presets: [], sourcePanel: panel, enclosure: { id: "enclosure-main", revision: 0, parameters: { frontHeight: 35, rearHeight: 65, thickness: 3, clearance: .15, fingerTarget: 8 } }, coupon: { confirmed: false }, packing: { sheetSize: { width: 210, height: 148 }, orientation: "landscape", margin: 5, gap: 3 }
+      version: 1, presets: [], sourcePanel: panel, enclosure: { id: "enclosure-main", revision: 0, parameters: { frontHeight: 35, rearHeight: 65, thickness: 3, clearance: .15, fingerTarget: 8 } }, coupon: {}, packing: { sheetSize: { width: 210, height: 148 }, orientation: "landscape", margin: 5, gap: 3 }
     }); setEditor(null); setMessage(`Panel ready · ${width} × ${height} mm`);
   };
   const placePreset = (preset: ComponentPreset, persist: boolean) => {
@@ -72,7 +72,7 @@ export function ComponentsBoxPanel({ document, onDocumentChange, onWorkspaceChan
     if (!workspace) return;
     const packingIssue = boxPackingIssue(settings, workspace.sourcePanel.width, workspace.sourcePanel.height);
     if (packingIssue) { setMessage(packingIssue.message); return; }
-    const candidate = { ...workspace, enclosure: { ...workspace.enclosure, parameters: { frontHeight: settings.frontHeight, rearHeight: settings.rearHeight, thickness: settings.thickness, clearance: settings.clearance, fingerTarget: settings.fingerTarget } }, coupon: { confirmed: false, ...(settings.includeCoupon ? { selectedClearance: settings.clearance } : {}) }, packing: { sheetSize: { width: settings.sheetWidth, height: settings.sheetHeight }, orientation: settings.orientation, margin: settings.margin, gap: settings.gap } };
+    const candidate = { ...workspace, enclosure: { ...workspace.enclosure, parameters: { frontHeight: settings.frontHeight, rearHeight: settings.rearHeight, thickness: settings.thickness, clearance: settings.clearance, fingerTarget: settings.fingerTarget } }, coupon: settings.includeCoupon ? { selectedClearance: settings.clearance } : {}, packing: { sheetSize: { width: settings.sheetWidth, height: settings.sheetHeight }, orientation: settings.orientation, margin: settings.margin, gap: settings.gap } };
     const result = regenerateEnclosureWorkspace(candidate);
     if (!result.ok) { setMessage(result.issues.map(({ message }) => message).join(" ")); return; }
     saveWorkspace(result.workspace); setEditor(null); setMessage("Six box faces generated. Arrange them when ready.");
@@ -106,13 +106,13 @@ export function ComponentsBoxPanel({ document, onDocumentChange, onWorkspaceChan
         <strong>{preflight.ready ? "Ready to cut." : "Not ready to cut."}</strong>
         {!preflight.ready && <span> {preflight.issues.map(({ message }) => message).join(" ")}</span>}
       </div>}
-      {workspace?.coupon.selectedClearance !== undefined && !workspace.coupon.confirmed && <button type="button" onClick={() => saveWorkspace({ ...workspace, coupon: { ...workspace.coupon, confirmed: true } })}>Confirm fit coupon</button>}
+      {workspace?.coupon.selectedClearance !== undefined && <p className="components-box__hint">Optional fit coupon included; test it first when using unfamiliar stock.</p>}
       {editor === "component" && <ComponentEditor saving={savingComponent} onSave={saveComponent} onCancel={() => setEditor(null)} />}
       {editor === "panel" && <PanelForm initial={workspace?.sourcePanel} onSave={savePanel} onCancel={() => setEditor(null)} />}
       {selectedInstanceId && workspace && <InstanceEditor panel={workspace.sourcePanel} instance={workspace.sourcePanel.components.find(({ id }) => id === selectedInstanceId)!} onSave={(changes) => { const panel = updateComponentInstance(workspace.sourcePanel, selectedInstanceId, changes); const issues = validatePanel(panel); if (issues.length) { setMessage(issues.map(({ message }) => message).join(" ")); return false; } saveWorkspace({ ...workspace, sourcePanel: panel, enclosure: { ...workspace.enclosure, result: undefined }, sheetLayout: undefined }); setSelectedInstanceId(undefined); return true; }} onDelete={() => { saveWorkspace({ ...workspace, sourcePanel: removeComponentInstance(workspace.sourcePanel, selectedInstanceId), enclosure: { ...workspace.enclosure, result: undefined }, sheetLayout: undefined }); setSelectedInstanceId(undefined); }} onCancel={() => setSelectedInstanceId(undefined)} />}
       {editor === "box" && workspace && <BoxDialog panelHeight={workspace.sourcePanel.height} panelWidth={workspace.sourcePanel.width} initial={{ ...workspace.enclosure.parameters, sheetWidth: workspace.packing?.sheetSize.width ?? 210, sheetHeight: workspace.packing?.sheetSize.height ?? 148, orientation: workspace.packing?.orientation ?? "landscape", margin: workspace.packing?.margin ?? 5, gap: workspace.packing?.gap ?? 3, includeCoupon: workspace.coupon.selectedClearance !== undefined }} onConfirm={makeBox} onCancel={() => setEditor(null)} />}
       {presets.length > 0 && <details className="components-box__examples"><summary>Saved presets</summary>{presets.map((preset) => <button type="button" key={preset.id} disabled={!workspace} onClick={() => placePreset(preset, false)}>Add {preset.name}</button>)}</details>}
-      <details className="components-box__examples"><summary>Example presets</summary>{EXAMPLE_COMPONENT_PRESETS.map((preset) => <button type="button" key={preset.id} disabled={!workspace} onClick={() => placePreset(structuredClone(preset) as ComponentPreset, false)}>{preset.name}</button>)}</details>
+      <details className="components-box__examples"><summary>Example presets</summary>{EXAMPLE_COMPONENT_PRESETS.map((preset) => <button type="button" aria-label={preset.name} key={preset.id} disabled={!workspace} onClick={() => placePreset(structuredClone(preset) as ComponentPreset, false)}>{preset.name} <small>{preset.mechanics?.confidence === "required" ? "Measurements required" : preset.mechanics?.confidence === "nominal" ? "Nominal" : preset.mechanics?.confidence === "verified" ? "Verified" : "Editable"}</small></button>)}</details>
       {message && <p role="status" className="components-box__message">{message}</p>}
     </div>}
   </section>;
