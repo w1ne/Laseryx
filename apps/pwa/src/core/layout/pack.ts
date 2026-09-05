@@ -1,25 +1,74 @@
-import type { PackedSheet, PackPart, Placement, SheetSettings } from "./types";
+import type { PackOptions, PartBounds, Placement, Sheet, SheetLayout } from "./types";
 
-export function packParts(source: readonly PackPart[], settings: SheetSettings): { sheets: PackedSheet[]; overflow: PackPart[] } {
-  const parts = [...source].sort((a, b) => Math.max(b.width, b.height) - Math.max(a.width, a.height) || a.id.localeCompare(b.id));
-  const sheets: PackedSheet[] = [];
-  const overflow: PackPart[] = [];
+const A5 = { width: 210, height: 148 } as const;
+const dimensions = (part: PartBounds, rotation: 0 | 90) => rotation === 90 ? { width: part.height, height: part.width } : { width: part.width, height: part.height };
+function intersects(a: Placement, ap: PartBounds, b: Placement, bp: PartBounds, gap = 0) {
+  const ad = dimensions(ap, a.rotation), bd = dimensions(bp, b.rotation);
+  return !(a.x + ad.width + gap <= b.x || b.x + bd.width + gap <= a.x || a.y + ad.height + gap <= b.y || b.y + bd.height + gap <= a.y);
+}
+function orientedSize(options: PackOptions) {
+  const requested = options.sheetSize ?? A5, orientation = options.orientation ?? "landscape";
+  const short = Math.min(requested.width, requested.height), long = Math.max(requested.width, requested.height);
+  return orientation === "landscape" ? { width: long, height: short } : { width: short, height: long };
+}
+
+export function packParts(source: readonly PartBounds[], options: PackOptions = {}): SheetLayout {
+  const margin = options.margin ?? 5, gap = options.gap ?? 2, sheetSize = orientedSize(options), orientation = options.orientation ?? "landscape";
+  if (margin < 0 || gap < 0 || sheetSize.width <= 0 || sheetSize.height <= 0) throw new Error("Invalid sheet settings");
+  const ids = new Set<string>();
+  for (const part of source) { if (ids.has(part.id)) throw new Error(`Duplicate part id: ${part.id}`); ids.add(part.id); }
+  const parts = source.map((part) => ({ ...part })).sort((a, b) => a.id.localeCompare(b.id));
+  const sheets: Sheet[] = [], placements: Placement[] = [], unplacedPartIds: string[] = [];
+  const addSheet = () => { const i = sheets.length; const sheet = { id: `sheet-${i + 1}`, x: i * (sheetSize.width + gap), y: 0, ...sheetSize }; sheets.push(sheet); return sheet; };
+  addSheet();
   for (const part of parts) {
-    const orientations = [{ width: part.width, height: part.height, rotated: false }, ...(settings.allowRotation ? [{ width: part.height, height: part.width, rotated: true }] : [])];
-    if (!orientations.some((o) => o.width <= settings.width - 2 * settings.margin && o.height <= settings.height - 2 * settings.margin)) { overflow.push({ ...part }); continue; }
-    let placed = false;
+    if (!(part.width > 0 && part.height > 0 && Number.isFinite(part.width) && Number.isFinite(part.height))) { unplacedPartIds.push(part.id); continue; }
+    const rotations: readonly (0 | 90)[] = [0, 90];
+    if (!rotations.some((r) => { const d = dimensions(part, r); return d.width <= sheetSize.width - 2 * margin && d.height <= sheetSize.height - 2 * margin; })) { unplacedPartIds.push(part.id); continue; }
+    let chosen: Placement | undefined;
     for (const sheet of sheets) {
-      for (const orientation of orientations) {
-        const candidates = [{ x: settings.margin, y: settings.margin }, ...sheet.placements.flatMap((p) => [{ x: p.x + p.width + settings.gap, y: p.y }, { x: p.x, y: p.y + p.height + settings.gap }])];
-        const spot = candidates.find((c) => c.x + orientation.width <= settings.width - settings.margin && c.y + orientation.height <= settings.height - settings.margin && sheet.placements.every((p) => c.x + orientation.width + settings.gap <= p.x || p.x + p.width + settings.gap <= c.x || c.y + orientation.height + settings.gap <= p.y || p.y + p.height + settings.gap <= c.y));
-        if (spot) { sheet.placements.push({ id: part.id, ...orientation, ...spot } as Placement); placed = true; break; }
+      const onSheet = placements.filter((p) => p.sheetId === sheet.id);
+      const candidates = [{ x: margin, y: margin }, ...onSheet.flatMap((p) => { const d = dimensions(parts.find(({ id }) => id === p.partId)!, p.rotation); return [{ x: p.x + d.width + gap, y: p.y }, { x: p.x, y: p.y + d.height + gap }]; })].sort((a, b) => a.y - b.y || a.x - b.x);
+      for (const rotation of rotations) {
+        const d = dimensions(part, rotation);
+        const spot = candidates.find(({ x, y }) => {
+          if (x + d.width > sheet.width - margin || y + d.height > sheet.height - margin) return false;
+          const candidate: Placement = { partId: part.id, sheetId: sheet.id, x, y, rotation };
+          return onSheet.every((other) => !intersects(candidate, part, other, parts.find(({ id }) => id === other.partId)!, gap));
+        });
+        if (spot) { chosen = { partId: part.id, sheetId: sheet.id, ...spot, rotation }; break; }
       }
-      if (placed) break;
+      if (chosen) break;
     }
-    if (!placed) {
-      const orientation = orientations.find((o) => o.width <= settings.width - 2 * settings.margin && o.height <= settings.height - 2 * settings.margin)!;
-      sheets.push({ id: `sheet-${sheets.length + 1}`, width: settings.width, height: settings.height, placements: [{ id: part.id, ...orientation, x: settings.margin, y: settings.margin }] });
+    if (!chosen) {
+      const sheet = addSheet();
+      const rotation = rotations.find((r) => { const d = dimensions(part, r); return d.width <= sheet.width - 2 * margin && d.height <= sheet.height - 2 * margin; })!;
+      chosen = { partId: part.id, sheetId: sheet.id, x: margin, y: margin, rotation };
     }
+    placements.push(chosen);
   }
-  return { sheets, overflow };
+  return { sheetSize: { ...sheetSize }, orientation, margin, gap, parts, sheets, placements, unplacedPartIds };
+}
+
+export function preservePlacements(oldLayout: SheetLayout, source: readonly PartBounds[]): SheetLayout {
+  const parts = source.map((part) => ({ ...part })).sort((a, b) => a.id.localeCompare(b.id));
+  const oldParts = new Map(oldLayout.parts.map((part) => [part.id, part]));
+  const sheets = oldLayout.sheets.map((sheet) => ({ ...sheet })), sheetsById = new Map(sheets.map((sheet) => [sheet.id, sheet])), partsById = new Map(parts.map((part) => [part.id, part]));
+  const candidates = oldLayout.placements.filter((placement) => {
+    const part = partsById.get(placement.partId), previous = oldParts.get(placement.partId), sheet = sheetsById.get(placement.sheetId);
+    if (!part || !previous || !sheet || part.width !== previous.width || part.height !== previous.height) return false;
+    const d = dimensions(part, placement.rotation);
+    return placement.x >= oldLayout.margin && placement.y >= oldLayout.margin && placement.x + d.width <= sheet.width - oldLayout.margin && placement.y + d.height <= sheet.height - oldLayout.margin;
+  }).map((placement) => ({ ...placement }));
+  const invalid = new Set<string>();
+  for (let i = 0; i < candidates.length; i++) for (let j = i + 1; j < candidates.length; j++) {
+    const a = candidates[i], b = candidates[j];
+    if (a.sheetId === b.sheetId && intersects(a, partsById.get(a.partId)!, b, partsById.get(b.partId)!)) { invalid.add(a.partId); invalid.add(b.partId); }
+  }
+  const placements = candidates.filter(({ partId }) => !invalid.has(partId)), placed = new Set(placements.map(({ partId }) => partId));
+  return { ...oldLayout, parts, sheets, placements, unplacedPartIds: parts.map(({ id }) => id).filter((id) => !placed.has(id)) };
+}
+
+export function arrangeParts(layout: SheetLayout): SheetLayout {
+  return packParts(layout.parts, { sheetSize: layout.sheetSize, orientation: layout.orientation, margin: layout.margin, gap: layout.gap });
 }
