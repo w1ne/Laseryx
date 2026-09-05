@@ -89,17 +89,52 @@ const dimensions = (kind: unknown, value: unknown) => {
 const component = (value: unknown, instance: boolean) => record(value) && typeof value.id === "string" && typeof value.name === "string"
   && typeof value.kind === "string" && dimensions(value.kind, value.dimensions)
   && (!instance || (typeof value.presetId === "string" && transform(value.transform)));
-const sheetLayout = (value: unknown) => value === undefined || (record(value) && record(value.sheetSize)
-  && finite(value.sheetSize.width) && finite(value.sheetSize.height) && (value.orientation === "landscape" || value.orientation === "portrait")
-  && finite(value.margin) && finite(value.gap) && Array.isArray(value.parts) && Array.isArray(value.sheets)
-  && Array.isArray(value.placements) && Array.isArray(value.unplacedPartIds));
+const unique = (values: readonly string[]) => new Set(values).size === values.length;
+const sheetLayout = (value: unknown) => {
+  if (value === undefined) return true;
+  if (!record(value) || !record(value.sheetSize) || !finite(value.sheetSize.width) || value.sheetSize.width <= 0
+    || !finite(value.sheetSize.height) || value.sheetSize.height <= 0 || (value.orientation !== "landscape" && value.orientation !== "portrait")
+    || !finite(value.margin) || value.margin < 0 || !finite(value.gap) || value.gap < 0
+    || !Array.isArray(value.parts) || !Array.isArray(value.sheets) || !Array.isArray(value.placements) || !Array.isArray(value.unplacedPartIds)) return false;
+  const parts = value.parts;
+  const sheets = value.sheets;
+  const unplacedPartIds = value.unplacedPartIds;
+  if (!parts.every((part) => record(part) && typeof part.id === "string" && part.id.length > 0 && finite(part.width) && part.width > 0 && finite(part.height) && part.height > 0)
+    || !sheets.every((sheet) => record(sheet) && typeof sheet.id === "string" && sheet.id.length > 0 && finite(sheet.x) && finite(sheet.y) && finite(sheet.width) && sheet.width > 0 && finite(sheet.height) && sheet.height > 0)) return false;
+  const partIds = parts.map((part) => (part as Record<string, unknown>).id as string), sheetIds = sheets.map((sheet) => (sheet as Record<string, unknown>).id as string);
+  if (!unique(partIds) || !unique(sheetIds) || !unplacedPartIds.every((id) => typeof id === "string" && partIds.includes(id)) || !unique(unplacedPartIds)) return false;
+  const placements = value.placements;
+  if (!placements.every((placement) => record(placement) && typeof placement.partId === "string" && partIds.includes(placement.partId)
+    && typeof placement.sheetId === "string" && sheetIds.includes(placement.sheetId) && finite(placement.x) && finite(placement.y)
+    && (placement.rotation === 0 || placement.rotation === 90))) return false;
+  const placedIds = placements.map((placement) => (placement as Record<string, unknown>).partId as string);
+  return unique(placedIds) && placedIds.every((id) => !unplacedPartIds.includes(id));
+};
 const parameters = (value: unknown) => record(value)
   && ["frontHeight", "rearHeight", "thickness", "clearance", "fingerTarget"].every((key) => finite(value[key]));
-const generatedResult = (value: unknown) => value === undefined || (record(value) && record(value.input)
-  && finite(value.input.width) && finite(value.input.depth) && parameters(value.input) && finite(value.slopeDegrees)
-  && Array.isArray(value.panels) && value.panels.length === 6
-  && ["source-panel", "rear", "left", "right", "base", "service-panel"].every((id) => value.panels.some((panel) => record(panel) && panel.id === id && finite(panel.width) && finite(panel.height)))
-  && Array.isArray(value.joints));
+const PANEL_IDS = ["source-panel", "rear", "left", "right", "base", "service-panel"] as const;
+const point = (value: unknown) => record(value) && finite(value.x) && finite(value.y);
+const path = (value: unknown) => record(value) && value.closed === true && Array.isArray(value.points) && value.points.length >= 3 && value.points.every(point);
+const joint = (value: unknown) => record(value) && typeof value.id === "string" && value.id.length > 0 && typeof value.pairId === "string" && value.pairId.length > 0
+  && PANEL_IDS.includes(value.panelId as typeof PANEL_IDS[number]) && ["top", "right", "bottom", "left"].includes(value.edge as string)
+  && typeof value.mateId === "string" && value.mateId.length > 0 && finite(value.nominalLength) && value.nominalLength > 0
+  && Number.isInteger(value.segmentCount) && (value.segmentCount as number) > 0 && (value.phase === 0 || value.phase === 1)
+  && finite(value.depth) && value.depth > 0 && finite(value.matingOffset);
+const panel = (value: unknown) => record(value) && PANEL_IDS.includes(value.id as typeof PANEL_IDS[number]) && typeof value.name === "string"
+  && finite(value.width) && value.width > 0 && finite(value.height) && value.height > 0 && transform(value.transform)
+  && Array.isArray(value.paths) && value.paths.length > 0 && value.paths.every(path) && Array.isArray(value.joints) && value.joints.every(joint)
+  && Number.isInteger(value.fingerCount) && (value.fingerCount as number) > 0 && record(value.edgePattern)
+  && Number.isInteger(value.edgePattern.horizontal) && (value.edgePattern.horizontal as number) > 0
+  && Number.isInteger(value.edgePattern.vertical) && (value.edgePattern.vertical as number) > 0 && (value.edgePattern.phase === 0 || value.edgePattern.phase === 1);
+const generatedResult = (value: unknown) => {
+  if (value === undefined) return true;
+  if (!record(value) || !record(value.input) || !finite(value.input.width) || value.input.width <= 0 || !finite(value.input.depth) || value.input.depth <= 0
+    || !parameters(value.input) || !finite(value.slopeDegrees) || !Array.isArray(value.panels) || value.panels.length !== PANEL_IDS.length
+    || !value.panels.every(panel) || !Array.isArray(value.joints) || !value.joints.every(joint)) return false;
+  const ids = value.panels.map((item) => (item as Record<string, unknown>).id as string);
+  const jointIds = value.joints.map((item) => (item as Record<string, unknown>).id as string);
+  return unique(ids) && PANEL_IDS.every((id) => ids.includes(id)) && unique(jointIds);
+};
 
 /** Reject unknown versions and malformed records; callers may omit them as an explicit migration policy. */
 export function sanitizeEnclosureWorkspace(value: unknown): EnclosureWorkspace | undefined {

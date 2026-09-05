@@ -56,4 +56,28 @@ describe("enclosure workspace", () => {
     const workspace: EnclosureWorkspace = { version: 1, presets: [], sourcePanel: panel(), enclosure: { id: "box", revision: 1, parameters, result: "corrupt" as unknown as EnclosureWorkspace["enclosure"]["result"] }, coupon: { confirmed: false } };
     expect(sanitizeEnclosureWorkspace(workspace)).toBeUndefined();
   });
+
+  it("rejects unsafe nested layouts and generated geometry before regeneration", () => {
+    const generated = regenerateEnclosureWorkspace({ version: 1, presets: [], sourcePanel: panel(), enclosure: { id: "box", revision: 0, parameters }, coupon: { confirmed: false } });
+    expect(generated.ok).toBe(true);
+    if (!generated.ok) return;
+    const parts = generated.workspace.enclosure.result!.panels.map(({ id, width, height }) => ({ id, width, height }));
+    const valid: EnclosureWorkspace = { ...generated.workspace, sheetLayout: { sheetSize: { width: 210, height: 148 }, orientation: "landscape", margin: 5, gap: 2, parts, sheets: [{ id: "sheet", x: 0, y: 0, width: 210, height: 148 }], placements: [{ partId: "source-panel", sheetId: "sheet", x: 5, y: 5, rotation: 0 }], unplacedPartIds: parts.slice(1).map(({ id }) => id) } };
+    expect(() => regenerateEnclosureWorkspace(sanitizeEnclosureWorkspace(valid)!)).not.toThrow();
+
+    const corruptions: Array<(value: EnclosureWorkspace) => void> = [
+      (value) => { (value.sheetLayout!.placements as unknown[]) = [null]; },
+      (value) => { (value.sheetLayout!.placements[0] as { rotation: number }).rotation = 45; },
+      (value) => { (value.sheetLayout!.placements[0] as { x: number }).x = Number.NaN; },
+      (value) => { (value.sheetLayout!.parts[0] as { id?: string }).id = undefined; },
+      (value) => { value.enclosure.result!.panels[0].paths[0].points[0].x = Number.NaN; },
+      (value) => { value.enclosure.result!.panels[0].transform.a = Number.NaN; },
+      (value) => { value.enclosure.result!.joints[0].mateId = ""; }
+    ];
+    for (const corrupt of corruptions) {
+      const value = structuredClone(valid);
+      corrupt(value);
+      expect(sanitizeEnclosureWorkspace(value)).toBeUndefined();
+    }
+  });
 });

@@ -67,6 +67,9 @@ describe('projectRepo', () => {
         expect((await projectRepo.load('bad'))?.document).toEqual(mockDoc);
         await db.put('projects', { id: 'nested-bad', name: 'Bad', updatedAt: 2, document: { ...mockDoc, enclosureWorkspace: { version: 1, presets: [{ id: 'x' }], sourcePanel: {}, enclosure: {}, coupon: {} } } as unknown as Document });
         expect((await projectRepo.load('nested-bad'))?.document).toEqual(mockDoc);
+        const unsafeLayout = { version: 1, presets: [], sourcePanel: { id: 'panel', name: 'Panel', width: 100, height: 80, components: [], transform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 } }, enclosure: { id: 'box', revision: 0, parameters: { frontHeight: 30, rearHeight: 35, thickness: 3, clearance: .15, fingerTarget: 8 } }, coupon: { confirmed: false }, sheetLayout: { sheetSize: { width: 210, height: 148 }, orientation: 'landscape', margin: 5, gap: 2, parts: [{ id: 'source-panel', width: 100, height: 80 }], sheets: [{ id: 'sheet', x: 0, y: 0, width: 210, height: 148 }], placements: [null], unplacedPartIds: [] } };
+        await db.put('projects', { id: 'unsafe-layout', name: 'Bad', updatedAt: 3, document: { ...mockDoc, enclosureWorkspace: unsafeLayout } as unknown as Document });
+        expect((await projectRepo.load('unsafe-layout'))?.document).toEqual(mockDoc);
     });
 
     it('should save and load automation metadata', async () => {
