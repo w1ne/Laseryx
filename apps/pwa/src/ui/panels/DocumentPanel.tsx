@@ -49,7 +49,7 @@ export function DocumentPanel() {
 
   return (
     <div className="side">
-      <ComponentsBoxPanel document={document} onDocumentChange={(next) => dispatch({ type: "SET_DOCUMENT", payload: next })} />
+      <ComponentsBoxPanel document={document} onWorkspaceChange={(next) => dispatch({ type: "SET_ENCLOSURE_WORKSPACE", payload: next })} />
       <div className="side__tools" role="toolbar" aria-label="Sketch tools" data-testid="template-library">
         <button
           type="button"

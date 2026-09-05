@@ -1,9 +1,12 @@
 import { Document, CamSettings, Layer, Obj, Operation, MachineProfile, MaterialPreset } from "../model";
 import { MachineStatus, MachineConnectionState, MachineStreamState } from "./types";
+import type { EnclosureWorkspace } from "../enclosure/workspace";
 
 export type Action =
     // Document Actions
     | { type: "SET_DOCUMENT"; payload: Document; skipHistory?: boolean }
+    /** Atomically replace enclosure workspace and its derived document geometry. */
+    | { type: "SET_ENCLOSURE_WORKSPACE"; payload: EnclosureWorkspace }
     | { type: "ADD_LAYER"; payload: Layer }
     | { type: "DELETE_LAYER"; payload: string } // layerId
     | { type: "ADD_OBJECT"; payload: Obj }

@@ -2,12 +2,14 @@ import { AppState } from "./types";
 import { Obj } from "../model";
 import { Action } from "./actions";
 import { pushState, undo, redo, UndoableState } from "./history";
+import { renderEnclosureWorkspace } from "../enclosure/render";
 
 /**
  * List of action types that should trigger a history snapshot.
  */
 const UNDOABLE_ACTIONS = new Set([
     "SET_DOCUMENT",
+    "SET_ENCLOSURE_WORKSPACE",
     "ADD_LAYER",
     "DELETE_LAYER",
     "ADD_OBJECT",
@@ -79,6 +81,9 @@ function internalReducer(state: AppState, action: Action): AppState {
     switch (action.type) {
         case "SET_DOCUMENT":
             return { ...state, document: action.payload };
+
+        case "SET_ENCLOSURE_WORKSPACE":
+            return { ...state, document: renderEnclosureWorkspace(state.document, action.payload) };
 
         case "ADD_LAYER":
             return {

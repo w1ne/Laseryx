@@ -11,7 +11,12 @@ import { componentPresetRepo } from "../../io/componentPresetRepo";
 import { BoxDialog, type BoxSettings } from "./BoxDialog";
 import { ComponentEditor } from "./ComponentEditor";
 
-export type ComponentsBoxPanelProps = { document: Document; onDocumentChange: (document: Document) => void };
+export type ComponentsBoxPanelProps = {
+  document: Document;
+  /** Legacy standalone integration. Store-backed callers should use onWorkspaceChange. */
+  onDocumentChange?: (document: Document) => void;
+  onWorkspaceChange?: (workspace: EnclosureWorkspace) => void;
+};
 const identity: Transform = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
 const examples: ComponentPreset[] = [
   { id: "example-mount-hole", name: "Mounting hole", kind: "circle", dimensions: { diameter: 4 } },
@@ -95,7 +100,7 @@ export function renderEnclosureWorkspace(document: Document, workspace: Enclosur
   return { ...document, layers: withLayers(document), objects, groups, enclosureWorkspace: workspace };
 }
 
-export function ComponentsBoxPanel({ document, onDocumentChange }: ComponentsBoxPanelProps) {
+export function ComponentsBoxPanel({ document, onDocumentChange, onWorkspaceChange }: ComponentsBoxPanelProps) {
   const [open, setOpen] = useState(true), [editor, setEditor] = useState<"component" | "panel" | "box" | null>(null);
   const [repoPresets, setRepoPresets] = useState<ComponentPreset[]>([]);
   const [savingComponent, setSavingComponent] = useState(false);
@@ -109,7 +114,10 @@ export function ComponentsBoxPanel({ document, onDocumentChange }: ComponentsBox
     return [...merged.values()].sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
   }, [repoPresets, workspace?.presets]);
   useEffect(() => { void componentPresetRepo.list().then(setRepoPresets).catch(() => setMessage("Saved components could not be loaded.")); }, []);
-  const saveWorkspace = (next: EnclosureWorkspace, base = latestDocument.current) => onDocumentChange(renderEnclosureWorkspace(base, next));
+  const saveWorkspace = (next: EnclosureWorkspace, base = latestDocument.current) => {
+    if (onWorkspaceChange) onWorkspaceChange(next);
+    else onDocumentChange?.(renderEnclosureWorkspace(base, next));
+  };
   const savePanel = (width: number, height: number) => {
     const panel: PanelDesign = { id: workspace?.sourcePanel.id ?? "source-panel-design", name: "Control panel", width, height, components: workspace?.sourcePanel.components ?? [], transform: identity };
     saveWorkspace(workspace ? { ...workspace, sourcePanel: panel, enclosure: { ...workspace.enclosure, result: undefined }, sheetLayout: undefined } : {
