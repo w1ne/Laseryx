@@ -82,6 +82,5 @@ export function expandComponent(instance: ComponentInstance): PolylinePath[] {
       );
     }
   } })();
-  const holes = [...(instance.mechanics?.mountingHoles ?? []), ...(instance.mechanics?.acousticHole ? [instance.mechanics.acousticHole] : [])];
-  return [...primary, ...holes.map(({ x, y, diameter }) => circleToPolyline(x, y, diameter / 2, 32))];
+  return primary;
 }
