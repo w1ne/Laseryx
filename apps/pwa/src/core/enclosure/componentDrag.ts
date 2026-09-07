@@ -1,8 +1,31 @@
 import { expandComponent } from "../components/expand";
+import type { ComponentInstance } from "../components/types";
 import type { Document, Transform } from "../model";
 import type { EnclosureWorkspace } from "./workspace";
 
 const round = (value: number) => Math.round(value * 1000) / 1000;
+
+export function fitComponentTransformToPanel(
+  panel: { width: number; height: number },
+  component: ComponentInstance,
+  requestedTransform: Transform,
+  inset = 0
+): Transform | undefined {
+  const transform = { ...requestedTransform };
+  const points = expandComponent(component).flatMap((path) => path.points.map(({ x, y }) => ({
+    x: transform.a * x + transform.c * y + transform.e,
+    y: transform.b * x + transform.d * y + transform.f
+  })));
+  const xs = points.map(({ x }) => x), ys = points.map(({ y }) => y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+  if (maxX - minX > panel.width - 2 * inset || maxY - minY > panel.height - 2 * inset) return undefined;
+  if (minX < inset) transform.e += inset - minX;
+  if (maxX > panel.width - inset) transform.e -= maxX - (panel.width - inset);
+  if (minY < inset) transform.f += inset - minY;
+  if (maxY > panel.height - inset) transform.f -= maxY - (panel.height - inset);
+  transform.e = round(transform.e); transform.f = round(transform.f);
+  return transform;
+}
 
 export function componentIdForSourceCutout(workspace: EnclosureWorkspace, objectId: string): string | undefined {
   if (workspace.enclosure.result) return undefined;
@@ -28,19 +51,8 @@ export function componentTransformForRenderedDrag(
     e: component.transform.e + nextRenderedTransform.e - renderedTransform.e,
     f: component.transform.f + nextRenderedTransform.f - renderedTransform.f
   };
-  const points = expandComponent(component).flatMap((path) => path.points.map(({ x, y }) => ({
-    x: transform.a * x + transform.c * y + transform.e,
-    y: transform.b * x + transform.d * y + transform.f
-  })));
-  const xs = points.map(({ x }) => x), ys = points.map(({ y }) => y);
-  const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
-  if (maxX - minX > workspace.sourcePanel.width || maxY - minY > workspace.sourcePanel.height) return undefined;
-  if (minX < 0) transform.e -= minX;
-  if (maxX > workspace.sourcePanel.width) transform.e -= maxX - workspace.sourcePanel.width;
-  if (minY < 0) transform.f -= minY;
-  if (maxY > workspace.sourcePanel.height) transform.f -= maxY - workspace.sourcePanel.height;
-  transform.e = round(transform.e); transform.f = round(transform.f);
-  return { componentId, transform };
+  const fitted = fitComponentTransformToPanel(workspace.sourcePanel, component, transform);
+  return fitted ? { componentId, transform: fitted } : undefined;
 }
 
 export function createComponentDragSession(document: Document, objectId: string): { resolve: (nextRenderedTransform: Transform) => { componentId: string; transform: Transform } } | undefined {

@@ -95,6 +95,25 @@ describe("ComponentsBoxPanel", () => {
     expect(current.objects.some(({ id }) => id.includes(":coupon:"))).toBe(false);
   });
 
+  it("generates a box after placing the display preset with all mounting holes", async () => {
+    let current = document();
+    const onDocumentChange = vi.fn((next: Document) => { current = next; });
+    const view = render(<ComponentsBoxPanel document={current} onDocumentChange={onDocumentChange} />);
+    fireEvent.click(screen.getByRole("button", { name: "Create panel" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save panel" }));
+    current = onDocumentChange.mock.calls.at(-1)![0];
+    view.rerender(<ComponentsBoxPanel document={current} onDocumentChange={onDocumentChange} />);
+    fireEvent.click(screen.getByText("Example presets"));
+    fireEvent.click(screen.getByRole("button", { name: "1.9-inch IPS display" }));
+    current = onDocumentChange.mock.calls.at(-1)![0];
+    view.rerender(<ComponentsBoxPanel document={current} onDocumentChange={onDocumentChange} />);
+    fireEvent.click(screen.getByRole("button", { name: "Make box" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate box" }));
+    current = onDocumentChange.mock.calls.at(-1)![0];
+    expect(current.enclosureWorkspace?.enclosure.result?.panels).toHaveLength(6);
+    expect(current.enclosureWorkspace?.enclosure.result?.panels.find(({ id }) => id === "source-panel")?.paths).toHaveLength(6);
+  });
+
   it("includes and packs stable fit-coupon geometry only when requested", async () => {
     let current = document();
     const onDocumentChange = vi.fn((next: Document) => { current = next; });
