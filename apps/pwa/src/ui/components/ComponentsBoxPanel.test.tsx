@@ -30,6 +30,7 @@ describe("ComponentsBoxPanel", () => {
     expect(screen.getByText("Example presets").closest("details")).not.toHaveAttribute("open");
     fireEvent.click(screen.getByText("Example presets"));
     for (const example of EXAMPLE_COMPONENT_PRESETS) expect(screen.getByRole("button", { name: example.name })).toBeTruthy();
+    expect(screen.queryByText("Check dimensions before cutting")).toBeNull();
     await waitFor(() => expect(componentPresetRepo.list).toHaveBeenCalled());
   });
 
