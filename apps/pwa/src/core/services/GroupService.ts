@@ -14,6 +14,7 @@ import { syncDocumentSketch } from "../sketch/sync";
 import { entityIdFromObjectId, isSketchObjectId } from "../sketch/bake";
 import { deleteEntity } from "../sketch/create";
 import { solveSketch } from "../sketch/solver";
+import { componentIdForSourceCutout } from "../enclosure/componentDrag";
 
 function setDoc(
   dispatch: React.Dispatch<Action>,
@@ -115,6 +116,11 @@ export const GroupService = {
         : [...state.selectedObjectIds, objectId];
       dispatch({ type: "SET_SELECTION", payload: next });
       return next;
+    }
+    const workspace = state.document.enclosureWorkspace;
+    if (workspace && componentIdForSourceCutout(workspace, objectId)) {
+      dispatch({ type: "SELECT_OBJECT", payload: objectId });
+      return [objectId];
     }
     const g = findGroupContaining(state.document, objectId);
     if (g) {

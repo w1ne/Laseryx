@@ -14,6 +14,7 @@ import { SketchDrawLayer } from "../components/SketchDrawLayer";
 import { useSketchTool } from "../sketch/SketchContext";
 import { SketchService } from "../../core/services/SketchService";
 import { GroupService } from "../../core/services/GroupService";
+import { componentTransformForRenderedDrag } from "../../core/enclosure/componentDrag";
 import { DimensionPickLayer } from "../components/DimensionPickLayer";
 import { DimensionHud } from "../components/DimensionHud";
 import { DimAnnotationsLayer } from "../components/preview/DimAnnotationsLayer";
@@ -181,6 +182,14 @@ export function PreviewPanel({
                                 onPatchObject={(id, patch: ObjectTransformPatch, opts) => {
                                     if (opts?.commit) {
                                         ObjectService.commitHistory(dispatch);
+                                        return;
+                                    }
+                                    const renderedObject = doc.objects.find((object) => object.id === id);
+                                    const dragged = renderedObject && patch.transform && doc.enclosureWorkspace
+                                        ? componentTransformForRenderedDrag(doc.enclosureWorkspace, id, renderedObject.transform, patch.transform)
+                                        : undefined;
+                                    if (dragged) {
+                                        dispatch({ type: "UPDATE_COMPONENT_INSTANCE", payload: { id: dragged.componentId, changes: { transform: dragged.transform } }, skipHistory: opts?.skipHistory });
                                         return;
                                     }
                                     ObjectService.updateObject(

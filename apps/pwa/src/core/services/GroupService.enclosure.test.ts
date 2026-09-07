@@ -7,6 +7,16 @@ import { regenerateEnclosureWorkspace, type EnclosureWorkspace } from "../enclos
 import { packParts } from "../layout/pack";
 
 describe("GroupService enclosure movement", () => {
+  it("selects a source component cutout independently from the panel group", () => {
+    const workspace: EnclosureWorkspace = { version: 1, presets: [], sourcePanel: { id: "source", name: "Panel", width: 100, height: 70, components: [{ id: "knob-1", presetId: "knob", name: "Knob", kind: "circle", dimensions: { diameter: 10 }, transform: { a: 1, b: 0, c: 0, d: 1, e: 20, f: 20 } }], transform: { a: 1, b: 0, c: 0, d: 1, e: 2, f: 3 } }, enclosure: { id: "box", revision: 0, parameters: { frontHeight: 30, rearHeight: 40, thickness: 3, clearance: .1, fingerTarget: 8 } }, coupon: {} };
+    let state = appReducer(INITIAL_STATE, { type: "SET_ENCLOSURE_WORKSPACE", payload: workspace });
+    const cutoutId = "components-box:panel:source:cutout:knob-1:0";
+    const dispatch = (action: Action) => { state = appReducer(state, action); };
+    expect(GroupService.selectWithGroup(state, dispatch, cutoutId)).toEqual([cutoutId]);
+    expect(state.selectedObjectId).toBe(cutoutId);
+    expect(state.selectedObjectIds).toEqual([cutoutId]);
+  });
+
   it("moves the pre-box source panel group through its authoritative transform", () => {
     const workspace: EnclosureWorkspace = { version: 1, presets: [], sourcePanel: { id: "source", name: "Panel", width: 100, height: 70, components: [], transform: { a: 1, b: 0, c: 0, d: 1, e: 2, f: 3 } }, enclosure: { id: "box", revision: 0, parameters: { frontHeight: 30, rearHeight: 40, thickness: 3, clearance: .1, fingerTarget: 8 } }, coupon: { confirmed: true } };
     let state = appReducer(INITIAL_STATE, { type: "SET_ENCLOSURE_WORKSPACE", payload: workspace });
