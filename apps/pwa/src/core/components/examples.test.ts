@@ -2,6 +2,15 @@ import { describe, expect, it } from "vitest";
 import { HESTORE_COMPONENTS, getExampleComponentPresetBySku } from "./examples";
 
 describe("HESTORE component library", () => {
+  it("includes the display's four automatic mounting holes", () => {
+    expect(getExampleComponentPresetBySku("100.491.54")?.mechanics?.mountingHoles).toEqual([
+      { x: -28.95, y: -12.9, diameter: 2 },
+      { x: 28.95, y: -12.9, diameter: 2 },
+      { x: -28.95, y: 12.9, diameter: 2 },
+      { x: 28.95, y: 12.9, diameter: 2 }
+    ]);
+  });
+
   it("covers all seven purchased SKUs", () => {
     expect(HESTORE_COMPONENTS.map(({ sku }) => sku)).toEqual([
       "100.491.54", "100.357.19", "100.431.82", "100.355.72", "100.220.17", "100.321.00", "100.519.82"
