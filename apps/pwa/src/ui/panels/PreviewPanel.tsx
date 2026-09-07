@@ -14,7 +14,7 @@ import { SketchDrawLayer } from "../components/SketchDrawLayer";
 import { useSketchTool } from "../sketch/SketchContext";
 import { SketchService } from "../../core/services/SketchService";
 import { GroupService } from "../../core/services/GroupService";
-import { componentTransformForRenderedDrag } from "../../core/enclosure/componentDrag";
+import { createComponentDragSession } from "../../core/enclosure/componentDrag";
 import { DimensionPickLayer } from "../components/DimensionPickLayer";
 import { DimensionHud } from "../components/DimensionHud";
 import { DimAnnotationsLayer } from "../components/preview/DimAnnotationsLayer";
@@ -77,6 +77,7 @@ export function PreviewPanel({
     const dimensioning = viewMode === "design" && tool === "dimension";
     /** Snapshot at start of group/multi drag for absolute deltas. */
     const groupDragBaseRef = useRef<Document | null>(null);
+    const componentDragSessionRef = useRef<ReturnType<typeof createComponentDragSession>>();
 
     // Default to machine bed size 
     const initialViewport = useMemo(() => ({ x: 0, y: 0, w: machineProfile.bedMm.w, h: machineProfile.bedMm.h }), [machineProfile.bedMm]);
@@ -181,13 +182,12 @@ export function PreviewPanel({
                                 }}
                                 onPatchObject={(id, patch: ObjectTransformPatch, opts) => {
                                     if (opts?.commit) {
+                                        componentDragSessionRef.current = undefined;
                                         ObjectService.commitHistory(dispatch);
                                         return;
                                     }
-                                    const renderedObject = doc.objects.find((object) => object.id === id);
-                                    const dragged = renderedObject && patch.transform && doc.enclosureWorkspace
-                                        ? componentTransformForRenderedDrag(doc.enclosureWorkspace, id, renderedObject.transform, patch.transform)
-                                        : undefined;
+                                    if (!componentDragSessionRef.current) componentDragSessionRef.current = createComponentDragSession(doc, id);
+                                    const dragged = patch.transform ? componentDragSessionRef.current?.resolve(patch.transform) : undefined;
                                     if (dragged) {
                                         dispatch({ type: "UPDATE_COMPONENT_INSTANCE", payload: { id: dragged.componentId, changes: { transform: dragged.transform } }, skipHistory: opts?.skipHistory });
                                         return;

@@ -1,5 +1,5 @@
 import { expandComponent } from "../components/expand";
-import type { Transform } from "../model";
+import type { Document, Transform } from "../model";
 import type { EnclosureWorkspace } from "./workspace";
 
 const round = (value: number) => Math.round(value * 1000) / 1000;
@@ -41,4 +41,17 @@ export function componentTransformForRenderedDrag(
   if (maxY > workspace.sourcePanel.height) transform.f -= maxY - workspace.sourcePanel.height;
   transform.e = round(transform.e); transform.f = round(transform.f);
   return { componentId, transform };
+}
+
+export function createComponentDragSession(document: Document, objectId: string): { resolve: (nextRenderedTransform: Transform) => { componentId: string; transform: Transform } } | undefined {
+  const workspace = document.enclosureWorkspace;
+  const renderedObject = document.objects.find(({ id }) => id === objectId);
+  if (!workspace || !renderedObject || !componentIdForSourceCutout(workspace, objectId)) return undefined;
+  const startWorkspace = structuredClone(workspace);
+  const startRenderedTransform = { ...renderedObject.transform };
+  return {
+    resolve(nextRenderedTransform) {
+      return componentTransformForRenderedDrag(startWorkspace, objectId, startRenderedTransform, nextRenderedTransform)!;
+    }
+  };
 }

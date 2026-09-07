@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { EnclosureWorkspace } from "./workspace";
-import { componentTransformForRenderedDrag } from "./componentDrag";
+import { componentTransformForRenderedDrag, createComponentDragSession } from "./componentDrag";
+import { renderEnclosureWorkspace } from "./render";
 
 const workspace = (): EnclosureWorkspace => ({
   version: 1,
@@ -32,5 +33,13 @@ describe("componentTransformForRenderedDrag", () => {
     const transform = { a: 1, b: 0, c: 0, d: 1, e: 12, f: 8 };
     expect(componentTransformForRenderedDrag(workspace(), "components-box:panel:panel:outline", transform, transform)).toBeUndefined();
     expect(componentTransformForRenderedDrag(workspace(), "components-box:box:face:source-panel:1", transform, transform)).toBeUndefined();
+  });
+
+  it("keeps repeated absolute pointer moves relative to the drag start", () => {
+    const ws = workspace();
+    const document = renderEnclosureWorkspace({ version: 1, units: "mm", layers: [], objects: [] }, ws);
+    const session = createComponentDragSession(document, "components-box:panel:panel:cutout:knob-1:0");
+    expect(session?.resolve({ a: 1, b: 0, c: 0, d: 1, e: 13, f: 8 }).transform.e).toBe(21);
+    expect(session?.resolve({ a: 1, b: 0, c: 0, d: 1, e: 14, f: 8 }).transform.e).toBe(22);
   });
 });
