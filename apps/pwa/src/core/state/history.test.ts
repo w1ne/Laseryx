@@ -114,6 +114,19 @@ describe("enclosure workspace history", () => {
         expect(state.history.past).toHaveLength(3);
     });
 
+    it("commits repeated live component moves as one undo step", () => {
+        const ws = workspace(0);
+        ws.sourcePanel.components = [{ id: "hole-1", presetId: "hole", name: "Hole", kind: "circle", dimensions: { diameter: 5 }, transform: { a: 1, b: 0, c: 0, d: 1, e: 20, f: 20 } }];
+        let state = appReducer(INITIAL_STATE, { type: "SET_ENCLOSURE_WORKSPACE", payload: ws });
+        const beforeDragPast = state.history.past.length;
+        state = appReducer(state, { type: "UPDATE_COMPONENT_INSTANCE", payload: { id: "hole-1", changes: { transform: { ...ws.sourcePanel.components[0].transform, e: 21 } } }, skipHistory: true });
+        state = appReducer(state, { type: "UPDATE_COMPONENT_INSTANCE", payload: { id: "hole-1", changes: { transform: { ...ws.sourcePanel.components[0].transform, e: 22 } } }, skipHistory: true });
+        state = appReducer(state, { type: "COMMIT_HISTORY" });
+        expect(state.document.enclosureWorkspace?.sourcePanel.components[0].transform.e).toBe(22);
+        expect(state.history.past).toHaveLength(beforeDragPast + 1);
+        expect(appReducer(state, { type: "UNDO" }).document.enclosureWorkspace?.sourcePanel.components[0].transform.e).toBe(20);
+    });
+
     it("rejects direct mutation and deletion of derived enclosure objects", () => {
         const state = appReducer(INITIAL_STATE, { type: "SET_ENCLOSURE_WORKSPACE", payload: workspace(0) });
         const id = state.document.objects[0].id;

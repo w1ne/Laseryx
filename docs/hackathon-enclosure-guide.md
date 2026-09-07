@@ -5,11 +5,11 @@ Use **Design → Objects → Components & Box** to turn a panel design into a sh
 ## 1. Create the panel and component presets
 
 1. Select **Create panel**, enter the panel width and height in millimetres, and select **Save panel**. This panel is the exact source face for the box, not a disposable sketch.
-2. Select **Add component** and create a reusable primitive preset. Choose **Circle**, **Slot**, **Rectangle**, **Rounded rectangle**, or **Button row**, name it, and enter the measured dimensions. Open **Mechanical details** when you also know the body envelope, source, confidence, or measurements still required.
+2. Select **Add component** and create a reusable primitive preset. Choose **Circle**, **Slot**, **Rectangle**, **Rounded rectangle**, or **Button row**, name it, and enter the opening dimensions.
 3. Select **Save component** to save the preset and place an instance on the source panel. Saved presets can be placed again from **Saved presets**.
-4. Measure real hardware with appropriate tools before entering dimensions. **Example presets** labels source-backed values as Verified, starting values as Nominal, and incomplete definitions as Measurements required. Every placed copy remains editable.
+4. Drag each opening freely on the front panel, or use its X and Y fields for an exact position. There is no snapping. Every placed copy remains editable.
 
-Component instances belong to the source panel. Their transforms are panel-local, so their positions and cutouts travel with that face. Keep every cutout inside the panel and clear of other cutouts and the finger-joint recess zone. Editing the panel or adding a component invalidates previously generated faces and sheet layout; run **Make box** again after finishing the panel.
+Component instances belong to the source panel. Their transforms are panel-local, so their positions and cutouts travel with that face. Each component produces only its primary opening; stored mounting-hole or acoustic-hole metadata does not create additional cuts. Dragging is clamped so the opening stays inside the panel. Keep openings clear of each other and the finger-joint recess zone. Editing the panel or adding or moving a component invalidates previously generated faces and sheet layout; run **Make box** again after finishing the panel.
 
 ## 2. Make the box
 

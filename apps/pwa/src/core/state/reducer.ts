@@ -67,6 +67,7 @@ export function appReducer(state: AppState, action: Action): AppState {
         !(action.type === "UPDATE_OBJECT" && action.skipHistory) &&
         !(action.type === "UPDATE_ENCLOSURE_PLACEMENT" && action.skipHistory) &&
         !(action.type === "UPDATE_PANEL_TRANSFORM" && action.skipHistory) &&
+        !(action.type === "UPDATE_COMPONENT_INSTANCE" && action.skipHistory) &&
         !(action.type === "SET_DOCUMENT" && action.skipHistory)
     ) {
         const nextUndoable: UndoableState = {
