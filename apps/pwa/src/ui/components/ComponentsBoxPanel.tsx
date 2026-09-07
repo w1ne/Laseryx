@@ -13,6 +13,7 @@ import { renderEnclosureWorkspace } from "../../core/enclosure/render";
 import { componentPresetRepo } from "../../io/componentPresetRepo";
 import { BoxDialog, boxPackingIssue, type BoxSettings } from "./BoxDialog";
 import { ComponentEditor } from "./ComponentEditor";
+import { fitComponentTransformToPanel } from "../../core/enclosure/componentDrag";
 
 export type ComponentsBoxPanelProps = {
   document: Document;
@@ -53,7 +54,11 @@ export function ComponentsBoxPanel({ document, onDocumentChange, onWorkspaceChan
     const copyNumber = current.sourcePanel.components.length + 1;
     const x = Math.min(current.sourcePanel.width - 10, 25 + (copyNumber - 1) * 15);
     const y = Math.min(current.sourcePanel.height - 10, 25 + (copyNumber - 1) * 10);
-    const panel = addComponentInstance(current.sourcePanel, createInstanceFromPreset(preset, `${preset.id}-instance-${Date.now().toString(36)}`, { ...identity, e: x, f: y }));
+    const instance = createInstanceFromPreset(preset, `${preset.id}-instance-${Date.now().toString(36)}`, { ...identity, e: x, f: y });
+    // New parts start clear of the finger-joint recess. Users can still drag them freely afterward.
+    const fittedTransform = fitComponentTransformToPanel(current.sourcePanel, instance, instance.transform, current.enclosure.parameters.thickness + 0.001);
+    if (!fittedTransform) { setMessage(`${preset.name} is too large for this panel.`); return; }
+    const panel = addComponentInstance(current.sourcePanel, { ...instance, transform: fittedTransform });
     const projectPresets = current.presets.some(({ id }) => id === preset.id) ? current.presets : [...current.presets, preset];
     if (persist) setRepoPresets((items) => items.some(({ id }) => id === preset.id) ? items : [...items, preset]);
     saveWorkspace({ ...current, presets: projectPresets, sourcePanel: panel, enclosure: { ...current.enclosure, result: undefined }, sheetLayout: undefined }, base);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { EnclosureWorkspace } from "./workspace";
-import { componentTransformForRenderedDrag, createComponentDragSession } from "./componentDrag";
+import { componentTransformForRenderedDrag, createComponentDragSession, fitComponentTransformToPanel } from "./componentDrag";
 import { renderEnclosureWorkspace } from "./render";
 
 const workspace = (): EnclosureWorkspace => ({
@@ -19,6 +19,20 @@ const workspace = (): EnclosureWorkspace => ({
 });
 
 describe("componentTransformForRenderedDrag", () => {
+  it("fits every cutout, including remote mounting holes, inside the panel", () => {
+    const component = {
+      id: "display-1", presetId: "display", name: "Display", kind: "rectangle" as const,
+      dimensions: { width: 52, height: 24 },
+      mechanics: { confidence: "verified" as const, mountingHoles: [
+        { x: -28.95, y: -12.9, diameter: 2 }, { x: 28.95, y: -12.9, diameter: 2 },
+        { x: -28.95, y: 12.9, diameter: 2 }, { x: 28.95, y: 12.9, diameter: 2 }
+      ] },
+      transform: { a: 1, b: 0, c: 0, d: 1, e: 25, f: 25 }
+    };
+    expect(fitComponentTransformToPanel({ width: 160, height: 100 }, component, component.transform, 3.001))
+      .toMatchObject({ e: 32.951, f: 25 });
+  });
+
   it("applies a freehand rendered delta to the source component", () => {
     expect(componentTransformForRenderedDrag(workspace(), "components-box:panel:panel:cutout:knob-1:0", { a: 1, b: 0, c: 0, d: 1, e: 12, f: 8 }, { a: 1, b: 0, c: 0, d: 1, e: 34, f: 19 }))
       .toEqual({ componentId: "knob-1", transform: { a: 1, b: 0, c: 0, d: 1, e: 42, f: 31 } });

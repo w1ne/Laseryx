@@ -62,6 +62,11 @@ const TOOLS: {
   }
 ];
 
+export function shouldShowConstraintToolbar(selectedObjectId: string | undefined, selectedObjectIds: string[]): boolean {
+  const ids = selectedObjectIds.length > 0 ? selectedObjectIds : selectedObjectId ? [selectedObjectId] : [];
+  return ids.some(isSketchObjectId);
+}
+
 /**
  * Apply constraints only. Existing constraints show as glyphs on the canvas, not a list.
  */
@@ -79,6 +84,8 @@ export function ConstraintToolbar() {
   const sketchCount = ids.filter(isSketchObjectId).length;
   const hasSketch = !!sketch && Object.keys(sketch.entities).length > 0;
   const dimActive = tool === "dimension";
+
+  if (!shouldShowConstraintToolbar(state.selectedObjectId, state.selectedObjectIds)) return null;
 
   const dimHint =
     dimSession.phase === "idle"
