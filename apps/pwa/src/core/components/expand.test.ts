@@ -53,13 +53,13 @@ describe("expandComponent", () => {
     expect(Math.max(...ys)).toBeCloseTo(2);
   });
 
-  it("ignores stored secondary holes and expands only the primary opening", () => {
+  it("adds preset mounting and acoustic holes after the primary opening", () => {
     const instance = createComponentInstance(preset({
       id: "microphone", name: "Microphone", kind: "circle", dimensions: { diameter: 4 },
       mechanics: { confidence: "measured", mountingHoles: [{ x: -10, y: 0, diameter: 3 }], acousticHole: { x: 2, y: 4, diameter: 2 } }
     }), "microphone-1");
     const paths = expandComponent(instance);
-    expect(paths).toHaveLength(1);
+    expect(paths).toHaveLength(3);
   });
 
   it("rejects a slot whose length is smaller than its width", () => {

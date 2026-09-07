@@ -9,7 +9,7 @@ Use **Design → Objects → Components & Box** to turn a panel design into a sh
 3. Select **Save component** to save the preset and place an instance on the source panel. Saved presets can be placed again from **Saved presets**.
 4. Drag each opening freely on the front panel, or use its X and Y fields for an exact position. There is no snapping. Every placed copy remains editable.
 
-Component instances belong to the source panel. Their transforms are panel-local, so their positions and cutouts travel with that face. Each component produces only its primary opening; stored mounting-hole or acoustic-hole metadata does not create additional cuts. Dragging is clamped so the opening stays inside the panel. Keep openings clear of each other and the finger-joint recess zone. Editing the panel or adding or moving a component invalidates previously generated faces and sheet layout; run **Make box** again after finishing the panel.
+Component instances belong to the source panel. Their transforms are panel-local, so their positions and cutouts travel with that face. Module presets automatically add mounting or acoustic holes when their verified drawing defines them; there is no manual coordinate editor. Dragging moves the complete module pattern and keeps it inside the panel. Keep openings clear of each other and the finger-joint recess zone. Editing the panel or adding or moving a component invalidates previously generated faces and sheet layout; run **Make box** again after finishing the panel.
 
 ## 2. Make the box
 
