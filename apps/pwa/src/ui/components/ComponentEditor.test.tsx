@@ -18,22 +18,16 @@ describe("ComponentEditor", () => {
     expect(Array.from((screen.getByLabelText("Kind") as HTMLSelectElement).options).map((option) => option.textContent)).toEqual([
       "Circle", "Slot", "Rectangle", "Rounded rectangle", "Button row"
     ]);
-    expect(screen.getByLabelText("Source URL")).not.toBeVisible();
+    expect(screen.queryByLabelText("Source URL")).toBeNull();
   });
 
-  it("saves optional mechanical details under progressive disclosure", () => {
+  it("keeps engineering metadata out of the component form", () => {
     const onSave = vi.fn();
     render(<ComponentEditor onSave={onSave} onCancel={vi.fn()} />);
-    expect(screen.getByLabelText("Body depth")).not.toBeVisible();
-    fireEvent.click(screen.getByText("Mechanical details"));
-    fireEvent.change(screen.getByLabelText("Body width"), { target: { value: "30" } });
-    fireEvent.change(screen.getByLabelText("Body height"), { target: { value: "20" } });
-    fireEvent.change(screen.getByLabelText("Body depth"), { target: { value: "18" } });
-    fireEvent.change(screen.getByLabelText("Missing measurements"), { target: { value: "mounting holes, connector clearance" } });
-    fireEvent.change(screen.getByLabelText("Mounting holes"), { target: { value: "-10,0,3;10,0,3" } });
-    fireEvent.change(screen.getByLabelText("Front protrusion"), { target: { value: "6" } });
+    for (const label of ["Body width", "Body height", "Body depth", "Confidence", "Missing measurements", "Mounting holes", "Acoustic hole", "Front protrusion", "Source URL", "Source type", "Mechanical notes"]) expect(screen.queryByLabelText(label)).toBeNull();
+    expect(screen.queryByText("Mechanical details")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Save component" }));
-    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ mechanics: expect.objectContaining({ body: { width: 30, height: 20, depth: 18 }, mountingHoles: [{ x: -10, y: 0, diameter: 3 }, { x: 10, y: 0, diameter: 3 }], frontProtrusion: 6, missing: ["mounting holes", "connector clearance"] }) }));
+    expect(onSave.mock.calls[0][0]).not.toHaveProperty("mechanics");
   });
 
   it("blocks invalid kind dimensions with a readable message", () => {
