@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { GcodeDialect } from "../core/model";
 import { randomId } from "../core/util";
+import { prepareCutSheet } from "../core/enclosure/cutSheet";
 
 import { useStore } from "../core/state/store";
 import { getDriver } from "../io/driverSingleton";
@@ -70,8 +71,6 @@ export function App() {
   const isLocalAgentRuntime = localBridgeConfigRef.current !== null;
   const initialLinkCommandRef = useRef(readLinkCommandCapsuleFromHash(window.location.hash));
   const linkCommandHandledRef = useRef(false);
-  const initialSharedProjectRef = useRef(hasSharedProjectHash(window.location.hash) ? decodeSharedProjectHash(window.location.hash) : null);
-  const sharedProjectHandledRef = useRef(false);
   const [pendingSharedProject, setPendingSharedProject] = useState<SharedProjectPayload | null>(null);
 
   // --- Worker Init ---
@@ -409,7 +408,15 @@ export function App() {
   // MachinePanel logic for `onStreamStart` was: call handleStartJob -> generateGcode -> stream.
 
   // --- G-code Generation State ---
-  const [generatedGcode, setGeneratedGcode] = useState<string | null>(null);
+  const [cachedGcode, setGeneratedGcode] = useState<string | null>(null);
+  const [selectedSheetId, setSelectedSheetId] = useState("");
+  const sheets = doc.enclosureWorkspace?.sheetLayout?.sheets;
+  const cutSheetId = sheets?.find(sheet => sheet.id === selectedSheetId)?.id ?? sheets?.[0]?.id;
+  const generationKey = JSON.stringify([doc, camSettings, machineProfile, cutSheetId]);
+  const generationKeyRef = useRef(generationKey);
+  generationKeyRef.current = generationKey;
+  const [generatedKey, setGeneratedKey] = useState("");
+  const generatedGcode = generatedKey === generationKey ? cachedGcode : null;
   const [jobStats, setJobStats] = useState<{ estTimeS: number; travelMm: number; markMm: number; segments: number } | null>(null);
   const [generationState, setGenerationState] = useState<{ status: "idle" | "working" | "done" | "error"; message?: string }>({ status: "idle" });
   const [previewMode, setPreviewMode] = useState<"design" | "gcode">("design");
@@ -429,11 +436,15 @@ export function App() {
   };
 
   useEffect(() => {
-    if (sharedProjectHandledRef.current || !initialSharedProjectRef.current) return;
-    sharedProjectHandledRef.current = true;
-    const parsed = initialSharedProjectRef.current;
-    if (!parsed.ok) { toast.error(parsed.error); clearSharedProjectHash(); return; }
-    setPendingSharedProject(parsed.payload);
+    const receiveSharedProject = () => {
+      if (!hasSharedProjectHash(window.location.hash)) return;
+      const parsed = decodeSharedProjectHash(window.location.hash);
+      if (!parsed.ok) { toast.error(parsed.error); clearSharedProjectHash(); return; }
+      setPendingSharedProject(parsed.payload);
+    };
+    receiveSharedProject();
+    window.addEventListener("hashchange", receiveSharedProject);
+    return () => window.removeEventListener("hashchange", receiveSharedProject);
   }, []);
 
   const openSharedProject = () => {
@@ -525,6 +536,7 @@ export function App() {
 
   const handleGenerateGcode = async () => {
     if (!clientRef.current) return;
+    const requestKey = generationKey;
     try {
       setGenerationState({ status: "working", message: "Generating..." });
       // Ensure sketch constraints are solved and baked into objects for CAM
@@ -536,8 +548,15 @@ export function App() {
       }
       // Use implicit default dialect for now
       const dialect: GcodeDialect = { newline: "\n", useG0ForTravel: true, powerCommand: "S", enableLaser: "M4", disableLaser: "M5" };
+      docForCam = prepareCutSheet(docForCam, machineProfile, cutSheetId);
       const result = await clientRef.current.generateGcode(docForCam, camSettings, machineProfile, dialect);
+      if (generationKeyRef.current !== requestKey) {
+        setGenerationState({ status: "idle", message: "Design changed. Generate again." });
+        return;
+      }
+      if (!result.stats.segments) throw new Error("No cutting paths. Check layer operations and visibility.");
       setGeneratedGcode(result.gcode);
+      setGeneratedKey(requestKey);
       setJobStats(result.stats);
       setGenerationState({ status: "done", message: "Ready" });
       setPreviewMode("gcode");
@@ -555,7 +574,7 @@ export function App() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "project.gcode";
+      a.download = cutSheetId ? `project-${cutSheetId}.gcode` : "project.gcode";
       a.click();
     } catch (e) { toast.error("Failed to download G-code: " + String(e)); }
   };
@@ -848,12 +867,14 @@ export function App() {
               >
                 <LayersPanel
                   onGenerate={handleGenerateGcode}
+                  sheetId={cutSheetId}
+                  onSheetChange={setSelectedSheetId}
                   onDownload={handleDownloadGcode}
                   onOpenMaterialManager={() => setShowMaterialManager(true)}
-                  generationState={generationState}
+                  generationState={generationState.status === "done" && !generatedGcode ? { status: "idle", message: "Generate G-code for the current design and sheet." } : generationState}
                   hasGcode={!!generatedGcode}
                   isWorkerReady={workerStatus.ready}
-                  jobStats={jobStats}
+                  jobStats={generatedGcode ? jobStats : null}
                 />
               </div>
             </section>
