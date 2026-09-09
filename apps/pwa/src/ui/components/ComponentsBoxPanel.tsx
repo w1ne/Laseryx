@@ -140,7 +140,11 @@ function InstanceEditor({ panel, instance, onSave, onDelete, onCancel }: { panel
   try {
     error = validatePanel(updateComponentInstance(panel, instance.id, changes)).map(({ message }) => message).join(" ");
   } catch (cause) { error = cause instanceof Error ? cause.message : "Component values are invalid."; }
-  const field = (key: string, label: string) => <label>{label}<input aria-label={label} type="number" value={dimensions[key]} onChange={(event) => setDimensions({ ...dimensions, [key]: Number(event.target.value) })} /></label>;
+  const field = (key: string, label: string) => <label>{label}<input aria-label={label} type="number" value={dimensions[key]} onChange={(event) => setDimensions((current) => {
+    const next = { ...current, [key]: Number(event.target.value) };
+    if (instance.kind === "button-row" && (key === "count" || key === "pitch")) delete (next as Record<string, unknown>).centers;
+    return next;
+  })} /></label>;
   return <div role="dialog" aria-label={`Edit ${instance.name}`} className="components-box__editor"><strong>{instance.name}</strong>
     {instance.kind === "circle" && field("diameter", "Component diameter")}{instance.kind === "slot" && <>{field("length", "Component length")}{field("width", "Component width")}</>}{(instance.kind === "rectangle" || instance.kind === "rounded-rectangle") && <>{field("width", "Component width")}{field("height", "Component height")}</>}{instance.kind === "rounded-rectangle" && field("cornerRadius", "Component corner radius")}{instance.kind === "button-row" && <>{field("count", "Button count")}{field("diameter", "Component diameter")}{field("pitch", "Component pitch")}</>}
     <label>Component X<input aria-label="Component X" type="number" value={x} onChange={(event) => setX(Number(event.target.value))} /></label><label>Component Y<input aria-label="Component Y" type="number" value={y} onChange={(event) => setY(Number(event.target.value))} /></label>

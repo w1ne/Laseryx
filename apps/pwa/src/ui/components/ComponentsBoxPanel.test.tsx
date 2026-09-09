@@ -56,6 +56,26 @@ describe("ComponentsBoxPanel", () => {
     await waitFor(() => expect(componentPresetRepo.list).toHaveBeenCalled());
   });
 
+  it("switches a measured button row to uniform spacing when its pitch is edited", async () => {
+    const buttonPreset: ComponentPreset = {
+      id: "measured-buttons",
+      name: "Measured buttons",
+      kind: "button-row",
+      dimensions: { count: 2, diameter: 12, pitch: 20, centers: [{ x: -9, y: 0 }, { x: 11, y: 0 }] }
+    };
+    const instance = { ...buttonPreset, id: "buttons-1", presetId: buttonPreset.id, transform: { a: 1, b: 0, c: 0, d: 1, e: 80, f: 50 } };
+    let current = document();
+    current.enclosureWorkspace = { version: 1, presets: [buttonPreset], sourcePanel: { id: "panel", name: "Panel", width: 160, height: 100, components: [instance], transform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 } }, enclosure: { id: "box", revision: 0, parameters: { frontHeight: 35, rearHeight: 65, thickness: 3, clearance: .15, fingerTarget: 8 } }, coupon: {} };
+    const onDocumentChange = vi.fn((next: Document) => { current = next; });
+    render(<ComponentsBoxPanel document={current} onDocumentChange={onDocumentChange} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit Measured buttons" }));
+    fireEvent.change(screen.getByLabelText("Component pitch"), { target: { value: "22" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save instance" }));
+
+    expect(current.enclosureWorkspace?.sourcePanel.components[0].dimensions).toEqual({ count: 2, diameter: 12, pitch: 22 });
+  });
+
   it("persists a panel-local circle and generates six grouped faces with its cutout", async () => {
     let current = document();
     const onDocumentChange = vi.fn((next: Document) => { current = next; });

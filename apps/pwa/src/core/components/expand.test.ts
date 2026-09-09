@@ -38,6 +38,27 @@ describe("expandComponent", () => {
     expect(instance.dimensions).toEqual({ count: 4, diameter: 10, pitch: 15 });
   });
 
+  it("uses explicit button centres when a measured row is not uniformly spaced", () => {
+    const instance = createComponentInstance(preset({
+      id: "measured-buttons",
+      name: "Measured buttons",
+      kind: "button-row",
+      dimensions: {
+        count: 2,
+        diameter: 4,
+        pitch: 7,
+        centers: [{ x: -3, y: 1 }, { x: 4, y: -1 }]
+      }
+    }), "measured-buttons-1");
+
+    const paths = expandComponent(instance);
+
+    expect(paths.map((path) => path.points[0])).toEqual([
+      { x: -1, y: 1 },
+      { x: 6, y: -1 }
+    ]);
+  });
+
   it("keeps a valid slot centered on the local origin", () => {
     const instance = createComponentInstance(preset({
       id: "slot", name: "Slot", kind: "slot", dimensions: { length: 10, width: 4 }

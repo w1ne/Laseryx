@@ -28,8 +28,8 @@ function transformedRectangleBounds(width: number, height: number, transform: Tr
   ].map((point) => applyTransform(point, transform)));
 }
 
-function transformedCircleBounds(centerX: number, radius: number, transform: Transform): Bounds {
-  const center = applyTransform({ x: centerX, y: 0 }, transform);
+function transformedCircleBounds(centerX: number, centerY: number, radius: number, transform: Transform): Bounds {
+  const center = applyTransform({ x: centerX, y: centerY }, transform);
   const extentX = radius * Math.hypot(transform.a, transform.c);
   const extentY = radius * Math.hypot(transform.b, transform.d);
   return {
@@ -55,17 +55,16 @@ function componentBounds(component: ComponentInstance): Bounds {
   let primary: Bounds;
   switch (component.kind) {
     case "circle":
-      primary = transformedCircleBounds(0, component.dimensions.diameter / 2, transform); break;
+      primary = transformedCircleBounds(0, 0, component.dimensions.diameter / 2, transform); break;
     case "slot":
       primary = transformedRectangleBounds(component.dimensions.length, component.dimensions.width, transform); break;
     case "rectangle":
     case "rounded-rectangle":
       primary = transformedRectangleBounds(component.dimensions.width, component.dimensions.height, transform); break;
     case "button-row": {
-      const { count, diameter, pitch } = component.dimensions;
-      primary = unionBounds(Array.from({ length: count }, (_, index) =>
-        transformedCircleBounds((index - (count - 1) / 2) * pitch, diameter / 2, transform)
-      )); break;
+      const { count, diameter, pitch, centers } = component.dimensions;
+      const positions = centers ?? Array.from({ length: count }, (_, index) => ({ x: (index - (count - 1) / 2) * pitch, y: 0 }));
+      primary = unionBounds(positions.map(({ x, y }) => transformedCircleBounds(x, y, diameter / 2, transform))); break;
     }
   }
   const holes = [...(component.mechanics?.mountingHoles ?? []), ...(component.mechanics?.acousticHole ? [component.mechanics.acousticHole] : [])];

@@ -18,7 +18,10 @@ describe("placeHardwareModule", () => {
     expect(placed.ok && placed.part.id).toBe("encoder-2");
   });
 
-  it("blocks parts whose required measurements are unknown", () => {
-    expect(placeHardwareModule("100.519.82", { x: 0, y: 0 })).toMatchObject({ ok: false, code: "MEASURE_REQUIRED" });
+  it("places the measured four-button openings without overrides", () => {
+    const buttons = placeHardwareModule("100.519.82", { x: 0, y: 0 });
+    expect(buttons.ok).toBe(true);
+    expect(buttons.ok && buttons.part.paths).toHaveLength(4);
+    expect(buttons.ok && buttons.part.paths.map((path) => path.points[0].x)).toEqual([-25.25, -4.25, 15.75, 36.75]);
   });
 });

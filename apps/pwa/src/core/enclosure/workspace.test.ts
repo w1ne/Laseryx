@@ -105,6 +105,22 @@ describe("enclosure workspace", () => {
     expect(sanitizeEnclosureWorkspace({ ...base, presets: [{ ...mechanical, mechanics: { ...mechanical.mechanics, body: { ...mechanical.mechanics.body, depth: -1 } } }] })).toBeUndefined();
   });
 
+  it("preserves safe explicit button centres and rejects malformed ones", () => {
+    const buttons: ComponentPreset = {
+      id: "buttons",
+      name: "Measured buttons",
+      kind: "button-row",
+      dimensions: { count: 2, diameter: 4, pitch: 8, centers: [{ x: -4, y: 1 }, { x: 4, y: -1 }] }
+    };
+    const base: EnclosureWorkspace = { version: 1, presets: [buttons], sourcePanel: panel(), enclosure: { id: "box", revision: 0, parameters }, coupon: {} };
+
+    expect(sanitizeEnclosureWorkspace(base)?.presets[0]).toMatchObject(buttons);
+    expect(sanitizeEnclosureWorkspace({
+      ...base,
+      presets: [{ ...buttons, dimensions: { ...buttons.dimensions, centers: [{ x: -4, y: 1 }] } }]
+    })).toBeUndefined();
+  });
+
   it("accepts but strips legacy coupon confirmation", () => {
     const base: EnclosureWorkspace = { version: 1, presets: [], sourcePanel: panel(), enclosure: { id: "box", revision: 0, parameters }, coupon: { confirmed: true, selectedClearance: .15 } };
     expect(sanitizeEnclosureWorkspace(base)?.coupon).toEqual({ selectedClearance: .15 });
