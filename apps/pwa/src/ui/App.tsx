@@ -32,6 +32,8 @@ import { useToast } from "./hooks/useToast";
 import { useAgentSessionController } from "./hooks/useAgentSessionController";
 import { AgentControlPanel } from "./components/AgentControlPanel";
 import { ToastContainer } from "./components/Toast";
+import { decodeSharedProjectHash, hasSharedProjectHash, sharedProjectUrl, type SharedProjectPayload } from "../io/shareCapsule";
+import { SharedProjectDialog } from "./dialogs/SharedProjectDialog";
 import "./app.css";
 
 interface BeforeInstallPromptEvent extends Event {
@@ -68,6 +70,9 @@ export function App() {
   const isLocalAgentRuntime = localBridgeConfigRef.current !== null;
   const initialLinkCommandRef = useRef(readLinkCommandCapsuleFromHash(window.location.hash));
   const linkCommandHandledRef = useRef(false);
+  const initialSharedProjectRef = useRef(hasSharedProjectHash(window.location.hash) ? decodeSharedProjectHash(window.location.hash) : null);
+  const sharedProjectHandledRef = useRef(false);
+  const [pendingSharedProject, setPendingSharedProject] = useState<SharedProjectPayload | null>(null);
 
   // --- Worker Init ---
   useEffect(() => {
@@ -345,6 +350,16 @@ export function App() {
     }
   };
 
+  const handleShareProject = async () => {
+    try {
+      const url = sharedProjectUrl({ version: 1, document: doc, camSettings }, window.location);
+      await navigator.clipboard.writeText(url);
+      toast.success(`Share link copied (${url.length.toLocaleString()} characters)`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not create share link.");
+    }
+  };
+
   const handleListProjects = async () => {
     try {
       setSavedProjects(await projectRepo.list());
@@ -405,6 +420,33 @@ export function App() {
       window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
     }
   };
+
+  const clearSharedProjectHash = () => {
+    const params = new URLSearchParams(window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash);
+    params.delete("share");
+    const remaining = params.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${remaining ? `#${remaining}` : ""}`);
+  };
+
+  useEffect(() => {
+    if (sharedProjectHandledRef.current || !initialSharedProjectRef.current) return;
+    sharedProjectHandledRef.current = true;
+    const parsed = initialSharedProjectRef.current;
+    if (!parsed.ok) { toast.error(parsed.error); clearSharedProjectHash(); return; }
+    setPendingSharedProject(parsed.payload);
+  }, []);
+
+  const openSharedProject = () => {
+    if (!pendingSharedProject) return;
+    dispatch({ type: "SET_DOCUMENT", payload: pendingSharedProject.document });
+    dispatch({ type: "SET_CAM_SETTINGS", payload: pendingSharedProject.camSettings });
+    dispatch({ type: "SELECT_OBJECT", payload: null });
+    dispatch({ type: "SELECT_CONSTRAINT", payload: null });
+    setPendingSharedProject(null); clearSharedProjectHash();
+    toast.success("Shared design opened");
+  };
+
+  const cancelSharedProject = () => { setPendingSharedProject(null); clearSharedProjectHash(); };
 
   const createCurrentAutomationBridge = () => {
     const liveExecutor = createLiveCommandExecutor({
@@ -621,6 +663,7 @@ export function App() {
           >
             Save
           </button>
+          <button type="button" className="button" title="Copy this editable fabrication project as a link" onClick={handleShareProject}>Share link</button>
           <button
             type="button"
             className="button"
@@ -654,6 +697,7 @@ export function App() {
       </header>
 
       {/* Load Dialog Overlay */}
+      {pendingSharedProject && <SharedProjectDialog payload={pendingSharedProject} onOpen={openSharedProject} onCancel={cancelSharedProject} />}
       {showLoadDialog && (
         <div style={{ position: "fixed", top: 0, left: 0, bottom: 0, right: 0, background: "rgba(0,0,0,0.8)", zIndex: 999, display: "flex", justifyContent: "center", alignItems: "center" }}>
           <div style={{ background: "#222", padding: "20px", width: "400px", borderRadius: "8px", border: "1px solid #444" }}>
