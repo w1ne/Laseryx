@@ -225,7 +225,14 @@ export const GroupService = {
   ): boolean {
     const ids = [...new Set(objectIds.filter(Boolean))];
     if (ids.length === 0) return false;
-    if (ids.some((id) => id.startsWith("components-box:"))) return false;
+    if (ids.some((id) => id.startsWith("components-box:"))) {
+      const workspace = state.document.enclosureWorkspace;
+      if (!workspace || ids.some((id) => !id.startsWith("components-box:"))) return false;
+      const componentIds = ids.map((id) => componentIdForSourceCutout(workspace, id));
+      if (componentIds.some((id) => !id)) return false;
+      dispatch({ type: "DELETE_COMPONENT_INSTANCES", payload: [...new Set(componentIds as string[])] });
+      return true;
+    }
 
     // If any id is in a group and the selection is exactly that group (or a superset
     // that includes full groups), remove whole groups via member set already in ids.
@@ -296,6 +303,7 @@ export const GroupService = {
           ? [state.selectedObjectId]
           : [];
     if (ids.length === 0) return false;
+    if (ids.some((id) => id.startsWith("components-box:"))) return this.deleteObjects(state, dispatch, ids);
 
     // If every selected id belongs to the same group and we have most of the group,
     // delete the full group (avoids half-deleted rects from single-edge delete)

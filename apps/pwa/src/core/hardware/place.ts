@@ -32,7 +32,7 @@ export function placeHardwareModule(sku: string, origin: Point, overrides: Recor
     preset = { id: `legacy-${sku}`, name: module.name, kind: "button-row", dimensions: {
       count: 4, diameter: parameters.buttonDiameter, pitch: parameters.buttonPitch,
       ...(measuredCenters ? { centers: measuredCenters } : {})
-    } };
+    }, ...(example?.kind === "button-row" && example.mechanics ? { mechanics: example.mechanics } : {}) };
   } else if (example?.kind === "circle") {
     preset = { ...example, dimensions: { diameter: parameters.cutoutDiameter } };
   } else if (example?.kind === "slot") {

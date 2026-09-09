@@ -12,6 +12,8 @@ export type Action =
     | { type: "UPDATE_ENCLOSURE_PLACEMENT"; payload: { partId: string; x: number; y: number; rotation: 0 | 90 }; skipHistory?: boolean }
     | { type: "UPDATE_PANEL_TRANSFORM"; payload: Transform; skipHistory?: boolean }
     | { type: "UPDATE_COMPONENT_INSTANCE"; payload: { id: string; changes: Partial<Omit<ComponentInstance, "id" | "kind">> }; skipHistory?: boolean }
+    /** Atomically remove authoritative source-panel component instances. */
+    | { type: "DELETE_COMPONENT_INSTANCES"; payload: string[] }
     | { type: "ADD_LAYER"; payload: Layer }
     | { type: "DELETE_LAYER"; payload: string } // layerId
     | { type: "ADD_OBJECT"; payload: Obj }

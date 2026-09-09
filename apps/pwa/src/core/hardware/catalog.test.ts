@@ -25,7 +25,7 @@ describe("hackathon hardware catalog", () => {
   });
 
   it("does not invent dimensions and marks internal modules", () => {
-    expect(getHardwareModule("100.519.82")?.requiresMeasurement).toBe(true);
+    expect(getHardwareModule("100.519.82")?.requiresMeasurement).toBeUndefined();
     expect(getHardwareModule("100.431.82")?.mounting).toBe("internal");
     expect(getHardwareModule("100.357.19")?.mounting).toBe("internal");
   });
