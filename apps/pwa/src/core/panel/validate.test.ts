@@ -114,6 +114,20 @@ describe("validatePanel", () => {
     expect(validatePanel(panel([component]))).toEqual([]);
   });
 
+  it("includes explicit button centre offsets in panel bounds", () => {
+    const component = createComponentInstance(preset({
+      id: "buttons",
+      name: "Offset buttons",
+      kind: "button-row",
+      dimensions: { count: 2, diameter: 4, pitch: 8, centers: [{ x: -4, y: -10 }, { x: 4, y: 0 }] }
+    }), "buttons-1", { ...identity, e: 80, f: 5 });
+
+    expect(validatePanel(panel([component]))).toContainEqual(expect.objectContaining({
+      code: "cutout-outside-panel",
+      componentIds: ["buttons-1"]
+    }));
+  });
+
   it.each([
     preset({ id: "circle", name: "Circle", kind: "circle", dimensions: { diameter: 8 } }),
     preset({ id: "slot", name: "Slot", kind: "slot", dimensions: { length: 20, width: 6 } }),

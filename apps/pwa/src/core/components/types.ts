@@ -6,7 +6,7 @@ export type CircleDimensions = { diameter: number };
 export type SlotDimensions = { length: number; width: number };
 export type RectangleDimensions = { width: number; height: number };
 export type RoundedRectangleDimensions = RectangleDimensions & { cornerRadius: number };
-export type ButtonRowDimensions = { count: number; diameter: number; pitch: number };
+export type ButtonRowDimensions = { count: number; diameter: number; pitch: number; centers?: Array<{ x: number; y: number }> };
 
 export type ComponentSource = {
   vendor?: string;
@@ -77,6 +77,6 @@ export function createComponentInstance(
     case "slot": return { ...common, kind: preset.kind, dimensions: { ...preset.dimensions } };
     case "rectangle": return { ...common, kind: preset.kind, dimensions: { ...preset.dimensions } };
     case "rounded-rectangle": return { ...common, kind: preset.kind, dimensions: { ...preset.dimensions } };
-    case "button-row": return { ...common, kind: preset.kind, dimensions: { ...preset.dimensions } };
+    case "button-row": return { ...common, kind: preset.kind, dimensions: { ...preset.dimensions, ...(preset.dimensions.centers ? { centers: preset.dimensions.centers.map((center) => ({ ...center })) } : {}) } };
   }
 }

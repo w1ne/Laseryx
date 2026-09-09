@@ -26,8 +26,12 @@ export function placeHardwareModule(sku: string, origin: Point, overrides: Recor
   const example = getExampleComponentPresetBySku(sku);
   let preset: ComponentPreset;
   if (module.geometry === "button-row") {
+    const measuredCenters = example?.kind === "button-row" && !("buttonDiameter" in overrides) && !("buttonPitch" in overrides)
+      ? example.dimensions.centers
+      : undefined;
     preset = { id: `legacy-${sku}`, name: module.name, kind: "button-row", dimensions: {
-      count: 4, diameter: parameters.buttonDiameter, pitch: parameters.buttonPitch
+      count: 4, diameter: parameters.buttonDiameter, pitch: parameters.buttonPitch,
+      ...(measuredCenters ? { centers: measuredCenters } : {})
     } };
   } else if (example?.kind === "circle") {
     preset = { ...example, dimensions: { diameter: parameters.cutoutDiameter } };

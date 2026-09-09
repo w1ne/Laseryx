@@ -100,6 +100,10 @@ const dimensions = (kind: unknown, value: unknown) => {
   if (kind === "slot" && (value.length as number) < (value.width as number)) return false;
   if (kind === "rounded-rectangle" && (value.cornerRadius as number) > Math.min(value.width as number, value.height as number) / 2) return false;
   if (kind === "button-row" && (!Number.isInteger(value.count) || (value.pitch as number) < (value.diameter as number))) return false;
+  if (kind === "button-row" && value.centers !== undefined && (!Array.isArray(value.centers)
+    || value.centers.length !== value.count
+    || value.centers.length > 100
+    || !value.centers.every((center) => record(center) && finite(center.x) && finite(center.y)))) return false;
   return true;
 };
 const component = (value: unknown, instance: boolean) => record(value) && typeof value.id === "string" && value.id.length > 0 && typeof value.name === "string"

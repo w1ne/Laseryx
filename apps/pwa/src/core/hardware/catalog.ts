@@ -7,6 +7,7 @@ function dimensionsFor(definition: typeof HESTORE_COMPONENTS[number]): HardwareD
   if (body) { dimensions.bodyWidth = body.width; dimensions.bodyHeight = body.height; if (body.depth !== undefined) dimensions.bodyDepth = body.depth; }
   if (preset?.kind === "circle") dimensions.cutoutDiameter = preset.dimensions.diameter;
   if (preset?.kind === "slot") { dimensions.travel = preset.dimensions.length; dimensions.slotWidth = preset.dimensions.width; }
+  if (preset?.kind === "button-row") { dimensions.buttonDiameter = preset.dimensions.diameter; dimensions.buttonPitch = preset.dimensions.pitch; }
   if (preset?.kind === "rectangle" || preset?.kind === "rounded-rectangle") { dimensions.cutoutWidth = preset.dimensions.width; dimensions.cutoutHeight = preset.dimensions.height; if (body) { dimensions.boardWidth = body.width; dimensions.boardHeight = body.height; } }
   return dimensions;
 }

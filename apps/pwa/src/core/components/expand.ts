@@ -45,6 +45,10 @@ function validateDimensions(instance: ComponentInstance): void {
       }
       requirePositive("Button diameter", instance.dimensions.diameter);
       requirePositive("Button pitch", instance.dimensions.pitch);
+      if (instance.dimensions.centers && (instance.dimensions.centers.length !== instance.dimensions.count
+        || instance.dimensions.centers.some(({ x, y }) => !Number.isFinite(x) || !Number.isFinite(y)))) {
+        throw new Error("Button centers must be finite and match button count");
+      }
       break;
   }
 }
@@ -76,10 +80,9 @@ export function expandComponent(instance: ComponentInstance): PolylinePath[] {
         instance.dimensions.cornerRadius
       )];
     case "button-row": {
-      const { count, diameter, pitch } = instance.dimensions;
-      return Array.from({ length: count }, (_, index) =>
-        circleToPolyline((index - (count - 1) / 2) * pitch, 0, diameter / 2, 32)
-      );
+      const { count, diameter, pitch, centers } = instance.dimensions;
+      const positions = centers ?? Array.from({ length: count }, (_, index) => ({ x: (index - (count - 1) / 2) * pitch, y: 0 }));
+      return positions.map(({ x, y }) => circleToPolyline(x, y, diameter / 2, 32));
     }
   } })();
   const holes = [...(instance.mechanics?.mountingHoles ?? []), ...(instance.mechanics?.acousticHole ? [instance.mechanics.acousticHole] : [])];
