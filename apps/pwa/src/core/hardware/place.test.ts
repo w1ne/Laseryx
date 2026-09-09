@@ -21,7 +21,7 @@ describe("placeHardwareModule", () => {
   it("places the measured four-button openings without overrides", () => {
     const buttons = placeHardwareModule("100.519.82", { x: 0, y: 0 });
     expect(buttons.ok).toBe(true);
-    expect(buttons.ok && buttons.part.paths).toHaveLength(4);
-    expect(buttons.ok && buttons.part.paths.map((path) => path.points[0].x)).toEqual([-25.25, -4.25, 15.75, 36.75]);
+    expect(buttons.ok && buttons.part.paths).toHaveLength(8);
+    expect(buttons.ok && buttons.part.paths.slice(0, 4).map((path) => path.points[0].x)).toEqual([-25.25, -4.25, 15.75, 36.75]);
   });
 });

@@ -38,7 +38,16 @@ describe("HESTORE component library", () => {
           { x: 30.75, y: 0 }
         ]
       },
-      mechanics: { confidence: "measured", body: { width: 86.5, height: 20 } }
+      mechanics: {
+        confidence: "measured",
+        body: { width: 86.5, height: 20 },
+        mountingHoles: [
+          { x: -41.25, y: -8, diameter: 3.5 },
+          { x: 41.25, y: -8, diameter: 3.5 },
+          { x: -41.25, y: 8, diameter: 3.5 },
+          { x: 41.25, y: 8, diameter: 3.5 }
+        ]
+      }
     });
   });
 
@@ -51,7 +60,8 @@ describe("HESTORE component library", () => {
   it("keeps traceable confidence and missing measurements", () => {
     expect(getExampleComponentPresetBySku("100.491.54")).toMatchObject({ mechanics: { confidence: "verified", body: { width: 62, height: 29 } } });
     expect(getExampleComponentPresetBySku("100.491.54")?.mechanics?.missing).toContain("body depth");
-    expect(HESTORE_COMPONENTS.find(({ sku }) => sku === "100.519.82")).toMatchObject({ mechanics: { confidence: "measured", missing: ["mounting-hole positions"] } });
+    expect(HESTORE_COMPONENTS.find(({ sku }) => sku === "100.519.82")).toMatchObject({ mechanics: { confidence: "measured" } });
+    expect(HESTORE_COMPONENTS.find(({ sku }) => sku === "100.519.82")?.mechanics.missing).toBeUndefined();
     expect(HESTORE_COMPONENTS.find(({ sku }) => sku === "100.357.19")?.preset).toBeUndefined();
   });
 });

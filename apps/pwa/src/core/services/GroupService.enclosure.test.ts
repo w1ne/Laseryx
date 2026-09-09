@@ -44,4 +44,59 @@ describe("GroupService enclosure movement", () => {
     expect(state.document.enclosureWorkspace!.sheetLayout!.placements.find(({ partId }) => partId === "source-panel")!.rotation).toBe(90);
     expect(state.document.objects.filter(({ id }) => group.memberIds.includes(id)).every(({ transform }) => transform.a === 0 && transform.b === 1)).toBe(true);
   });
+
+  it("deletes a complete source component when one mounting-hole path is selected and supports undo", () => {
+    const unrelated = { kind: "shape" as const, id: "unrelated", layerId: "layer-1", transform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }, shape: { type: "rect" as const, width: 5, height: 5 } };
+    const workspace: EnclosureWorkspace = { version: 1, presets: [], sourcePanel: { id: "source", name: "Panel", width: 100, height: 70, components: [{ id: "slider-1", presetId: "slider", name: "Slider", kind: "slot", dimensions: { length: 30, width: 2 }, mechanics: { confidence: "measured", mountingHoles: [{ x: -20, y: 0, diameter: 3 }, { x: 20, y: 0, diameter: 3 }] }, transform: { a: 1, b: 0, c: 0, d: 1, e: 50, f: 35 } }], transform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 } }, enclosure: { id: "box", revision: 0, parameters: { frontHeight: 30, rearHeight: 40, thickness: 3, clearance: .1, fingerTarget: 8 } }, coupon: {} };
+    let state = { ...INITIAL_STATE, document: { ...INITIAL_STATE.document, objects: [unrelated] } };
+    state = appReducer(state, { type: "SET_ENCLOSURE_WORKSPACE", payload: workspace });
+    const mountingHoleId = "components-box:panel:source:cutout:slider-1:2";
+    state = appReducer(state, { type: "SELECT_OBJECT", payload: mountingHoleId });
+    const dispatch = (action: Action) => { state = appReducer(state, action); };
+
+    expect(GroupService.deleteSelection(state, dispatch)).toBe(true);
+    expect(state.document.enclosureWorkspace?.sourcePanel.components).toEqual([]);
+    expect(state.document.objects.some(({ id }) => id === "unrelated")).toBe(true);
+    expect(state.document.objects.some(({ id }) => id.includes("slider-1"))).toBe(false);
+    expect(state.selectedObjectId).toBeNull();
+
+    state = appReducer(state, { type: "UNDO" });
+    expect(state.document.enclosureWorkspace?.sourcePanel.components.map(({ id }) => id)).toEqual(["slider-1"]);
+    expect(state.document.objects.filter(({ id }) => id.includes("slider-1"))).toHaveLength(3);
+  });
+
+  it("deduplicates multi-path selections and deletes multiple source components", () => {
+    const component = (id: string, x: number) => ({ id, presetId: id, name: id, kind: "circle" as const, dimensions: { diameter: 8 }, transform: { a: 1, b: 0, c: 0, d: 1, e: x, f: 35 } });
+    const workspace: EnclosureWorkspace = { version: 1, presets: [], sourcePanel: { id: "source", name: "Panel", width: 100, height: 70, components: [component("a", 25), component("b", 75)], transform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 } }, enclosure: { id: "box", revision: 0, parameters: { frontHeight: 30, rearHeight: 40, thickness: 3, clearance: .1, fingerTarget: 8 } }, coupon: {} };
+    let state = appReducer(INITIAL_STATE, { type: "SET_ENCLOSURE_WORKSPACE", payload: workspace });
+    state = appReducer(state, { type: "SET_SELECTION", payload: ["components-box:panel:source:cutout:a:0", "components-box:panel:source:cutout:a:0", "components-box:panel:source:cutout:b:0"] });
+    const dispatch = (action: Action) => { state = appReducer(state, action); };
+
+    expect(GroupService.deleteSelection(state, dispatch)).toBe(true);
+    expect(state.document.enclosureWorkspace?.sourcePanel.components).toEqual([]);
+  });
+
+  it("deletes a single-path component instead of expanding to the whole panel group", () => {
+    const workspace: EnclosureWorkspace = { version: 1, presets: [], sourcePanel: { id: "source", name: "Panel", width: 100, height: 70, components: [{ id: "button", presetId: "button", name: "Button", kind: "circle", dimensions: { diameter: 8 }, transform: { a: 1, b: 0, c: 0, d: 1, e: 50, f: 35 } }], transform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 } }, enclosure: { id: "box", revision: 0, parameters: { frontHeight: 30, rearHeight: 40, thickness: 3, clearance: .1, fingerTarget: 8 } }, coupon: {} };
+    let state = appReducer(INITIAL_STATE, { type: "SET_ENCLOSURE_WORKSPACE", payload: workspace });
+    state = appReducer(state, { type: "SELECT_OBJECT", payload: "components-box:panel:source:cutout:button:0" });
+    const dispatch = (action: Action) => { state = appReducer(state, action); };
+
+    expect(GroupService.deleteSelection(state, dispatch)).toBe(true);
+    expect(state.document.enclosureWorkspace?.sourcePanel.components).toEqual([]);
+    expect(state.document.objects.some(({ id }) => id.endsWith(":outline"))).toBe(true);
+  });
+
+  it("rejects mixed selections and generated face paths without partial deletion", () => {
+    const workspace: EnclosureWorkspace = { version: 1, presets: [], sourcePanel: { id: "source", name: "Panel", width: 100, height: 70, components: [{ id: "a", presetId: "a", name: "A", kind: "circle", dimensions: { diameter: 8 }, transform: { a: 1, b: 0, c: 0, d: 1, e: 25, f: 35 } }], transform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 } }, enclosure: { id: "box", revision: 0, parameters: { frontHeight: 30, rearHeight: 40, thickness: 3, clearance: .1, fingerTarget: 8 } }, coupon: {} };
+    let state = appReducer(INITIAL_STATE, { type: "SET_ENCLOSURE_WORKSPACE", payload: workspace });
+    const before = state.document;
+    state = appReducer(state, { type: "SET_SELECTION", payload: ["components-box:panel:source:cutout:a:0", "free-object"] });
+    const dispatch = (action: Action) => { state = appReducer(state, action); };
+    expect(GroupService.deleteSelection(state, dispatch)).toBe(false);
+    expect(state.document).toBe(before);
+
+    expect(GroupService.deleteObjects(state, dispatch, ["components-box:box:face:source-panel:1"])).toBe(false);
+    expect(state.document).toBe(before);
+  });
 });

@@ -13,6 +13,7 @@ const UNDOABLE_ACTIONS = new Set([
     "UPDATE_ENCLOSURE_PLACEMENT",
     "UPDATE_PANEL_TRANSFORM",
     "UPDATE_COMPONENT_INSTANCE",
+    "DELETE_COMPONENT_INSTANCES",
     "ADD_LAYER",
     "DELETE_LAYER",
     "ADD_OBJECT",
@@ -118,6 +119,24 @@ function internalReducer(state: AppState, action: Action): AppState {
             if (index < 0) return state;
             next.sourcePanel.components[index] = { ...next.sourcePanel.components[index], ...structuredClone(action.payload.changes), id: next.sourcePanel.components[index].id, kind: next.sourcePanel.components[index].kind } as typeof next.sourcePanel.components[number];
             return { ...state, document: renderEnclosureWorkspace(state.document, next) };
+        }
+
+        case "DELETE_COMPONENT_INSTANCES": {
+            const workspace = state.document.enclosureWorkspace;
+            if (!workspace || workspace.enclosure.result) return state;
+            const ids = new Set(action.payload.filter((id) => workspace.sourcePanel.components.some((component) => component.id === id)));
+            if (ids.size === 0) return state;
+            const next = structuredClone(workspace);
+            next.sourcePanel.components = next.sourcePanel.components.filter(({ id }) => !ids.has(id));
+            next.enclosure.result = undefined;
+            next.sheetLayout = undefined;
+            return {
+                ...state,
+                document: renderEnclosureWorkspace(state.document, next),
+                selectedObjectId: null,
+                selectedObjectIds: [],
+                selectedConstraintId: null
+            };
         }
 
         case "ADD_LAYER":
