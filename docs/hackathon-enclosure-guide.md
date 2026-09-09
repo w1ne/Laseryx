@@ -39,7 +39,9 @@ For a new material, thickness, machine setup, or fit target:
 
 The **Fabrication readiness** status must say **Ready to cut** before proceeding. Preflight checks required component measurements, body depth and body overlap, panel/component validity, joint feasibility, closed and non-self-intersecting contours, fresh generated faces, complete non-overlapping in-bounds placement, and configured stock/bed constraints when available. An included coupon produces a recommendation, not a blocker.
 
-Then open **Operations**, assign the appropriate cut settings, generate the toolpath, inspect the preview, and proceed one physical sheet at a time.
+Then open **Operations**. In **Components & Box**, select **Add cut operation** if the layer has no operation yet, and set the speed, power, and passes for the actual machine and stock. Select **Cut sheet**, generate the toolpath, inspect the preview, and download or stream that physical sheet. Exported coordinates start at that sheet's origin; adjacent sheets in the overview are excluded. Repeat for each sheet with the stock origin set consistently.
+
+Changing the document, operations, machine profile, or selected sheet invalidates the generated job. Generate again before downloading or starting the laser. Empty jobs, missing operations, and enclosure preflight errors block generation.
 
 Software preflight cannot measure actual kerf or verify dry assembly. For unfamiliar stock, cut the optional coupon first and dry-assemble the enclosure before electronics are installed.
 

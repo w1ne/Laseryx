@@ -25,6 +25,7 @@ vi.mock("../workerClient", () => ({
         generateGcode: (_req: any) => Promise.resolve({
             ok: true,
             gcode: "G0 X0 Y0\nM3 S1000\nG1 X10 Y10\nM5",
+            stats: { segments: 1, markMm: 14.14, travelMm: 0, estTimeS: 1 },
             preview: []
         }),
     }),

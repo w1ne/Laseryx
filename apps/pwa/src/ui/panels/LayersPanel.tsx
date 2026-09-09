@@ -20,6 +20,8 @@ type LayersPanelProps = {
     hasGcode: boolean;
     isWorkerReady: boolean;
     jobStats: { estTimeS: number; travelMm: number; markMm: number; segments: number } | null;
+    sheetId?: string;
+    onSheetChange?: (id: string) => void;
 };
 
 export function LayersPanel({
@@ -29,7 +31,9 @@ export function LayersPanel({
     generationState,
     hasGcode,
     isWorkerReady,
-    jobStats
+    jobStats,
+    sheetId,
+    onSheetChange
 }: LayersPanelProps) {
     const { state, dispatch } = useStore();
     const { document, camSettings } = state;
@@ -58,10 +62,25 @@ export function LayersPanel({
                 </div>
             </div>
             <div className="panel__body">
+                {document.enclosureWorkspace?.sheetLayout && <label>Cut sheet
+                    <select aria-label="Cut sheet" value={sheetId} onChange={event => onSheetChange?.(event.target.value)}>
+                        {document.enclosureWorkspace.sheetLayout.sheets.map((sheet, index) => <option key={sheet.id} value={sheet.id}>Sheet {index + 1}</option>)}
+                    </select>
+                </label>}
                 <div className="layer-list">
                     {document.layers.map(layer => {
                         const op = camSettings.operations.find(o => o.id === layer.operationId);
-                        if (!op) return null;
+                        if (!op) {
+                            if (!document.objects.some(object => object.layerId === layer.id && !object.construction)) return null;
+                            return <div key={layer.id} className="layer-card">
+                                <span className="layer-card__title">{layer.name}</span>
+                                <button type="button" onClick={() => {
+                                    const id = `op-${layer.id}`;
+                                    dispatch({ type: "ADD_OPERATION", payload: { id, name: "Cut", mode: "line", speed: 1000, power: 50, passes: 1, order: "insideOut" } });
+                                    dispatch({ type: "SET_DOCUMENT", payload: { ...document, layers: document.layers.map(item => item.id === layer.id ? { ...item, operationId: id } : item) } });
+                                }}>Add cut operation</button>
+                            </div>;
+                        }
 
                         return (
                             <div key={layer.id} className="layer-card">

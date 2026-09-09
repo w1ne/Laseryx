@@ -10,6 +10,7 @@ import type {
 } from "./model";
 import { distance } from "./geom";
 import { planCam } from "./cam";
+import { prepareCutSheet } from "./enclosure/cutSheet";
 
 export type EmitResult = {
   gcode: string;
@@ -100,6 +101,14 @@ export function generateGcode(
   dialect: GcodeDialect,
   images?: Map<string, ImageData>
 ): GenerateResult {
+  document = prepareCutSheet(document, machine);
+  for (const object of document.objects) {
+    if (object.construction) continue;
+    const layer = document.layers.find(item => item.id === object.layerId);
+    if (layer?.visible && !cam.operations.some(operation => operation.id === layer.operationId)) {
+      throw new Error(`Assign a cutting operation to ${layer.name} before generating G-code.`);
+    }
+  }
   const { plan, preview, warnings } = planCam(document, cam, images);
   const { gcode, stats } = emitGcode(plan, cam, machine, dialect);
 
