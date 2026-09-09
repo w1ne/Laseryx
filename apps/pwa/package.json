@@ -19,6 +19,7 @@
     "drive:fusion": "node scripts/drive-fusion.mjs"
   },
   "dependencies": {
+    "fflate": "^0.8.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "web-serial-polyfill": "^1.0.15"

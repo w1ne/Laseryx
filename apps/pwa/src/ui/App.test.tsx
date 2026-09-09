@@ -4,6 +4,7 @@ import { App } from "./App";
 import { useStore } from "../core/state/store";
 import { INITIAL_STATE } from "../core/state/types";
 import { encodeLinkCommandCapsule } from "../automation/browser/linkCommands";
+import { encodeSharedProject } from "../io/shareCapsule";
 
 // Mock the store
 vi.mock("../core/state/store", () => ({
@@ -73,6 +74,30 @@ describe("App", () => {
             state: INITIAL_STATE,
             dispatch: vi.fn(),
         });
+    });
+
+    it("copies a direct project link", async () => {
+        const writeText = vi.fn().mockResolvedValue(undefined);
+        Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+        render(<App />);
+        fireEvent.click(screen.getByRole("button", { name: "Share link" }));
+        await waitFor(() => expect(writeText).toHaveBeenCalledWith(expect.stringMatching(/^http:\/\/localhost(?::\d+)?\/#share=v1\./)));
+        expect(await screen.findByText(/Share link copied/)).toBeInTheDocument();
+    });
+
+    it("asks before opening a shared project and imports project state only", async () => {
+        const dispatch = vi.fn();
+        (useStore as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({ state: INITIAL_STATE, dispatch });
+        const shared = { version: 1 as const, document: { ...INITIAL_STATE.document, layers: INITIAL_STATE.document.layers.map((layer) => ({ ...layer, operationId: "shared-op" })), objects: [{ kind: "shape" as const, id: "shared", layerId: "layer-1", transform: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }, shape: { type: "rect" as const, width: 20, height: 10 } }] }, camSettings: { operations: [{ id: "shared-op", name: "Cut", mode: "line" as const, speed: 800, power: 70, passes: 1 }] } };
+        window.history.pushState({}, "", `/${encodeSharedProject(shared)}`);
+        render(<App />);
+        expect(await screen.findByRole("dialog", { name: "Shared fabrication project" })).toBeInTheDocument();
+        expect(dispatch).not.toHaveBeenCalledWith(expect.objectContaining({ type: "SET_DOCUMENT" }));
+        fireEvent.click(screen.getByRole("button", { name: "Open shared design" }));
+        expect(dispatch).toHaveBeenCalledWith({ type: "SET_DOCUMENT", payload: shared.document });
+        expect(dispatch).toHaveBeenCalledWith({ type: "SET_CAM_SETTINGS", payload: shared.camSettings });
+        expect(dispatch).toHaveBeenCalledWith({ type: "SELECT_OBJECT", payload: null });
+        expect(window.location.hash).toBe("");
     });
 
     it("renders the main title", () => {

@@ -42,3 +42,9 @@ The **Fabrication readiness** status must say **Ready to cut** before proceeding
 Then open **Operations**, assign the appropriate cut settings, generate the toolpath, inspect the preview, and proceed one physical sheet at a time.
 
 Software preflight cannot measure actual kerf or verify dry assembly. For unfamiliar stock, cut the optional coupon first and dry-assemble the enclosure before electronics are installed.
+
+## Share for cutting
+
+Finish the editable box and arrange its faces, then click **Share link** and send the copied URL. The recipient reviews the summary, chooses **Open shared design**, and can edit or export the same enclosure using their own laser machine settings.
+
+Share links include vector geometry, components, generated box faces, sheet arrangement, and cutting operations. Raster images and machine profiles are intentionally excluded.
