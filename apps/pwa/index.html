@@ -18,6 +18,9 @@
   <meta property="og:url" content="https://laseryx.com" />
   <meta property="og:image" content="https://laseryx.com/og-image.png" />
 
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="canonical" href="https://laseryx.com/" />
+  <link rel="icon" href="/icon.svg" type="image/svg+xml" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <title>Laseryx - Laser Cutting & GRBL Control</title>
 
@@ -38,7 +41,20 @@
 </head>
 
 <body>
-  <div id="root"></div>
+  <div id="root">
+    <!-- Static content for crawlers and for the time before JS runs. React replaces it on mount. -->
+    <main style="max-width: 40rem; margin: 3rem auto; padding: 0 1rem; font-family: system-ui, sans-serif; color: #e2e8f0; background: #0f172a;">
+      <h1>Laseryx</h1>
+      <p>Laseryx is a tool for your laser cutter. It runs in your browser. You can design, plan, and cut without installing anything.</p>
+      <ul>
+        <li><strong>Design Workspace:</strong> We support SVGs and images like PNG or JPG. The app converts images to scanlines automatically. You can organize your work with layers.</li>
+        <li><strong>CAM Engine:</strong> You can configure Cuts or Engraves. Save your settings for different materials like Wood or Leather. Everything happens on your computer locally.</li>
+        <li><strong>Machine Control:</strong> Connect directly to your GRBL machine via USB.</li>
+        <li><strong>Preview and Simulation:</strong> Visualize exactly what the laser will do before it starts.</li>
+      </ul>
+      <noscript><p>Laseryx needs JavaScript. We recommend Chrome or Edge for Web Serial.</p></noscript>
+    </main>
+  </div>
   <script type="module" src="/src/main.tsx"></script>
 </body>
 
